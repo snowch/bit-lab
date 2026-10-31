@@ -318,7 +318,7 @@ try {
   .exhead { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; margin: 0 0 4px; }
   .exbtns { display: flex; gap: 6px; margin-left: auto; }
   .exercises h2 { font-size: 15px; font-weight: 600; margin: 0; }
-  .exercises.collapsed .excontent { display: none; }
+  .exercises.collapsed .excontent, .exercises.collapsed #exDone { display: none; }
   .exercises:not(.showdone) .ex.done, .exercises:not(.showdone) .exgroup.alldone { display: none; }
   .exercises .lede { color: var(--muted); font-size: 12px; margin: 0 0 14px; max-width: 80ch; }
   .linkbtn {
@@ -373,6 +373,7 @@ try {
     border: 1px solid var(--key-border); background: var(--key-op); color: var(--ink);
     border-radius: 6px; padding: 3px 9px;
   }
+  #exToggle { min-height: 44px; }
   .exload small { color: var(--muted); margin-left: 6px; font-size: 10px; }
   .exload:hover, .extoggle:hover { border-color: var(--accent); }
   .exload:focus-visible, .extoggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -460,16 +461,16 @@ try {
     </div>
   </section>
 
-  <section class="exercises" aria-labelledby="exh">
+  <section class="exercises collapsed" aria-labelledby="exh">
     <div class="exhead">
       <h2 id="exh">Exercises — <span id="excount"></span></h2>
       <div class="exbtns">
         <button type="button" class="extoggle" id="exDone" aria-pressed="false" hidden>show done</button>
-        <button type="button" class="extoggle" id="exToggle" aria-expanded="true" aria-controls="excontent">hide</button>
+        <button type="button" class="extoggle" id="exToggle" aria-expanded="false" aria-controls="excontent">Show exercises</button>
       </div>
     </div>
     <div class="excontent" id="excontent">
-    <p class="lede">Each group starts with a <b>primer</b>; <b>load</b> sets up the calculator, <b>answer</b> checks, and a ticked exercise is tucked away. <button type="button" class="linkbtn" id="exHelp">How the exercises work</button></p>
+    <p class="lede">Each group starts with a <b>primer</b>; <b>load</b> sets up the calculator, <b>answer</b> reveals the worked solution, and a ticked exercise is tucked away. These exercises are self-checked. <button type="button" class="linkbtn" id="exHelp">How the exercises work</button></p>
     <div id="exercises"></div>
     </div>
   </section>
@@ -513,7 +514,7 @@ try {
     <p><kbd>0</kbd>–<kbd>9</kbd> <kbd>a</kbd>–<kbd>f</kbd> digits · <kbd>(</kbd> <kbd>)</kbd> · <kbd>&amp;</kbd> AND · <kbd>|</kbd> OR · <kbd>^</kbd> XOR · <kbd>~</kbd> NOT · <kbd>&lt;</kbd> <kbd>&gt;</kbd> shift by a count · <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd> · <kbd>%</kbd> mod · <kbd>Enter</kbd> or <kbd>=</kbd> · <kbd>Backspace</kbd> · <kbd>Esc</kbd> AC</p>
 
     <h3 id="helpExercises">Exercises</h3>
-    <p>Work through the groups in order; every function on the keypad is covered at least once, and the capstones chain them together the way real register, encoding and decoding problems do. Each group opens with a <b>primer</b> that explains the concept and gives an example to try, then its list of exercises. <b>load</b> sets the calculator to the starting value and word size, and <b>answer</b> reveals the worked solution. Tick an exercise when it is done: it is tucked away and the group's summary counts it, and a fully ticked group is tucked away too. <b>show N done</b> brings them back to review or untick, and <b>hide</b> collapses the whole section. Ticks are saved on this device only.</p>
+    <p>Work through the groups in order; every function on the keypad is covered at least once, and the capstones chain them together the way real register, encoding and decoding problems do. Each group opens with a <b>primer</b> that explains the concept and gives an example to try, then its list of exercises. <b>load</b> sets the calculator to the starting value and word size, and <b>answer</b> reveals the worked solution. Tick an exercise when it is done: it is tucked away and the group's summary counts it, and a fully ticked group is tucked away too. <b>show N done</b> brings them back to review or untick, and <b>Hide exercises</b> collapses the whole section. Exercises start collapsed on a first visit; <b>Show exercises</b> opens them, and your choice is remembered. Ticks are saved on this device only.</p>
 
     <h3>Learn more</h3>
     <p>Two companion pages live alongside the calculator: a printable <a href='docs/twos-complement.pdf' target='_blank' rel='noopener'>two's complement tutorial (PDF)</a> and the <a href='docs/bit-lab.html' target='_blank' rel='noopener'>Bit Lab</a>, which builds an ALU and its flags from gates you can tap. The primers of the related exercise groups link straight to the relevant page.</p>
@@ -1344,18 +1345,27 @@ try {
   const HIDE_KEY = "bit-lab:legacy:pc-exercises-hidden";
   const applyHidden = (hidden) => {
     section.classList.toggle("collapsed", hidden);
-    toggle.textContent = hidden ? "show" : "hide";
+    toggle.textContent = hidden ? "Show exercises" : "Hide exercises";
     toggle.setAttribute("aria-expanded", String(!hidden));
     window.dispatchEvent(new Event("pc-layout"));
   };
-  let hidden = false;
-  try { hidden = localStorage.getItem(HIDE_KEY) === "1"; } catch (_) {}
+  let hidden = true;
+  try { hidden = localStorage.getItem(HIDE_KEY) !== "0"; } catch (_) {}
   applyHidden(hidden);
   toggle.addEventListener("click", () => {
     hidden = !hidden;
     applyHidden(hidden);
     try { localStorage.setItem(HIDE_KEY, hidden ? "1" : "0"); } catch (_) {}
   });
+  // An explicit exercise link opens the bank for this visit without overwriting the saved preference.
+  const openExerciseLink = () => {
+    if (location.hash !== "#exh") return;
+    hidden = false;
+    applyHidden(false);
+    requestAnimationFrame(() => document.getElementById("exh").scrollIntoView({ block: "start" }));
+  };
+  window.addEventListener("hashchange", openExerciseLink);
+  openExerciseLink();
   // Enter normally means "=" in the calculator; on these buttons let it activate the button instead.
   toggle.addEventListener("keydown", (e) => { if (e.key === "Enter") e.stopPropagation(); });
 

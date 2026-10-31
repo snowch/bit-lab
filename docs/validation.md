@@ -117,3 +117,24 @@ experiment measured 922 pixels high, down from 1163; the diagram itself went fro
 desktop dark mode. The carry label was repositioned after inspection to stay beside the
 final carry wire. `npm run check` passed: 87 unit/integration tests and 28 browser tests,
 including the existing operation, keyboard and phone-width checks.
+
+## Guided calculator practice
+
+Lesson 11, Put it into practice, follows memory and directs learners to Show exercises in
+the calculator. It provides a selected practice round and the register-field capstones
+94–96, distinguishes self-checking from grading, and explains the calculator’s subtraction
+carry convention. The learning path and study marks include this lesson; the automatically
+graded practice list still contains the ten lesson checks.
+
+The calculator bank starts collapsed without a saved preference. Existing visibility
+preferences and ticks remain intact, and explicit `#exh` links open the bank for that visit
+without replacing the saved preference. The static markup starts collapsed too, avoiding
+a flash of questions before JavaScript runs. The exercise toggle has a 44-pixel minimum height.
+
+`npm run check` passed with 88 unit/integration tests and 32 desktop/phone browser tests.
+New browser coverage checks first-visit hiding, keyboard reveal, remembered visibility,
+loading an exercise, revealing its answer, saved ticks, showing completed questions,
+initial and same-page exercise links, and the final lesson’s navigation and separate study
+mark. Existing migration and offline checks also passed. Visual inspection covered the
+final lesson and collapsed calculator header at 390 pixels; neither overflowed the page.
+The exercise bank’s questions and answers were retained, not independently regraded.

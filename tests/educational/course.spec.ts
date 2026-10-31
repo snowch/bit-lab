@@ -27,7 +27,7 @@ test("home, theme, study marks and practice links work", async ({ page }) => {
     .getByRole("button", { name: "Mark as studied", exact: true })
     .click();
   await page.getByRole("link", { name: "Learning path", exact: false }).click();
-  await expect(page.getByText("1 / 10 marked studied")).toBeVisible();
+  await expect(page.getByText("1 / 11 marked studied")).toBeVisible();
   await page.getByRole("link", { name: "Practice", exact: true }).click();
   await expect(
     page.getByRole("link", { name: /Calculator exercise bank/ }),

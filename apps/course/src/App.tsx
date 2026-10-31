@@ -1,7 +1,7 @@
 // Copyright © 2026 Christopher Snow
 import { useEffect, useRef, useState } from "react";
 import { LessonView } from "@platform/lesson-runtime";
-import { chapters, futurePaths } from "@bl/content";
+import { chapters, learningPath, futurePaths } from "@bl/content";
 import { binary, hex, signed } from "@bl/bit-model";
 import { book } from "./book";
 import { runtimeStrings } from "./runtime-strings";
@@ -62,7 +62,7 @@ function readCompleted(): string[] {
     return Array.isArray(v)
       ? v.filter(
           (x): x is string =>
-            typeof x === "string" && chapters.some((c) => c.id === x),
+            typeof x === "string" && learningPath.some((c) => c.id === x),
         )
       : [];
   } catch {
@@ -72,7 +72,8 @@ function readCompleted(): string[] {
 
 function Cover({ completed }: { completed: string[] }) {
   const [value, setValue] = useState(180);
-  const next = chapters.find((c) => !completed.includes(c.id)) ?? chapters[0]!;
+  const next =
+    learningPath.find((c) => !completed.includes(c.id)) ?? learningPath[0]!;
   return (
     <>
       <section className="hero">
@@ -94,7 +95,7 @@ function Cover({ completed }: { completed: string[] }) {
             <span aria-hidden="true">↗︎</span>
           </a>
           <p className="hero-caption">
-            {chapters.length} lessons · Calculator · Practice
+            {learningPath.length} lessons · Calculator · Practice
           </p>
         </div>
         <div className="hero-instrument">
@@ -150,9 +151,9 @@ function Cover({ completed }: { completed: string[] }) {
           <p className="eyebrow">How to use the course</p>
           <h2>Predict. Inspect. Explain.</h2>
           <p>
-            Each lesson has a small experiment and a fresh question to check
-            your understanding. Use the calculator to explore further. Your
-            exercise answers and study marks stay in this browser.
+            Ten lessons build your understanding through small experiments and
+            checked questions. The final lesson guides you into the calculator’s
+            exercise bank. Your answers and study marks stay in this browser.
           </p>
         </div>
       </section>
@@ -163,11 +164,11 @@ function Cover({ completed }: { completed: string[] }) {
             <h2 id="path-title">Bits, arithmetic and decisions</h2>
           </div>
           <span className="progress-count">
-            {completed.length} / {chapters.length} marked studied
+            {completed.length} / {learningPath.length} marked studied
           </span>
         </div>
         <ol className="chapter-list">
-          {chapters.map((c, i) => (
+          {learningPath.map((c, i) => (
             <li key={c.id}>
               <a href={lessonHref(c.id)}>
                 <span className="chapter-number">
@@ -417,7 +418,7 @@ export function App() {
             <div className="lesson-top">
               <a href="#/">← Learning path</a>
               <span>
-                Lesson {index + 1} of {chapters.length}
+                Lesson {index + 1} of {learningPath.length}
               </span>
               <a href={calculator} target="_blank" rel="noopener">
                 Calculator in a new tab ↗︎
@@ -440,21 +441,21 @@ export function App() {
                 {studied ? "Marked studied ✓" : "Mark as studied"}
               </button>
               <p>
-                This is your study mark. Exercise answers are checked
-                separately.
+                This is your study mark. It does not grade your answers or tick
+                calculator exercises.
               </p>
             </div>
             <nav className="lesson-nav" aria-label="Lesson navigation">
               {index > 0 ? (
-                <a href={lessonHref(chapters[index - 1]!.id)}>
-                  ← {chapters[index - 1]!.title}
+                <a href={lessonHref(learningPath[index - 1]!.id)}>
+                  ← {learningPath[index - 1]!.title}
                 </a>
               ) : (
                 <span />
               )}
-              {index < chapters.length - 1 ? (
-                <a href={lessonHref(chapters[index + 1]!.id)}>
-                  {chapters[index + 1]!.title} →
+              {index < learningPath.length - 1 ? (
+                <a href={lessonHref(learningPath[index + 1]!.id)}>
+                  {learningPath[index + 1]!.title} →
                 </a>
               ) : (
                 <a href="#/practice">Continue with practice →</a>

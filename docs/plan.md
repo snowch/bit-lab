@@ -41,10 +41,18 @@ explicit qualifications, and points to Assembly Lab for instruction execution an
 | Make a signed or unsigned decision | Explain why N alone is insufficient when V is set |
 | Preserve a value in a wider word | Choose zero or sign extension for the intended value |
 | Lay out a word in memory | Connect bit patterns to addressed bytes and byte order |
+| Put it into practice | Use the calculator question bank, then build, extract and modify register fields |
 
 The word model uses four bits where exhaustive visual inspection helps, eight for masks
 and shifts, and sixteen for widening and memory. These are teaching widths, explicitly
 distinguished from a real processor’s register widths.
+
+The final lesson is guided self-checked practice, not another automatically graded question.
+It starts with a selected round from the existing bank and ends with exercises 94–96 on
+register fields. It explains the calculator’s borrow-carry convention before asking learners
+to interpret flags. The bank remains beside the calculator, collapsed for first-time visitors;
+explicit show/hide preferences and saved ticks are retained. Exercise-bank links open it
+directly, while the lesson teaches learners where to find Show exercises on ordinary visits.
 
 ## Further paths
 

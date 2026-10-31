@@ -6,13 +6,16 @@ Copyright © 2026 Christopher Snow.
 [Digital Design](https://snowch.github.io/digital-design/) and
 [Assembly Lab](https://snowch.github.io/assembly-lab/).
 
-The first course draft has ten interactive lessons: binary and hex, two’s complement,
+The first course draft has ten interactive lessons covering binary and hex, two’s complement,
 adders, subtraction and flags, masks, shifts, the combined ALU, comparisons, widening, and memory byte order.
-Each lesson has a computed experiment, a prediction before the result is revealed, and
-a checked question with hints. Answers and study marks are saved in the browser.
+These have computed experiments, predictions before results are revealed, and checked questions
+with hints. An eleventh lesson, **Put it into practice**, guides learners into the calculator’s
+self-checked exercise bank. Answers and study marks are saved in the browser.
 
 The programmer calculator, its 110 self-checked exercises, the two randomised drill pages,
-and the original interactive notes are retained alongside the new course. Preserving them
+and the original interactive notes are retained alongside the new course. Calculator exercises
+start collapsed on a first visit; Show exercises reveals them and remembers the choice. An
+explicit exercise-bank link opens them for that visit. Existing preferences and ticks are preserved. Preserving them
 does not freeze the curriculum: the new lessons deliberately change its order and scope.
 The existing programmer-calculator repository is unchanged.
 

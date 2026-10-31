@@ -350,6 +350,69 @@ export const lessons = chapters.map((c, order) => {
   });
 });
 
+const finalPractice = {
+  id: "put-it-into-practice",
+  title: "Put it into practice",
+  line: "Use the calculator’s question bank to connect the ideas and explain your answers.",
+};
+
+export const learningPath = [...chapters, finalPractice];
+
+lessons.push(
+  parseLesson({
+    id: finalPractice.id,
+    title: finalPractice.title,
+    module: chapters.length,
+    order: chapters.length,
+    sectionLayout: "selected",
+    showTimeModelNotes: false,
+    objectives: [
+      "Choose a width and interpretation, predict a result, and explain what the calculator shows.",
+    ],
+    prerequisites: ["memory"],
+    sections: [
+      {
+        kind: "question",
+        title: "Can you choose the operations yourself?",
+        prose:
+          "You have followed individual operations through small word models. Now use them together. The calculator keeps its 110 exercises beside the tool, with worked answers and a tick box for your own progress. You do not need to finish all 110 in one sitting.",
+      },
+      {
+        kind: "prediction",
+        title: "Open the questions and predict first",
+        prose:
+          "1. [Open the calculator](calculator/). Below the keypad, find **Exercises** and choose **Show exercises**. If they are already open, continue: the calculator remembers your choice.\n2. Open a topic group. Its **Primer** explains the idea and gives an example.\n3. Before pressing **load** or using an operator, write down the word width, signed or unsigned reading, expected result and your reasoning. Then use **load** where available and try the operations.\n4. Open **answer** to compare your reasoning with the worked solution. Tick the exercise when you can explain it.\n\nThese are **self-checked** exercises: revealing an answer or ticking a box does not automatically grade your work. Ticked questions are tucked away; **show … done** brings them back. Ticks are saved in this browser, separately from the course’s study marks.",
+      },
+      {
+        kind: "explanation",
+        title: "Check the calculator’s conventions",
+        prose:
+          "The calculator uses the width named in each question, often 8, 16 or 32 bits. Its signed switch changes how DEC reads the bits. Widening zero-extends; exercise 26 asks you to repair that to preserve a negative value.\n\nFor subtraction, this calculator uses **C = 1 for a borrow**. The ALU lesson uses **C = 1 for no borrow**. In an eight-bit `0 − 1`, both produce `0xFF`, but the calculator sets C and the lesson’s convention clears it. Explain the convention when you explain the flag.\n\nThe calculator also reports flags from its last operation and clears C and V on logical operations. The teaching ALU shows a dash when an operation produces no C or V. Use each tool’s stated rules; the displays are not interchangeable.",
+      },
+      {
+        kind: "challenge",
+        title: "Work through a first practice round",
+        prose:
+          "Use these exercise numbers as a route through the bank. For any difficult topic, read its primer and try neighbouring questions before continuing.\n\n- **Read and interpret:** 5 and 9 — binary to hex, then the same bits read unsigned and signed.\n- **Separate carry from overflow:** 21, 29 and 30 — signed overflow, unsigned wrap-around and borrowing.\n- **Preserve meaning:** 25–27 — changing width, sign extension and signed comparisons.\n- **Select and move bits:** 37, 38 and 58 — masking, extracting a field and shifting beyond the word.\n- **Change byte order:** 72 — swap bytes and explain the resulting word.\n\nFinish with **94–96** in **Digital design capstones**. Build a control-register value, read its fields back, then change just one field. Before each step, name the mask or shift you need and which bits must stay unchanged.",
+      },
+      {
+        kind: "reflection",
+        title: "Explain it, then choose what to practise next",
+        prose:
+          "Choose one answer you initially got wrong. Was the cause the width, the signed reading, an operation, or a flag convention? Change one input and predict what should happen before checking again.\n\nMark this lesson as studied when you have completed the practice round and can explain the three register-field capstones. The mark records your own judgement; it does not require every calculator question to be ticked.\n\nContinue with more questions in the same groups, or explore rotates, Unicode and the remaining capstones using their primers. For fresh questions with automatic checking, try the [two’s complement drills](calculator/docs/readings-drills.html) or [flag drills](calculator/docs/flag-drills.html).",
+      },
+    ],
+    challenges: [],
+    modelVsReality:
+      "Calculator exercises are self-checked and use their stated word widths and flag rules. The calculator is not an instruction-set emulator or a C evaluator.",
+    originalityNote: {
+      textbookExample: "A standalone revision worksheet.",
+      howThisDiffers:
+        "Connects the course’s word models to a retained calculator exercise bank, with prediction before worked answers, explicit flag conventions and a register-field capstone.",
+    },
+  }),
+);
+
 export const futurePaths = [
   {
     title: "Multiply, divide and round",
