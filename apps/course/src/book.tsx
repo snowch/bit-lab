@@ -8,6 +8,7 @@ import type {
 import { answer, parseInteger, type Topic } from "@bl/bit-model";
 import { chapters, lessons } from "@bl/content";
 import { WordLab } from "./WordLab";
+import { AluLab } from "./AluLab";
 
 export function grade(challenge: Challenge, artifact: Artifact): Verdict {
   if (challenge.tests.kind !== "answers")
@@ -80,7 +81,7 @@ export const book: Book = {
   id: "bit-lab",
   title: "Bit Lab",
   lessons,
-  interactives: { "word-lab": WordLab },
+  interactives: { "word-lab": WordLab, "alu-lab": AluLab },
   ChallengeEditor: AnswerEditor,
   grade,
   timeModelNotes: {

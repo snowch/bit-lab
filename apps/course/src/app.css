@@ -782,3 +782,66 @@ summary {
   min-width: 0;
   padding-inline: 0;
 }
+
+.alu-operation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.alu-rules {
+  border-left: 3px solid var(--accent);
+  padding-left: 14px;
+  font-size: 16px !important;
+}
+.alu-diagram {
+  width: 100%;
+  min-width: 620px;
+  display: block;
+  font: 16px var(--font-mono);
+  color: var(--fg-muted);
+}
+.alu-diagram rect {
+  fill: var(--bg-raised);
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+.alu-diagram text {
+  fill: var(--fg);
+}
+.alu-diagram .alu-small {
+  font-size: 13px;
+}
+.alu-wire {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 2;
+}
+.alu-diagram .alu-selected rect,
+.alu-diagram .alu-selector {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+}
+.alu-selected .alu-wire,
+.alu-result-wire,
+.alu-flag-wire {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.alu-control {
+  fill: none;
+  stroke: var(--focus);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+.alu-unused {
+  stroke-dasharray: 4 5;
+}
+.flag.not-produced {
+  border-style: dashed;
+}
+.alu-detail {
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+}

@@ -105,6 +105,87 @@ export function bytes(value: number, littleEndian: boolean) {
   const n = word(value, 16);
   return littleEndian ? [n & 255, n >> 8] : [n >> 8, n & 255];
 }
+
+export const ALU_OPERATIONS = [
+  "ADD",
+  "SUB",
+  "AND",
+  "OR",
+  "XOR",
+  "NOT",
+  "LSL",
+  "LSR",
+  "ASR",
+] as const;
+export type AluOperation = (typeof ALU_OPERATIONS)[number];
+export type AluPath = "arithmetic" | "logic" | "shift";
+export interface AluResult {
+  result: number;
+  path: AluPath;
+  N: number;
+  Z: number;
+  C: number | null;
+  V: number | null;
+}
+
+/** A combinational teaching ALU, not a processor's flag register.
+ * Shifts move one bit; null means this operation produces no such flag.
+ */
+export function alu(
+  a: number,
+  b: number,
+  width: number,
+  operation: AluOperation,
+): AluResult {
+  a = word(a, width);
+  b = word(b, width);
+  if (operation === "ADD" || operation === "SUB") {
+    const { result, N, Z, C, V } = arithmetic(a, b, width, operation === "SUB");
+    return { result, path: "arithmetic", N, Z, C, V };
+  }
+  let result: number;
+  let path: AluPath = "logic";
+  let C: number | null = null;
+  switch (operation) {
+    case "AND":
+      result = a & b;
+      break;
+    case "OR":
+      result = a | b;
+      break;
+    case "XOR":
+      result = a ^ b;
+      break;
+    case "NOT":
+      result = word(~a, width);
+      break;
+    case "LSL":
+      path = "shift";
+      C = (a >> (width - 1)) & 1;
+      result = word(a * 2, width);
+      break;
+    case "LSR":
+      path = "shift";
+      C = a & 1;
+      result = Math.floor(a / 2);
+      break;
+    case "ASR":
+      path = "shift";
+      C = a & 1;
+      result = word(Math.floor(signed(a, width) / 2), width);
+      break;
+    default:
+      throw new RangeError("Unknown ALU operation");
+  }
+  return {
+    result,
+    path,
+    N: +(result >= modulus(width) / 2),
+    Z: +(result === 0),
+    C,
+    V: null,
+  };
+}
 export function parseInteger(text: string): number | undefined {
   const s = text.trim().replaceAll("−", "-");
   if (!/^[+-]?(?:\d+|0x[\da-f]+|0b[01]+|0o[0-7]+)$/i.test(s)) return undefined;
@@ -119,6 +200,7 @@ export type Topic =
   | "flags"
   | "masks"
   | "shifts"
+  | "alu"
   | "compare"
   | "widen"
   | "memory";
@@ -141,6 +223,8 @@ export function answer(
       return word(a, width) & word(b, width);
     case "shifts":
       return shift(a, width, b, "arithmetic");
+    case "alu":
+      return alu(a, b, width, "XOR").result;
     case "compare":
       return +compare(a, b, width).signedLess;
     case "widen":

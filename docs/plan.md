@@ -37,6 +37,7 @@ explicit qualifications, and points to Assembly Lab for instruction execution an
 | Subtract and explain the flags | Separate unsigned borrowing from signed overflow |
 | Select and change individual bits | Use AND, OR and XOR for independent fields |
 | Move bits without losing their meaning | Distinguish logical and arithmetic shifts |
+| Bring the operations together in an ALU | Connect the operation selector, shared adder, logic, shifter and flag outputs |
 | Make a signed or unsigned decision | Explain why N alone is insufficient when V is set |
 | Preserve a value in a wider word | Choose zero or sign extension for the intended value |
 | Lay out a word in memory | Connect bit patterns to addressed bytes and byte order |
@@ -53,6 +54,9 @@ The home page labels these as roadmap topics, not available lessons:
 - Floating-point representation, approximation and precision.
 - Text encodings, packed fields and binary formats.
 - C conversions and recorded compiler evidence, linked to Assembly Lab.
+
+The ALU now has a main lesson after shifts and before comparisons. It joins the operations
+already taught, with optional detail for the adder and individual logic columns.
 
 The original gate-level ALU, gate-built register, C edge cases and breadboard activity remain
 available in the reference collection. Their eventual course treatment should be decided on

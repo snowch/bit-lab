@@ -5,7 +5,23 @@ import { chapters, lessons } from "./index";
 import { grade } from "../apps/course/src/book";
 
 describe("course contract and independent exercise answers", () => {
-  const answers = [11, -3, 3, 0, 6, 253, 1, 65514, 45];
+  const answers = [11, -3, 3, 0, 6, 253, 5, 1, 65514, 45];
+  it("makes the ALU a main lesson between shifts and comparisons", () => {
+    const index = lessons.findIndex((lesson) => lesson.id === "alu");
+    expect(lessons[index - 1]?.id).toBe("shifts");
+    expect(lessons[index + 1]?.id).toBe("compare");
+    expect(lessons[index]?.prerequisites).toEqual(["shifts"]);
+    expect(lessons[index + 1]?.prerequisites).toEqual(["alu"]);
+    // Adding the two operands is a plausible answer if the selector is overlooked.
+    expect(
+      grade(lessons[index]!.challenges[0]!, { answers: { value: "9" } }).passed,
+    ).toBe(false);
+    expect(
+      lessons[index]?.sections
+        .flatMap((section) => section.interactives)
+        .some((figure) => figure.kind === "alu-lab"),
+    ).toBe(true);
+  });
   it("renders only valid lessons with backwards prerequisite links", () => {
     expect(new Set(lessons.map((l) => l.id)).size).toBe(lessons.length);
     expect(modelProblems(lessons, ["word"])).toEqual([]);

@@ -17,6 +17,20 @@ The shift model permits counts from zero to width minus one. Arithmetic right sh
 towards negative infinity. That is not a claim that C division or every language’s right
 shift has the same semantics.
 
+## Combined ALU
+
+The ALU selects ADD, SUB, AND, OR, XOR, NOT or a one-place LSL, LSR or ASR.
+N and Z are derived from the selected result. ADD and SUB produce carry and signed
+overflow; SUB uses the same no-borrow convention as the earlier flags lesson. Shifts
+produce the outgoing bit as C. Logic produces neither C nor V; shifts produce no V.
+These absent outputs are `null` and displayed as a dash, never as a retained or cleared
+processor flag. NOT and shifts do not consume B. The model has no clock or stored flags.
+
+`alu.test.ts` independently checks all nine operations for every four-bit operand pair,
+including selection, flag provenance, unary inputs and outgoing bits. Wider boundary cases
+cover wrapping and signed overflow. This extends the mathematical model checks, not the
+architecture conformance claims.
+
 ## Architecture and language references
 
 - [Arm condition codes](https://community.arm.com/arm-community-blogs/b/architectures-and-processors-blog/posts/condition-codes-1-condition-flags-and-codes):

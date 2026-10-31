@@ -57,3 +57,30 @@ calculator’s offline shell is the scope of the offline test.
 The first GitHub Actions run failed before tests: `ubuntu-latest` selected Ubuntu 26.04,
 which the inherited Playwright 1.56.1 does not support. Both workflows now pin
 `ubuntu-24.04`, a supported runner, rather than skipping browser checks.
+
+## ALU lesson addition
+
+The ALU is now lesson 7 of 10, after shifts and before comparisons. The update passed
+`npm run check`: formatting, platform integrity, TypeScript, 86 tests across 9 unit/integration
+files, the production build and 28 browser tests across desktop and phone projects.
+
+The new mathematical tests check all nine operations for every four-bit input pair. The
+expected results and flag sources are calculated independently from the ALU function. Tests
+also cover wider boundary values, ignored B inputs, shifted-out bits, signed overflow and
+the absence of C/V outputs for logic operations. The graded question rejects the adder's
+answer when the operation control selects XOR.
+
+Browser checks select every operation and verify its result, highlighted path and N/Z/C/V
+outputs. They check unary operations, a negative arithmetic shift, a zero-producing XOR,
+reset behaviour, adder detail, navigation order, saved answers and grading. The generic
+lesson checks exercise both themes and reject document-level horizontal overflow.
+
+Visual inspection covered the ALU diagram on desktop in light mode and the experiment on a
+390-pixel phone in dark mode. The diagram scrolls within its own panel on narrow screens;
+the inputs, result bits and flag cards fit the page. A final inspection checked the added
+wire junction marks and the formatted question. No independent editorial review was performed.
+
+The first full browser run had 26 passes and two ALU-test timeouts: the test's exact label
+locator included the select's option text. The rendered accessibility tree already named
+the combobox correctly. The test now finds that combobox by its role and accessible name;
+the focused two-test rerun and the subsequent complete check both passed.

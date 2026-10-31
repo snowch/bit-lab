@@ -166,6 +166,31 @@ export const chapters: Chapter[] = [
     reference: "bit-lab.html",
   },
   {
+    id: "alu",
+    title: "Bring the operations together in an ALU",
+    line: "Operation selection, one result word and the flags it produces.",
+    question: "How can one unit add, subtract, shift and combine bits?",
+    before:
+      "An **arithmetic logic unit**, or **ALU**, brings several operations together. The same input words feed an adder and logic circuits. This model also includes a shifter. An operation control selects which calculation supplies the result.\n\nThe selector is called a **multiplexer**: it connects one of several inputs to one output. Changing the operation changes the selected path, even when A and B stay the same. This is how the separate operations you have explored become one unit.",
+    try: "Start with A = `0111` and B = `0001`. Predict the result and N, Z, C and V for ADD. Reveal them and follow the highlighted path. Keep A and B unchanged, select SUB and predict again. Then select AND. Which flags still describe the result, and which no longer come from an adder?\n\nTry a shift as well. LSL means logical shift left, LSR means logical shift right, and ASR means arithmetic shift right. Each moves A by one place here. NOT inverts A. These four operations do not use B.",
+    explanation:
+      "The adder serves both ADD and SUB. For ADD it receives B and an initial carry of zero. For SUB it receives the inverse of B and an initial carry of one. Open the adder detail below the result to inspect those inputs and the carry chain. The logic path combines corresponding bits without a carry. The shifter moves A’s bits by one place.\n\nAfter the selector, N copies the result’s leading bit. Z is 1 only when every result bit is zero. These two flags can describe any selected result. Carry and overflow need more information: C comes from the adder’s final carry, or from the bit shifted out; V comes from checking whether the signed arithmetic answer fits.\n\nThis model shows a dash for C and V on logical operations, and for V on shifts. A dash means **not produced**, not zero and not a remembered flag. Changing from ADD to AND must therefore change the flag display as well as the result path. A processor’s instruction rules determine whether its stored flags are updated, cleared or preserved.\n\nThe ALU shown here has no clock or memory. Changing an input recomputes its outputs; Reveal result only uncovers them. A register is needed to remember a result or flags between operations. In the next lesson, a comparison uses a subtraction’s flags to make a decision.\n\nFor more gate detail and the breadboard build, open the [original gate-level ALU](calculator/docs/bit-lab.html).",
+    limit:
+      "This is a four-bit teaching ALU with a one-place shifter, not an instruction emulator or a timing simulation. SUB uses the Arm no-borrow carry convention. Logical operations produce N and Z here, but no C or V; shifts also produce the bit shifted out as C. These are the model’s output rules, not a claim about every processor’s stored flags. Real machines can organise the shifter and execution units differently.",
+    a: 6,
+    b: 3,
+    width: 4,
+    task: "A four-bit ALU receives A = `0110` and B = `0011`. The operation control selects XOR. What unsigned value reaches the result output?",
+    hint: "Follow the selected logic path. XOR produces 1 where the two input bits differ.",
+    mistake:
+      "The inputs also reach the adder, but the selector does not choose its sum. Do not add A and B.",
+    smaller:
+      "With one-bit inputs 1 and 1, XOR gives 0; with 1 and 0, XOR gives 1.",
+    partial:
+      "Read the columns from left to right: equal, different, equal, different. Keep that order in the result.",
+    reference: "bit-lab.html",
+  },
+  {
     id: "compare",
     title: "Make a signed or unsigned decision",
     line: "Comparison flags and conditional branches.",
@@ -258,7 +283,7 @@ export const lessons = chapters.map((c, order) => {
         interactives: [
           {
             id: `${c.id}-lab`,
-            kind: "word-lab",
+            kind: c.id === "alu" ? "alu-lab" : "word-lab",
             timeModel: "word",
             caption:
               "Change the inputs, predict the result, then reveal it. Changing an input hides the result again.",
@@ -286,8 +311,10 @@ export const lessons = chapters.map((c, order) => {
     challenges: [
       {
         id: `${c.id}-practice`,
-        title: c.task,
-        task: "You can enter decimal, `0x` hexadecimal or `0b` binary. Use a minus sign for a negative answer.",
+        title: c.id === "alu" ? "Select the ALU’s output" : c.task,
+        task:
+          (c.id === "alu" ? `${c.task}\n\n` : "") +
+          "You can enter decimal, `0x` hexadecimal or `0b` binary. Use a minus sign for a negative answer.",
         gradedDirection: "answer",
         fields: [{ id: "value", label: "Your answer", kind: "text" }],
         initial: { answers: { value: "" } },
@@ -296,7 +323,10 @@ export const lessons = chapters.map((c, order) => {
           grader: "word",
           cases: [
             {
-              label: c.task,
+              label:
+                c.id === "alu"
+                  ? "XOR selected for A = 0110 and B = 0011"
+                  : c.task,
               given: { topic: c.id, a: c.a, b: c.b, width: c.width },
               expect: { value: expected },
             },

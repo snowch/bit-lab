@@ -6,8 +6,8 @@ Copyright © 2026 Christopher Snow.
 [Digital Design](https://snowch.github.io/digital-design/) and
 [Assembly Lab](https://snowch.github.io/assembly-lab/).
 
-The first course draft has nine rewritten lessons: binary and hex, two’s complement,
-adders, subtraction and flags, masks, shifts, comparisons, widening, and memory byte order.
+The first course draft has ten interactive lessons: binary and hex, two’s complement,
+adders, subtraction and flags, masks, shifts, the combined ALU, comparisons, widening, and memory byte order.
 Each lesson has a computed experiment, a prediction before the result is revealed, and
 a checked question with hints. Answers and study marks are saved in the browser.
 
