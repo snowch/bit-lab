@@ -1,0 +1,73 @@
+{
+  "id": "./",
+  "name": "Bit Lab Calculator",
+  "short_name": "BitCalc",
+  "description": "Programmer calculator and practice exercises alongside Bit Lab.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#EDEFF2",
+  "theme_color": "#1452CC",
+  "categories": [
+    "utilities",
+    "education",
+    "developer tools"
+  ],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshots/phone-light.png",
+      "sizes": "1080x2400",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Hex, decimal, octal and binary views of a 32-bit value with bit toggles"
+    },
+    {
+      "src": "screenshots/phone-keypad.png",
+      "sizes": "1080x2400",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Bitwise operations, shifts, rotates and the hex keypad"
+    },
+    {
+      "src": "screenshots/phone-dark.png",
+      "sizes": "1080x2400",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dark theme"
+    },
+    {
+      "src": "screenshots/desktop-light.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop layout"
+    }
+  ]
+}

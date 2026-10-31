@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+// Import old work once without writing to the original app's keys.
+try {
+  if (!localStorage.getItem("bit-lab:legacy:imported:v1")) {
+  for (const key of ["pc-done", "pc-done-layout", "pc-exercises-hidden", "pc-show-done", "pc-theme", "bitlab-state", "bitlab-theme", "drills-score", "readings-score"]) {
+    const target = 'bit-lab:legacy:' + key;
+    if (localStorage.getItem(target) === null) {
+      const old = localStorage.getItem(key);
+      if (old !== null) localStorage.setItem(target, old);
+    }
+  }
+  localStorage.setItem("bit-lab:legacy:imported:v1", "1");
+  }
+} catch (_) {}
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Programmer Calculator</title>
+<meta name="description" content="Offline programmer calculator: hex/dec/oct/bin, bitwise ops, shifts, rotates, byte swaps, Unicode — with exercises for learning digital design.">
+<meta name="theme-color" content="#EDEFF2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12151A" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ProgCalc">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --bg: #EDEFF2;
+    --surface: #FFFFFF;
+    --surface-2: #F5F6F8;
+    --ink: #171B21;
+    --muted: #5B6572;
+    --faint: #C9CED6;
+    --accent: #1452CC;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #E4ECFB;
+    --key: #F7F8FA;
+    --key-border: #DEE2E8;
+    --key-op: #E9EDF3;
+    --danger: #B3261E;
+    --radius: 10px;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151A;
+      --surface: #1A1E25;
+      --surface-2: #20252E;
+      --ink: #E8EBEF;
+      --muted: #8A93A0;
+      --faint: #3A414C;
+      --accent: #6FA8FF;
+      --accent-ink: #0C1626;
+      --accent-soft: #1E2C44;
+      --key: #232933;
+      --key-border: #313945;
+      --key-op: #2A313D;
+      --danger: #FF8A80;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151A;
+    --surface: #1A1E25;
+    --surface-2: #20252E;
+    --ink: #E8EBEF;
+    --muted: #8A93A0;
+    --faint: #3A414C;
+    --accent: #6FA8FF;
+    --accent-ink: #0C1626;
+    --accent-soft: #1E2C44;
+    --key: #232933;
+    --key-border: #313945;
+    --key-op: #2A313D;
+    --danger: #FF8A80;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+  *, *::before, *::after { box-sizing: inherit; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.45;
+    min-height: 100%;
+  }
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 20px 16px 40px; }
+  header.app {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "title btns" "hint hint";
+    align-items: baseline; column-gap: 12px; row-gap: 6px; margin-bottom: 14px;
+  }
+  header.app h1 { grid-area: title; font-size: 15px; font-weight: 600; letter-spacing: 0.02em; margin: 0; }
+  header.app .hint { grid-area: hint; color: var(--muted); font-size: 12px; }
+  .hdrbtns { grid-area: btns; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; }
+  @media (min-width: 820px) {
+    header.app { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "title hint btns"; }
+    header.app .hint { text-align: right; }
+  }
+  @media (hover: none) and (pointer: coarse) {
+    /* Touch devices have no physical keyboard to hint about. */
+    header.app .hint { display: none; }
+    header.app { row-gap: 0; }
+  }
+  .themebtn {
+    appearance: none; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+    border: 1px solid var(--key-border); background: var(--surface); color: var(--ink);
+    border-radius: 999px; padding: 4px 11px;
+  }
+  .themebtn .themek { color: var(--muted); }
+  .helpbtn { min-width: 30px; padding: 4px 9px; font-weight: 600; }
+  @media (max-width: 399px) { .themebtn .themek { display: none; } }
+
+  /* ---- help ---- */
+  dialog.help {
+    border: 1px solid var(--key-border); border-radius: 14px; padding: 0;
+    width: min(92vw, 640px); max-height: 85vh; max-height: 85dvh;
+    background: var(--surface); color: var(--ink); font-family: var(--mono); font-size: 13px; line-height: 1.5;
+  }
+  dialog.help[open] { display: flex; flex-direction: column; }
+  dialog.help::backdrop { background: rgba(0, 0, 0, 0.45); }
+  .helphead {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--key-border); flex: 0 0 auto;
+  }
+  .helphead h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .helpbody { padding: 2px 16px 16px; overflow-y: auto; flex: 1 1 auto; min-height: 0; overscroll-behavior: contain; }
+  .helpbody h3 { font-size: 13px; font-weight: 600; margin: 16px 0 6px; color: var(--accent); }
+  .helpbody p { margin: 0 0 8px; }
+  .helplist { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0 0 8px; }
+  .helplist dt { font-weight: 600; white-space: nowrap; }
+  .helplist dd { margin: 0; color: var(--muted); }
+  .helpbody kbd {
+    font: inherit; font-size: 12px; background: var(--surface-2);
+    border: 1px solid var(--key-border); border-radius: 4px; padding: 0 5px;
+  }
+  .themebtn:hover { border-color: var(--accent); }
+  .themebtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .seg {
+    display: inline-flex; background: var(--surface);
+    border: 1px solid var(--key-border); border-radius: var(--radius); overflow: hidden;
+  }
+  .seg button {
+    appearance: none; border: 0; background: transparent; color: var(--muted);
+    font: inherit; padding: 7px 13px; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--key-border); }
+  .seg button.on { background: var(--accent); color: var(--accent-ink); }
+  .seg button:focus-visible, .key:focus-visible, .bit:focus-visible,
+  .baserow:focus-visible, .copy:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px;
+  }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--key-border);
+    border-radius: 14px; padding: 14px;
+  }
+
+  /* ---- displays ---- */
+  .pending {
+    min-height: 18px; color: var(--muted); font-size: 12px; text-align: right;
+    padding: 0 4px 6px; overflow-x: auto; white-space: nowrap;
+  }
+  .pending .err { color: var(--danger); }
+  .rows { display: grid; gap: 6px; }
+  .rows.cols3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rows.cols3 .baserow:not([data-base="2"]) { grid-template-columns: auto minmax(0, 1fr) 24px; gap: 8px; }
+  .rows.cols3 .baserow[data-base="2"] { grid-column: 1 / -1; }
+  .baserow {
+    display: grid; grid-template-columns: 44px minmax(0,1fr) 30px;
+    align-items: center; gap: 10px; background: var(--surface-2);
+    border: 1px solid transparent; border-radius: var(--radius);
+    padding: 8px 10px; cursor: pointer; text-align: left;
+    color: inherit; font: inherit; width: 100%;
+  }
+  .baserow .tag { color: var(--muted); font-size: 12px; }
+  .baserow .val {
+    font-size: 17px; font-weight: 500; overflow-x: auto; white-space: nowrap;
+    text-align: right; scrollbar-width: thin;
+  }
+  .baserow[data-base="2"] .val { white-space: normal; line-height: 1.35; }
+  .baserow.active { border-color: var(--accent); background: var(--accent-soft); }
+  .baserow.active .tag { color: var(--accent); font-weight: 600; }
+  .copy {
+    appearance: none; border: 0; background: transparent; color: var(--muted);
+    cursor: pointer; font-size: 13px; padding: 4px; border-radius: 6px; justify-self: end;
+  }
+  .copy:hover { color: var(--accent); }
+  .meta {
+    margin-top: 8px; padding: 0 4px; display: flex; justify-content: space-between;
+    align-items: center; gap: 6px 12px; flex-wrap: wrap;
+  }
+  .ascii {
+    color: var(--muted); font-size: 12px; margin-left: auto;
+    text-align: right; overflow-x: auto; white-space: nowrap;
+  }
+  .flags { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
+  .flags .flagk { margin-right: 2px; }
+  .flag {
+    display: inline-block; min-width: 20px; text-align: center; padding: 0 4px;
+    border: 1px solid var(--key-border); border-radius: 5px; background: var(--surface-2);
+    color: var(--muted); font-size: 11px; line-height: 16px; cursor: help;
+  }
+  .flag.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .ascii b { color: var(--ink); font-weight: 500; letter-spacing: 0.15em; }
+  .uni {
+    margin-top: 6px; color: var(--muted); font-size: 12px; padding: 0 4px;
+    display: flex; gap: 12px; align-items: center; justify-content: flex-end;
+    flex-wrap: wrap; overflow-x: auto; white-space: nowrap;
+  }
+  .uni b { color: var(--ink); font-weight: 500; font-size: 14px; }
+  .charin { display: inline-flex; align-items: center; gap: 6px; margin-right: auto; }
+  .charin input {
+    width: 3.2em; background: var(--surface-2); border: 1px solid var(--key-border);
+    border-radius: 6px; color: var(--ink); font: inherit; padding: 3px 6px; text-align: center;
+  }
+  .charin input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* ---- bit grid ---- */
+  .bits { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px 14px; justify-content: flex-end; align-items: flex-end; }
+  .byte .weight { color: var(--muted); font-size: 11px; padding: 0 2px; white-space: nowrap; cursor: help; }
+  .byte .weight b { font-weight: 600; color: var(--muted); }
+  .byte .weight.on b { color: var(--accent); }
+  .byte { display: grid; grid-template-rows: auto auto; gap: 4px; }
+  .byte .cells { display: flex; gap: 3px; }
+  .byte .lbl {
+    color: var(--muted); font-size: 10px; display: flex;
+    justify-content: space-between; padding: 0 2px;
+  }
+  .bit {
+    appearance: none; width: 22px; height: 26px; border-radius: 6px;
+    border: 1px solid var(--key-border); background: var(--surface-2);
+    color: var(--muted); font: inherit; font-size: 12px; cursor: pointer;
+    padding: 0; transition: transform 60ms ease;
+  }
+  .bit:active { transform: scale(0.92); }
+  .bit.on {
+    background: var(--accent); border-color: var(--accent);
+    color: var(--accent-ink); font-weight: 600;
+  }
+  @media (max-width: 480px) { .bit { width: 19px; height: 24px; font-size: 11px; } }
+  @media (prefers-reduced-motion: reduce) {
+    .bit, .key { transition: none; }
+    .bit:active, .key:active { transform: none; }
+  }
+
+  /* ---- keypad ---- */
+  .padwrap { margin-top: 14px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .padtabs { display: none; }
+  @media (max-width: 639px) {
+    /* Compact: swipe (or tap the switch) between the keypad and the operations. */
+    .padtabs { display: flex; justify-content: center; margin-top: 14px; }
+    .padtabs .seg button { padding: 5px 16px; font-size: 13px; }
+    .padwrap {
+      margin-top: 10px; flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x mandatory;
+      scrollbar-width: none; overscroll-behavior-x: contain;
+    }
+    .padwrap::-webkit-scrollbar { display: none; }
+    .padwrap > .opspad, .padwrap > .mainpad { flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; }
+    .padwrap > .mainpad { order: -1; }
+  }
+  .opspad {
+    display: grid; grid-template-columns: repeat(3, minmax(64px, 1fr));
+    gap: 7px; flex: 1 1 260px; align-content: start;
+  }
+  .mainpad { flex: 1 1 300px; display: grid; gap: 7px; align-content: start; }
+  .hexrow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px; }
+  .numgrid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px;
+    grid-template-areas:
+      "ac  div mul sub"
+      "n7  n8  n9  add"
+      "n4  n5  n6  eq"
+      "n1  n2  n3  eq"
+      "n0  n0  n0  eq";
+  }
+  .key {
+    appearance: none; font: inherit; font-size: 15px;
+    border: 1px solid var(--key-border); border-radius: var(--radius);
+    background: var(--key); color: var(--ink); padding: 11px 0;
+    cursor: pointer; transition: transform 60ms ease; min-width: 0;
+  }
+  .key:active { transform: scale(0.96); }
+  .key.op { background: var(--key-op); font-size: 13px; }
+  .key.op sub { font-size: 9px; }
+  .key.eq {
+    background: var(--accent); border-color: var(--accent);
+    color: var(--accent-ink); font-weight: 600; font-size: 18px;
+  }
+  .key.ctl { color: var(--danger); }
+  .key:disabled { opacity: 0.32; cursor: default; }
+  .key[data-held="1"] {
+    border-color: var(--accent); background: var(--accent-soft); color: var(--accent);
+  }
+
+  /* ---- install ---- */
+  .install {
+    appearance: none; font: inherit; font-size: 12px; cursor: pointer;
+    border: 1px solid var(--accent); color: var(--accent); background: var(--accent-soft);
+    border-radius: 999px; padding: 4px 11px; display: none;
+  }
+  .install.show { display: inline-block; }
+
+  /* ---- exercises ---- */
+  .exercises { margin-top: 28px; }
+  .exhead { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; margin: 0 0 4px; }
+  .exbtns { display: flex; gap: 6px; margin-left: auto; }
+  .exercises h2 { font-size: 15px; font-weight: 600; margin: 0; }
+  .exercises.collapsed .excontent { display: none; }
+  .exercises:not(.showdone) .ex.done, .exercises:not(.showdone) .exgroup.alldone { display: none; }
+  .exercises .lede { color: var(--muted); font-size: 12px; margin: 0 0 14px; max-width: 80ch; }
+  .linkbtn {
+    appearance: none; border: 0; background: none; padding: 0; font: inherit;
+    color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+  }
+  .linkbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+  .exgroup {
+    background: var(--surface); border: 1px solid var(--key-border);
+    border-radius: 14px; margin-bottom: 8px; overflow: hidden;
+  }
+  .exgroup > summary {
+    cursor: pointer; padding: 12px 14px; font-weight: 600; list-style: none;
+    display: flex; gap: 8px; align-items: baseline;
+  }
+  .exgroup > summary > span:first-of-type { flex: 1; }
+  .exgroup > summary::-webkit-details-marker { display: none; }
+  .exgroup > summary::before { content: "▸ "; color: var(--muted); }
+  .exgroup[open] > summary::before { content: "▾ "; }
+  .exgroup > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .exrange { color: var(--muted); font-weight: 400; font-size: 12px; }
+  .exintro { color: var(--muted); font-size: 12px; margin: 0 14px 10px; max-width: 72ch; }
+  .exprimer {
+    margin: 0 14px 12px; border: 1px solid var(--key-border); border-radius: 10px;
+    background: var(--surface-2); font-size: 12px;
+  }
+  .exprimer > summary { cursor: pointer; padding: 8px 12px; color: var(--accent); font-weight: 600; list-style: none; }
+  .exprimer > summary::-webkit-details-marker { display: none; }
+  .exprimer > summary::before { content: "▸ "; color: var(--muted); }
+  .exprimer[open] > summary::before { content: "▾ "; }
+  .exprimer > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .exprimerbody { padding: 0 12px 10px; line-height: 1.55; max-width: 72ch; }
+  .exprimerbody p { margin: 0 0 8px; }
+  .exprimerbody p:last-child { margin-bottom: 0; }
+  .exprimerbody b { font-weight: 600; }
+  .exprimerbody .exmore { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--key-border); font-size: 13px; color: var(--muted); }
+  .exprimerbody .exmore a { color: var(--accent); }
+  .exgroup ol { margin: 0; padding: 0 14px 12px 14px; list-style: none; counter-reset: none; }
+  .ex {
+    display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 10px;
+    padding: 10px 0; border-top: 1px solid var(--key-border);
+  }
+  .exnum { grid-column: 2; margin-bottom: -4px; color: var(--muted); font-size: 11px; }
+  .exdone { grid-row: 1 / span 2; display: flex; align-items: flex-start; padding-top: 2px; }
+  .exdone input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; cursor: pointer; }
+  .exbody { grid-column: 2; min-width: 0; }
+  .extask { font-size: 13px; line-height: 1.5; }
+  .ex.done .extask { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
+  .exacts { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  .exload, .extoggle {
+    appearance: none; font: inherit; font-size: 12px; cursor: pointer;
+    border: 1px solid var(--key-border); background: var(--key-op); color: var(--ink);
+    border-radius: 6px; padding: 3px 9px;
+  }
+  .exload small { color: var(--muted); margin-left: 6px; font-size: 10px; }
+  .exload:hover, .extoggle:hover { border-color: var(--accent); }
+  .exload:focus-visible, .extoggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .exans { font-size: 12px; }
+  .exans > summary { cursor: pointer; color: var(--accent); list-style: none; padding: 3px 0; }
+  .exans > summary::-webkit-details-marker { display: none; }
+  .exans > div {
+    margin-top: 4px; padding: 8px 10px; background: var(--surface-2);
+    border-radius: 8px; line-height: 1.5; overflow-x: auto;
+  }
+  .exprogress { color: var(--muted); font-size: 12px; margin: 10px 0 0; }
+
+  /* ---- split layout: calculator stays put, exercises scroll (only when there is room) ---- */
+  :root { --split-gap: 16px; --split-pad: 16px; }
+  html.split, html.split body { height: 100%; overflow: hidden; }
+  html.split .wrap { height: 100%; display: flex; flex-direction: column; padding-bottom: var(--split-pad); }
+  html.split .wrap > * { flex: 0 0 auto; }
+  html.split .exercises {
+    flex: 1 1 auto; min-height: 0; margin-top: var(--split-gap);
+    display: flex; flex-direction: column;
+  }
+  html.split .excontent {
+    flex: 1 1 auto; min-height: 0;
+    overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+  }
+</style>
+</head>
+<body>
+<nav aria-label="Bit Lab navigation" style="padding:12px 16px;font:16px system-ui;display:flex;gap:24px;flex-wrap:wrap"><a href="../#/">← Bit Lab lessons</a><a href="../#/practice">Practice</a></nav>
+<div class="wrap">
+  <header class="app">
+    <h1>Programmer Calculator</h1>
+    <span class="hint">keyboard: 0–9 a–f ( ) &amp; | ^ ~ &lt; &gt; + − * / % ⏎ ⌫ esc</span>
+    <div class="hdrbtns">
+      <button type="button" class="install" id="installBtn">install app</button>
+      <button type="button" class="themebtn" id="themeBtn"><span class="themek">theme</span> <span id="themeVal">auto</span></button>
+      <button type="button" class="themebtn helpbtn" id="helpBtn" aria-label="Help" title="Help" aria-haspopup="dialog">?</button>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="seg" id="widthSeg" role="group" aria-label="Word size">
+      <button data-w="8">8</button>
+      <button data-w="16">16</button>
+      <button data-w="32" class="on">32</button>
+      <button data-w="64">64</button>
+    </div>
+    <div class="seg" id="signSeg" role="group" aria-label="Sign mode">
+      <button data-s="0" class="on">unsigned</button>
+      <button data-s="1">signed</button>
+    </div>
+  </div>
+
+  <section class="panel" aria-label="Value">
+    <div class="pending" id="pending"></div>
+    <div class="rows" id="rows"></div>
+    <div class="meta">
+      <div class="flags" id="flags" aria-label="Status flags from the last operation">
+        <span class="flagk">flags</span>
+        <span class="flag" data-flag="C" title="Carry / borrow: the unsigned result did not fit the word">C</span>
+        <span class="flag" data-flag="V" title="Overflow: the signed result did not fit the word">V</span>
+        <span class="flag" data-flag="Z" title="Zero: the last result was 0">Z</span>
+        <span class="flag" data-flag="N" title="Negative: the last result has its top bit set">N</span>
+      </div>
+      <div class="ascii" id="ascii"></div>
+    </div>
+    <div class="uni">
+      <label class="charin">char <input id="charIn" maxlength="4" placeholder="😀" aria-label="Type a character to load its code point"></label>
+      <span id="uniInfo"></span>
+    </div>
+    <div class="bits" id="bits" aria-label="Bit toggles"></div>
+
+    <div class="padtabs">
+      <div class="seg" id="padSeg" role="group" aria-label="Keypad page">
+        <button type="button" data-pane="0" class="on">keypad</button>
+        <button type="button" data-pane="1">ops</button>
+      </div>
+    </div>
+    <div class="padwrap" id="padwrap">
+      <div class="opspad" id="opspad" aria-label="Bitwise operations"></div>
+      <div class="mainpad" aria-label="Digits">
+        <div class="hexrow" id="hexrow"></div>
+        <div class="numgrid" id="numgrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="exercises" aria-labelledby="exh">
+    <div class="exhead">
+      <h2 id="exh">Exercises — <span id="excount"></span></h2>
+      <div class="exbtns">
+        <button type="button" class="extoggle" id="exDone" aria-pressed="false" hidden>show done</button>
+        <button type="button" class="extoggle" id="exToggle" aria-expanded="true" aria-controls="excontent">hide</button>
+      </div>
+    </div>
+    <div class="excontent" id="excontent">
+    <p class="lede">Each group starts with a <b>primer</b>; <b>load</b> sets up the calculator, <b>answer</b> checks, and a ticked exercise is tucked away. <button type="button" class="linkbtn" id="exHelp">How the exercises work</button></p>
+    <div id="exercises"></div>
+    </div>
+  </section>
+</div>
+
+<dialog class="help" id="helpDlg" aria-labelledby="helph">
+  <div class="helphead">
+    <h2 id="helph">Help</h2>
+    <button type="button" class="extoggle" id="helpClose">close</button>
+  </div>
+  <div class="helpbody">
+    <h3>The display</h3>
+    <p>The HEX, DEC, OCT and BIN readouts show one value four ways. Tap one to type in that base; the highlighted readout is the one you are typing into, and digits that do not exist in that base are greyed out. The ⧉ icon copies the value with a 0x, 0o or 0b prefix.</p>
+    <p><b>8 · 16 · 32 · 64</b> sets the word size, and every result wraps to that many bits. <b>unsigned / signed</b> changes how the decimal row reads the same bits: signed uses two's complement, and ÷, mod and right shifts become arithmetic.</p>
+    <p>Tap any bit in the bit grid to flip it. The label above the top bit shows what that bit is worth, +2ⁿ⁻¹ unsigned or −2ⁿ⁻¹ signed, and lights while the bit is set. The <b>ascii</b> line shows each byte as a character, and the <b>char</b> box loads a character's code point and shows its UTF-8 and UTF-16 encodings.</p>
+
+    <h3>Flags</h3>
+    <p>The flags describe the last operation, like a CPU status register. Typing a number or tapping bits is not an operation, so it leaves them clear, as a load instruction does on a CPU. They clear when you press AC or change the word size, and they stay put when you switch between signed and unsigned so both readings of a result can be compared.</p>
+    <dl class="helplist">
+      <dt>C</dt><dd>carry or borrow: the unsigned result did not fit the word. For shifts and rotates, the last bit shifted out.</dd>
+      <dt>V</dt><dd>overflow: the signed result did not fit the word.</dd>
+      <dt>Z</dt><dd>the result was zero.</dd>
+      <dt>N</dt><dd>the result has its top bit set.</dd>
+    </dl>
+
+    <h3>Keys</h3>
+    <dl class="helplist">
+      <dt>AND OR XOR NOR</dt><dd>bitwise operations between two values.</dd>
+      <dt>&lt;&lt; &gt;&gt;</dt><dd>shift the value one bit left or right.</dd>
+      <dt>X&lt;&lt;Y X&gt;&gt;Y</dt><dd>shift by a count: enter the value, press the key, enter the count, press =.</dd>
+      <dt>NOT NEG</dt><dd>invert every bit; two's-complement negate.</dd>
+      <dt>RoL RoR</dt><dd>rotate one bit left or right; the bit that wraps around goes to C.</dd>
+      <dt>mod</dt><dd>remainder of a division.</dd>
+      <dt>flip<sub>8</sub> flip<sub>16</sub></dt><dd>reverse the byte order, or the 16-bit word order (endianness).</dd>
+      <dt>( )</dt><dd>group a sub-expression; the line above the rows shows what is still pending.</dd>
+      <dt>⌫ AC</dt><dd>delete the last digit; clear everything. Dividing by zero shows an error that AC clears.</dd>
+    </dl>
+    <p>On a phone the keypad and the operations are two pages: swipe between them, or tap <b>keypad | ops</b>.</p>
+
+    <h3>Keyboard</h3>
+    <p><kbd>0</kbd>–<kbd>9</kbd> <kbd>a</kbd>–<kbd>f</kbd> digits · <kbd>(</kbd> <kbd>)</kbd> · <kbd>&amp;</kbd> AND · <kbd>|</kbd> OR · <kbd>^</kbd> XOR · <kbd>~</kbd> NOT · <kbd>&lt;</kbd> <kbd>&gt;</kbd> shift by a count · <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd> · <kbd>%</kbd> mod · <kbd>Enter</kbd> or <kbd>=</kbd> · <kbd>Backspace</kbd> · <kbd>Esc</kbd> AC</p>
+
+    <h3 id="helpExercises">Exercises</h3>
+    <p>Work through the groups in order; every function on the keypad is covered at least once, and the capstones chain them together the way real register, encoding and decoding problems do. Each group opens with a <b>primer</b> that explains the concept and gives an example to try, then its list of exercises. <b>load</b> sets the calculator to the starting value and word size, and <b>answer</b> reveals the worked solution. Tick an exercise when it is done: it is tucked away and the group's summary counts it, and a fully ticked group is tucked away too. <b>show N done</b> brings them back to review or untick, and <b>hide</b> collapses the whole section. Ticks are saved on this device only.</p>
+
+    <h3>Learn more</h3>
+    <p>Two companion pages live alongside the calculator: a printable <a href='docs/twos-complement.pdf' target='_blank' rel='noopener'>two's complement tutorial (PDF)</a> and the <a href='docs/bit-lab.html' target='_blank' rel='noopener'>Bit Lab</a>, which builds an ALU and its flags from gates you can tap. The primers of the related exercise groups link straight to the relevant page.</p>
+
+    <h3>App</h3>
+    <p>Everything works offline once it has loaded. <b>theme</b> cycles auto → light → dark and is remembered. Install it from the browser menu, or with the <b>install app</b> button when it appears, to get a full-screen app with its own icon.</p>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- state ----------
+  let width = 32;
+  let signed = false;
+  let base = 16;
+  let value = 0n;
+  let acc = null;           // pending left operand at current paren level
+  let op = null;            // pending binary operator at current paren level
+  let stack = [];           // open parentheses: [{acc, op}, ...]
+  let fresh = true;
+  let error = null;
+  let flags = { C: false, V: false, Z: false, N: false };   // status of the operation that produced `value`
+
+  const BIG = (n) => BigInt(n);
+  const mask = () => (1n << BIG(width)) - 1n;
+  const signBit = () => 1n << BIG(width - 1);
+  const clamp = (v) => ((v % (mask() + 1n)) + mask() + 1n) & mask();
+  const toSigned = (v) => (v & signBit()) ? v - (mask() + 1n) : v;
+  const fitsSigned = (s) => s >= -signBit() && s < signBit();
+  const bit = (v, i) => i >= 0n && i < BIG(width) && ((v >> i) & 1n) === 1n;
+  const clearFlags = () => { flags = { C: false, V: false, Z: false, N: false }; };
+  const setFlags = (c, v, r) => { flags = { C: c, V: v, Z: r === 0n, N: bit(r, BIG(width - 1)) }; };
+
+  // ---------- formatting ----------
+  function group(s, n, sep) {
+    let out = "";
+    for (let i = 0; i < s.length; i++) {
+      const fromEnd = s.length - i;
+      if (i > 0 && fromEnd % n === 0) out += sep;
+      out += s[i];
+    }
+    return out;
+  }
+  function fmt(v, b) {
+    if (b === 10) return (signed ? toSigned(v) : v).toString(10);
+    if (b === 16) return group(v.toString(16).toUpperCase(), 4, " ");
+    if (b === 8)  return group(v.toString(8), 3, " ");
+    return group(v.toString(2).padStart(width, "0"), 4, " ");
+  }
+
+  // ---------- binary ops ----------
+  const OP_LABEL = { and:"AND", or:"OR", xor:"XOR", nor:"NOR",
+                     shlY:"<<", shrY:">>",
+                     add:"+", sub:"−", mul:"×", div:"÷", mod:"mod" };
+  function apply(a, o, b) {
+    const r = compute(a, o, b);
+    setFlags(...binaryFlags(a, o, b), r);
+    return r;
+  }
+  // Flags the way a CPU sets them: C when the unsigned result wrapped (for shifts, the last bit
+  // shifted out), V when the signed result wrapped; logic ops clear both. Z and N come from the
+  // result itself. Nothing is set until an operation runs, and AC clears everything.
+  function binaryFlags(a, o, b) {
+    const sa = toSigned(a), sb = toSigned(b), w = BIG(width);
+    switch (o) {
+      case "add":  return [a + b > mask(), !fitsSigned(sa + sb)];
+      case "sub":  return [a < b, !fitsSigned(sa - sb)];
+      case "mul":  return [a * b > mask(), !fitsSigned(sa * sb)];
+      case "div":  return [false, signed && !fitsSigned(sa / sb)];
+      case "shlY": return [b >= 1n && b <= w && bit(a, w - b), b > w ? sa !== 0n : !fitsSigned(sa << b)];
+      case "shrY": return [b >= 1n && (b <= w ? bit(a, b - 1n) : signed && bit(a, w - 1n)), false];
+      default:     return [false, false];
+    }
+  }
+  function compute(a, o, b) {
+    switch (o) {
+      case "and": return a & b;
+      case "or":  return a | b;
+      case "xor": return a ^ b;
+      case "nor": return (~(a | b)) & mask();
+      case "add": return clamp(a + b);
+      case "sub": return clamp(a - b);
+      case "mul": return clamp(a * b);
+      case "div":
+        if (b === 0n) throw new Error("÷ 0");
+        return signed ? clamp(toSigned(a) / toSigned(b)) : a / b;
+      case "mod":
+        if (b === 0n) throw new Error("mod 0");
+        return signed ? clamp(toSigned(a) % toSigned(b)) : a % b;
+      case "shlY":
+        if (b >= BIG(width)) return 0n;
+        return clamp(a << b);
+      case "shrY":
+        if (b >= BIG(width)) return signed && (a & signBit()) ? mask() : 0n;
+        return signed ? clamp(toSigned(a) >> b) : a >> b;
+    }
+  }
+
+  // ---------- unary ops ----------
+  const UNARY = {
+    not:   v => (~v) & mask(),
+    neg:   v => clamp(-v),
+    shl1:  v => clamp(v << 1n),
+    shr1:  v => signed ? clamp(toSigned(v) >> 1n) : v >> 1n,
+    rol:   v => clamp((v << 1n) | (v >> BIG(width - 1))),
+    ror:   v => clamp((v >> 1n) | ((v & 1n) << BIG(width - 1))),
+    flip8: v => {                       // reverse byte order
+      let out = 0n;
+      const n = width / 8;
+      for (let i = 0; i < n; i++) {
+        const byte = (v >> BIG(i * 8)) & 0xFFn;
+        out |= byte << BIG((n - 1 - i) * 8);
+      }
+      return out;
+    },
+    flip16: v => {                      // reverse 16-bit word order
+      let out = 0n;
+      const n = width / 16;
+      for (let i = 0; i < n; i++) {
+        const w16 = (v >> BIG(i * 16)) & 0xFFFFn;
+        out |= w16 << BIG((n - 1 - i) * 16);
+      }
+      return out;
+    },
+  };
+
+  // ---------- actions ----------
+  function digit(d) {
+    if (error) clearAll();
+    if (d >= base) return;
+    if (fresh) { value = 0n; fresh = false; }
+    const next = value * BIG(base) + BIG(d);
+    if (next > mask()) return;
+    clearFlags();
+    value = next;
+    render();
+  }
+  function fail(e) {
+    error = e.message;
+    acc = null; op = null; stack = []; fresh = true;
+    clearFlags();
+    render();
+  }
+  function setOp(o) {
+    if (error) return;
+    if (op !== null && fresh) { op = o; render(); return; }  // change operator
+    if (op !== null && acc !== null && !fresh) {
+      try { value = apply(acc, op, value); }
+      catch (e) { fail(e); return; }
+    }
+    acc = value; op = o; fresh = true;
+    render();
+  }
+  function openParen() {
+    if (error) clearAll();
+    stack.push({ acc, op });
+    acc = null; op = null; fresh = true;
+    render();
+  }
+  function closeParen() {
+    if (error || stack.length === 0) return;
+    try {
+      if (op !== null && acc !== null) value = apply(acc, op, value);
+      const frame = stack.pop();
+      acc = frame.acc; op = frame.op; fresh = true;
+      render();
+    } catch (e) { fail(e); }
+  }
+  function equals() {
+    if (error) return;
+    try {
+      while (stack.length > 0) {
+        if (op !== null && acc !== null) value = apply(acc, op, value);
+        const frame = stack.pop();
+        acc = frame.acc; op = frame.op;
+      }
+      if (op !== null && acc !== null) value = apply(acc, op, value);
+      acc = null; op = null; fresh = true;
+      render();
+    } catch (e) { fail(e); }
+  }
+  function unary(name) {
+    if (error) clearAll();
+    const v = value;
+    value = clamp(UNARY[name](v));
+    setFlags(...unaryFlags(name, v), value);
+    fresh = true;
+    render();
+  }
+  function unaryFlags(name, v) {
+    const top = bit(v, BIG(width - 1)), low = bit(v, 0n);
+    switch (name) {
+      case "neg":  return [v !== 0n, v === signBit()];          // borrow from 0 − v; −(min) does not fit
+      case "shl1": return [top, !fitsSigned(toSigned(v) << 1n)];
+      case "shr1": return [low, false];
+      case "rol":  return [top, false];                          // the bit that wrapped around
+      case "ror":  return [low, false];
+      default:     return [false, false];                        // not, flip8, flip16
+    }
+  }
+  function backspace() {
+    if (error) { clearAll(); return; }
+    if (fresh) return;
+    clearFlags();
+    value = value / BIG(base);
+    render();
+  }
+  function clearAll() {
+    value = 0n; acc = null; op = null; stack = []; fresh = true; error = null;
+    clearFlags();
+    render();
+  }
+
+  // ---------- DOM ----------
+  const rowsEl = document.getElementById("rows");
+  const bitsEl = document.getElementById("bits");
+  const pendingEl = document.getElementById("pending");
+  const asciiEl = document.getElementById("ascii");
+  const flagsEl = document.getElementById("flags");
+  const opspadEl = document.getElementById("opspad");
+  const hexrowEl = document.getElementById("hexrow");
+  const numgridEl = document.getElementById("numgrid");
+
+  const BASES = [
+    { b: 16, tag: "HEX" }, { b: 10, tag: "DEC" },
+    { b: 8,  tag: "OCT" }, { b: 2,  tag: "BIN" },
+  ];
+
+  function buildRows() {
+    rowsEl.innerHTML = "";
+    for (const { b, tag } of BASES) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "baserow";
+      row.dataset.base = b;
+      row.innerHTML = '<span class="tag">' + tag + '</span><span class="val"></span>' +
+        '<span class="copy" title="Copy ' + tag + ' value" aria-label="Copy ' + tag + ' value">⧉</span>';
+      row.addEventListener("click", (ev) => {
+        if (ev.target.classList.contains("copy")) {
+          const raw = b === 10 ? (signed ? toSigned(value) : value).toString(10)
+                               : value.toString(b);
+          const text = b === 16 ? "0x" + raw.toUpperCase()
+                     : b === 2  ? "0b" + raw
+                     : b === 8  ? "0o" + raw : raw;
+          try { navigator.clipboard && navigator.clipboard.writeText(text); } catch (_) {}
+          ev.target.textContent = "✓";
+          setTimeout(() => { ev.target.textContent = "⧉"; }, 900);
+          ev.stopPropagation();
+          return;
+        }
+        base = b;
+        render();
+      });
+      rowsEl.appendChild(row);
+    }
+  }
+
+  function buildBits() {
+    bitsEl.innerHTML = "";
+    const bytes = width / 8;
+    for (let by = bytes - 1; by >= 0; by--) {
+      const grp = document.createElement("div");
+      grp.className = "byte";
+      if (by === bytes - 1) {            // the top byte carries the weight of the top bit
+        const wt = document.createElement("div");
+        wt.className = "weight";
+        wt.id = "msbWeight";
+        grp.appendChild(wt);
+      }
+      const cells = document.createElement("div");
+      cells.className = "cells";
+      for (let i = 7; i >= 0; i--) {
+        const bitIndex = by * 8 + i;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "bit";
+        btn.dataset.bit = bitIndex;
+        btn.setAttribute("aria-label", "bit " + bitIndex);
+        btn.addEventListener("click", () => {
+          if (error) clearAll();
+          clearFlags();
+          value ^= 1n << BIG(bitIndex);
+          fresh = false;
+          render();
+        });
+        cells.appendChild(btn);
+      }
+      const lbl = document.createElement("div");
+      lbl.className = "lbl";
+      lbl.innerHTML = "<span>" + (by * 8 + 7) + "</span><span>" + (by * 8) + "</span>";
+      grp.appendChild(cells);
+      grp.appendChild(lbl);
+      bitsEl.appendChild(grp);
+    }
+  }
+
+  // operator block — mirrors the macOS programmer keypad
+  const OPS = [
+    ["del", "⌫", "ctl"], ["lp", "(", "op"],              ["rp", ")", "op"],
+    ["and", "AND", "op"], ["or", "OR", "op"],            ["xor", "XOR", "op"],
+    ["nor", "NOR", "op"], ["shl1", "<<", "op"],          ["shr1", ">>", "op"],
+    ["not", "NOT", "op"], ["shlY", "X<<Y", "op"],        ["shrY", "X>>Y", "op"],
+    ["neg", "NEG", "op"], ["rol", "RoL", "op"],          ["ror", "RoR", "op"],
+    ["mod", "mod", "op"], ["flip8", "flip<sub>8</sub>", "op"], ["flip16", "flip<sub>16</sub>", "op"],
+  ];
+  const NUMS = [
+    ["ac", "AC", "ctl"], ["div", "÷", "op"], ["mul", "×", "op"], ["sub", "−", "op"],
+    ["n7", "7", "num", 7], ["n8", "8", "num", 8], ["n9", "9", "num", 9], ["add", "+", "op"],
+    ["n4", "4", "num", 4], ["n5", "5", "num", 5], ["n6", "6", "num", 6], ["eq", "=", "eq"],
+    ["n1", "1", "num", 1], ["n2", "2", "num", 2], ["n3", "3", "num", 3],
+    ["n0", "0", "num", 0],
+  ];
+
+  function makeKey(area, label, kind, d) {
+    const k = document.createElement("button");
+    k.type = "button";
+    k.innerHTML = label;
+    k.className = "key" + (kind === "op" ? " op" : kind === "eq" ? " eq" : kind === "ctl" ? " ctl" : "");
+    k.dataset.area = area;
+    if (d !== undefined) k.dataset.digit = d;
+    k.addEventListener("click", () => press(area, d));
+    return k;
+  }
+  function buildPads() {
+    opspadEl.innerHTML = "";
+    for (const [area, label, kind] of OPS) opspadEl.appendChild(makeKey(area, label, kind));
+    hexrowEl.innerHTML = "";
+    for (let h = 10; h <= 15; h++) {
+      hexrowEl.appendChild(makeKey("h" + h, "ABCDEF"[h - 10], "num", h));
+    }
+    numgridEl.innerHTML = "";
+    for (const [area, label, kind, d] of NUMS) {
+      const k = makeKey(area, label, kind, d);
+      k.style.gridArea = area;
+      numgridEl.appendChild(k);
+    }
+  }
+
+  function press(area, d) {
+    switch (area) {
+      case "ac": clearAll(); break;
+      case "del": backspace(); break;
+      case "lp": openParen(); break;
+      case "rp": closeParen(); break;
+      case "not": case "neg": case "shl1": case "shr1":
+      case "rol": case "ror": case "flip8": case "flip16":
+        unary(area); break;
+      case "and": case "or": case "xor": case "nor":
+      case "shlY": case "shrY":
+      case "add": case "sub": case "mul": case "div": case "mod":
+        setOp(area); break;
+      case "eq": equals(); break;
+      default: if (d !== undefined) digit(d);
+    }
+  }
+
+  function pendingText() {
+    let s = "";
+    for (const f of stack) {
+      if (f.acc !== null && f.op !== null) s += fmt(f.acc, base) + " " + OP_LABEL[f.op] + " ";
+      s += "( ";
+    }
+    if (acc !== null && op !== null) s += fmt(acc, base) + " " + OP_LABEL[op];
+    return s.trim();
+  }
+
+  // HEX, DEC and OCT share one row when the longest value the current width can show fits
+  // three abreast; otherwise they stack. Based on the maximum, not the current value, so the
+  // layout does not jump while typing.
+  const ROW_CHROME = 86;    // tag, copy icon, gaps, padding and border of a compact three-abreast .baserow
+  const ROW_GAP = 6;
+  function longestValueChars() {
+    const m = mask();
+    const dec = signed ? "-" + signBit().toString(10) : m.toString(10);
+    return Math.max(fmt(m, 16).length, dec.length, fmt(m, 8).length);
+  }
+  function charWidth() {
+    const probe = rowsEl.querySelector('.baserow[data-base="16"] .val');
+    if (!probe || !probe.textContent) return 10;
+    const range = document.createRange();
+    range.selectNodeContents(probe);
+    return range.getBoundingClientRect().width / probe.textContent.length || 10;
+  }
+  function layoutRows() {
+    const needed = Math.ceil(longestValueChars() * charWidth()) + ROW_CHROME;
+    rowsEl.classList.toggle("cols3", rowsEl.clientWidth >= 3 * needed + 2 * ROW_GAP);
+  }
+  // The binary readout wraps instead of scrolling. Every line holds the same number of nibbles
+  // (16, 8, 4 or 2, so lines are whole words, halves or bytes), the most that fit the cell;
+  // nibbles within a line are joined with non-breaking spaces so the browser can only break
+  // between lines.
+  function binText(v) {
+    const nibbles = fmt(v, 2).split(" ");
+    const cell = rowsEl.querySelector('.baserow[data-base="2"] .val');
+    const chars = cell ? Math.floor(cell.clientWidth / charWidth()) : Infinity;
+    let per = nibbles.length;
+    while (per > 2 && (5 * per - 1 > chars || nibbles.length % per !== 0)) per--;
+    const lines = [];
+    for (let i = 0; i < nibbles.length; i += per) lines.push(nibbles.slice(i, i + per).join("\u00A0"));
+    return lines.join(" ");
+  }
+  if ("ResizeObserver" in window) {
+    let lastW = 0;
+    new ResizeObserver((entries) => {
+      const w = entries[0].contentRect.width;
+      if (w !== lastW) { lastW = w; render(); }   // re-flows the readouts, including the binary wrap
+    }).observe(rowsEl);
+  }
+
+  function render() {
+    for (const row of rowsEl.children) {
+      const b = Number(row.dataset.base);
+      row.classList.toggle("active", b === base);
+      row.querySelector(".val").textContent = b === 2 ? binText(value) : fmt(value, b);
+    }
+    if (error) {
+      pendingEl.innerHTML = '<span class="err">error: ' + error + " — press AC</span>";
+    } else {
+      pendingEl.textContent = pendingText();
+    }
+    let chars = "";
+    for (let by = width / 8 - 1; by >= 0; by--) {
+      const code = Number((value >> BIG(by * 8)) & 0xFFn);
+      chars += (code >= 32 && code < 127) ? String.fromCharCode(code) : "·";
+    }
+    asciiEl.innerHTML = "ascii <b>" + chars.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</b>";
+    document.getElementById("uniInfo").innerHTML = unicodeInfo();
+    for (const el of flagsEl.children) {
+      const f = el.dataset.flag;
+      if (!f) continue;
+      el.classList.toggle("on", flags[f]);
+      el.setAttribute("aria-label", f + (flags[f] ? " set" : " clear"));
+    }
+    const wt = document.getElementById("msbWeight");
+    if (wt) {
+      const sign = signed ? "−" : "+";
+      wt.innerHTML = `bit ${width - 1} = <b>${sign}${signBit().toString(10)}</b>`;
+      wt.classList.toggle("on", bit(value, BIG(width - 1)));
+      wt.title = `The top bit is worth ${sign}2^${width - 1} when read as ${signed ? "signed" : "unsigned"}. ` +
+                 `Switch between signed and unsigned to see the sign change; the bits themselves do not.`;
+    }
+    for (const btn of bitsEl.querySelectorAll(".bit")) {
+      const i = BIG(btn.dataset.bit);
+      const on = (value >> i) & 1n;
+      btn.classList.toggle("on", on === 1n);
+      btn.textContent = on === 1n ? "1" : "0";
+    }
+    const allKeys = [...opspadEl.children, ...hexrowEl.children, ...numgridEl.children];
+    for (const k of allKeys) {
+      const area = k.dataset.area;
+      if (k.dataset.digit !== undefined) k.disabled = Number(k.dataset.digit) >= base;
+      if (area === "flip8") k.disabled = width === 8;
+      if (area === "flip16") k.disabled = width <= 16;
+      if (area === "rp") k.disabled = stack.length === 0;
+      if (OP_LABEL[area]) k.dataset.held = (op === area && fresh) ? "1" : "0";
+    }
+    layoutRows();
+  }
+
+  // ---------- unicode ----------
+  function esc(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  }
+  function unicodeInfo() {
+    if (value > 0x10FFFFn) return "unicode — (above U+10FFFF)";
+    const cp = Number(value);
+    const hex = cp.toString(16).toUpperCase().padStart(4, "0");
+    if (cp >= 0xD800 && cp <= 0xDFFF) return "U+" + hex + " (surrogate, no character)";
+    const ch = String.fromCodePoint(cp);
+    const printable = cp >= 0x20 && !(cp >= 0x7F && cp <= 0x9F);
+    const utf8 = Array.from(new TextEncoder().encode(ch))
+      .map(b => b.toString(16).toUpperCase().padStart(2, "0")).join(" ");
+    let utf16 = "";
+    for (let i = 0; i < ch.length; i++) {
+      utf16 += (i ? " " : "") + ch.charCodeAt(i).toString(16).toUpperCase().padStart(4, "0");
+    }
+    return "U+" + hex + " <b>" + (printable ? esc(ch) : "·") + "</b>" +
+           " · utf-8 " + utf8 + " · utf-16 " + utf16;
+  }
+  const charIn = document.getElementById("charIn");
+  charIn.addEventListener("input", () => {
+    const s = charIn.value;
+    if (!s) return;
+    const cp = s.codePointAt(0);
+    let v = BIG(cp);
+    if (v > mask()) {
+      for (const w of [8, 16, 32, 64]) {
+        if (v <= (1n << BIG(w)) - 1n) { setWidth(w); break; }
+      }
+    }
+    clearFlags();
+    value = v & mask();
+    fresh = true;
+    charIn.value = String.fromCodePoint(cp);
+    render();
+  });
+  charIn.addEventListener("focus", () => charIn.select());
+
+  // ---------- controls ----------
+  function segWire(id, attr, onPick) {
+    const seg = document.getElementById(id);
+    seg.addEventListener("click", (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      for (const b of seg.children) b.classList.toggle("on", b === btn);
+      onPick(btn.dataset[attr]);
+    });
+  }
+  function setWidth(w) {
+    width = Number(w);
+    const seg = document.getElementById("widthSeg");
+    for (const b of seg.children) b.classList.toggle("on", Number(b.dataset.w) === width);
+    clearFlags();
+    value &= mask();
+    if (acc !== null) acc &= mask();
+    for (const f of stack) if (f.acc !== null) f.acc &= mask();
+    buildBits();
+    render();
+  }
+  segWire("widthSeg", "w", setWidth);
+  segWire("signSeg", "s", (s) => { signed = s === "1"; render(); });
+  // Theme: a compact button that cycles auto → light → dark. Remembered on this device.
+  const THEMES = ["auto", "light", "dark"];
+  const themeBtn = document.getElementById("themeBtn");
+  const themeVal = document.getElementById("themeVal");
+  let theme = "auto";
+  try { const t = localStorage.getItem("bit-lab:legacy:pc-theme"); if (THEMES.includes(t)) theme = t; } catch (_) {}
+  function applyTheme() {
+    if (theme === "auto") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
+    const next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+    themeVal.textContent = theme;
+    themeBtn.setAttribute("aria-label", `Theme: ${theme}. Activate to switch to ${next}.`);
+    themeBtn.title = `Theme: ${theme} (tap for ${next})`;
+  }
+  themeBtn.addEventListener("click", () => {
+    theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+    try { localStorage.setItem("bit-lab:legacy:pc-theme", theme); } catch (_) {}
+    applyTheme();
+  });
+  // Enter normally means "=" in the calculator; on this button let it activate the button instead.
+  themeBtn.addEventListener("keydown", (e) => { if (e.key === "Enter") e.stopPropagation(); });
+  applyTheme();
+
+  // ---------- compact pads: swipe or tap between keypad and ops ----------
+  const padwrap = document.getElementById("padwrap");
+  const padTabs = [...document.querySelectorAll("#padSeg button")];
+  const panes = () => [document.querySelector(".mainpad"), opspadEl];   // visual order on compact screens
+  const paneLeft = (el) => el.getBoundingClientRect().left - padwrap.getBoundingClientRect().left + padwrap.scrollLeft;
+  function markPane() {
+    let best = 0, dist = Infinity;
+    panes().forEach((p, i) => { const d = Math.abs(paneLeft(p) - padwrap.scrollLeft); if (d < dist) { dist = d; best = i; } });
+    for (const b of padTabs) b.classList.toggle("on", Number(b.dataset.pane) === best);
+  }
+  let padRaf = 0;
+  padwrap.addEventListener("scroll", () => {
+    if (!padRaf) padRaf = requestAnimationFrame(() => { padRaf = 0; markPane(); });
+  }, { passive: true });
+  for (const b of padTabs) {
+    b.addEventListener("click", () => {
+      const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      padwrap.scrollTo({ left: paneLeft(panes()[Number(b.dataset.pane)]), behavior: reduce ? "auto" : "smooth" });
+    });
+  }
+
+  // ---------- help ----------
+  const helpDlg = document.getElementById("helpDlg");
+  const helpBtn = document.getElementById("helpBtn");
+  helpBtn.addEventListener("click", () => {
+    if (typeof helpDlg.showModal === "function") helpDlg.showModal(); else helpDlg.setAttribute("open", "");
+  });
+  helpBtn.addEventListener("keydown", (e) => { if (e.key === "Enter") e.stopPropagation(); });
+  document.getElementById("helpClose").addEventListener("click", () => helpDlg.close());
+  helpDlg.addEventListener("click", (e) => { if (e.target === helpDlg) helpDlg.close(); });   // backdrop
+
+  // ---------- keyboard ----------
+  document.addEventListener("keydown", (e) => {
+    if (helpDlg.open) return;                       // the help page owns the keyboard while open
+    if (e.target && e.target.tagName === "INPUT") return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key;
+    let handled = true;
+    if (/^[0-9]$/.test(k)) digit(Number(k));
+    else if (/^[a-fA-F]$/.test(k)) digit(parseInt(k, 16));
+    else if (k === "(") openParen();
+    else if (k === ")") closeParen();
+    else if (k === "&") setOp("and");
+    else if (k === "|") setOp("or");
+    else if (k === "^") setOp("xor");
+    else if (k === "~") unary("not");
+    else if (k === "<") setOp("shlY");
+    else if (k === ">") setOp("shrY");
+    else if (k === "+") setOp("add");
+    else if (k === "-") setOp("sub");
+    else if (k === "*") setOp("mul");
+    else if (k === "/") setOp("div");
+    else if (k === "%") setOp("mod");
+    else if (k === "=" || k === "Enter") equals();
+    else if (k === "Backspace") backspace();
+    else if (k === "Escape") clearAll();
+    else handled = false;
+    if (handled) e.preventDefault();
+  });
+
+  // ---------- external hook (exercises) ----------
+  window.pcLoad = (hex, w, s) => {
+    if (w && w !== width) setWidth(w);
+    signed = !!s;
+    for (const b of document.getElementById("signSeg").children)
+      b.classList.toggle("on", (b.dataset.s === "1") === signed);
+    acc = null; op = null; stack = []; error = null; fresh = true;
+    clearFlags();
+    value = BigInt("0x" + String(hex).replace(/\s+/g, "")) & mask();
+    render();
+  };
+
+  // ---------- init ----------
+  buildRows();
+  buildBits();
+  buildPads();
+  render();
+})();
+</script>
+<script>
+/* ---------- exercises: data + renderer (appended by PWA build) ---------- */
+(() => {
+  "use strict";
+  // L(hex, width, signed) describes a "load" button
+  const L = (hex, w, s) => ({ hex, w: w || 32, s: !!s });
+  const G = [
+  ["Reading the four rows", "Every value is one bit pattern shown four ways. Get fluent at reading all four before touching an operator.", [
+    ["Load FF at 8-bit. Read off DEC, OCT and BIN without pressing anything.", "255 · 377 · 1111 1111", L("FF",8)],
+    ["Click the DEC row and type 1000. What are HEX, OCT and BIN?", "3E8 · 1750 · 0011 1110 1000", L("0",32)],
+    ["Why does the OCT row group digits in threes of bits and HEX in fours?", "8 = 2³ so one octal digit is exactly 3 bits; 16 = 2⁴ so one hex digit is exactly 4 bits. Decimal has no clean grouping, which is why DEC is the odd one out."],
+    ["Load CAFE. Tap bit 0 in the bit grid. New HEX?", "CAFF — E is 1110, so bit 0 was clear; setting it gives 1111 = F.", L("CAFE",16)],
+    ["Convert 1011 0110 to hex in your head, then enter it by tapping bits to check.", "B6", L("0",8)],
+    ["Enter 1024, 65536 and 1048576 in DEC. What do they look like in HEX?", "400 · 1 0000 · 10 0000 — a single 1 followed by zeros: each is a power of two (2¹⁰, 2¹⁶, 2²⁰).", L("0",32)],
+    ["Click OCT, type 777. Read HEX, DEC, BIN.", "1FF · 511 · 1 1111 1111 — nine set bits.", L("0",16)],
+    ["Load 2014 at 16-bit and look at the char row. What character has code point U+2014?", "The em dash —. Its UTF-8 is E2 80 94 (three bytes), UTF-16 is just 2014.", L("2014",16)],
+  ], "<p>A number inside a computer is just a pattern of bits. HEX, DEC, OCT and BIN are four ways of writing the <b>same</b> pattern, which is why all four readouts change together.</p>\n<p><b>Binary:</b> each bit is worth a power of two, 1, 2, 4, 8, 16, 32, 64, 128 counting from the right; the value is the sum of the bits that are 1. <b>Hex:</b> one hex digit is exactly four bits (0–9, then A = 10 up to F = 15), so the BIN readout is grouped in fours: read each group as one hex digit. <b>Octal:</b> one digit per three bits.</p>\n<p>Try it: press AC, then tap bits 0, 1 and 3 in the bit grid. DEC shows 1 + 2 + 8 = 11 and HEX shows B, because 1011 is the digit B.</p><p class='exmore'>Read more: <a href='docs/twos-complement.pdf#page=1' target='_blank' rel='noopener'>Two's complement tutorial, place value and hex, p. 1 (PDF)</a>.</p>"],
+  ["Negative numbers: reading two's complement", "Switch to <b>signed</b>. The bits do not change; DEC just reads the top bit as negative: at 8 bits it is worth −128 instead of +128, so every pattern whose top bit is set is a negative number. After an operation, the <b>N</b> flag reports that bit of the result.", [
+    ["8-bit: load 80 (1000 0000). Read DEC in unsigned, then switch to signed.", "128, then −128. In signed mode the top bit is worth −2⁷ = −128 instead of +128; the other seven bits keep their usual weights.", L("80",8)],
+    ["8-bit signed: load FF. What is DEC, and why?", "−1. Add the weights: −128 + 64 + 32 + 16 + 8 + 4 + 2 + 1 = −128 + 127 = −1. All ones is −1 at every width.", L("FF",8,true)],
+    ["8-bit signed: load 7F, then 80. Read DEC each time.", "127, then −128: the largest positive and the most negative values. Signed 8-bit runs from −128 to 127, unsigned from 0 to 255 — the same 256 patterns, split differently.", L("7F",8,true)],
+    ["Work out −5 by hand: write 5 in binary, invert every bit, add 1. Then check by entering 5 and pressing NEG.", "0000 0101 → 1111 1010 → 1111 1011 = FB. NEG does exactly this. Check the weights: −128 + 64 + 32 + 16 + 8 + 2 + 1 = −5.", L("5",8,true)],
+    ["Build 1111 1011 (−5) a second way: press AC, then tap bits 7, 6, 5, 4, 3, 1 and 0. Same value as 5 NEG, but look at the flags. Why does nothing light now, when NEG lit N and C?", "Because the flags report the last <b>operation</b>, and tapping bits is not one: you wrote the register directly, as a load instruction or a debugger does, and a CPU's status register does not change for those either. 5 NEG was an operation: N because its result is negative, C because negating borrows from 0 − 5. Same bits, different history. AC clears the flags for the same reason: nothing has been computed yet.", L("0",8,true)],
+    ["8-bit signed: load FB (−5) and add 5.", "0, with C and Z lit. The unsigned view wrapped (251 + 5 = 256 needs nine bits), and that wrap is exactly what makes two's complement work: a number plus its negation leaves zero in the bits that survive. The word-size group looks at that wrapping more closely.", L("FB",8,true)],
+  ], "<p>A computer has no minus sign, only bits, so negative numbers have to be a convention. <b>Two's complement</b> is the one every CPU uses: the top bit is given a <b>negative</b> weight. In 8 bits the weights are −128, 64, 32, 16, 8, 4, 2, 1 instead of 128, 64, 32, … Everything whose top bit is 1 is therefore negative, and the range is −128 to 127.</p>\n<p><b>Reading:</b> add the weights as usual, with the top one negative. 1111 1111 = −128 + 127 = −1. 1000 0000 = −128. 1111 1011 = −128 + 64 + 32 + 16 + 8 + 2 + 1 = −5.</p>\n<p><b>Writing −x:</b> write x, invert every bit, add 1. The NEG key does exactly this. It works because x plus its complement is all ones, 1111 1111 = −1, so adding one more makes x + (−x) = 0 with the carry falling off the end of the word.</p>\n<p>The <b>signed / unsigned</b> switch changes nothing in the bits. It only tells the DEC readout whether to treat the top bit as −128 or +128. Watch the label above the top bit in the bit grid flip between +128 and −128 as you switch; it lights up while that bit is set and counting. The N flag reports that bit of the last result.</p><p class='exmore'>Read more: <a href='docs/twos-complement.pdf#page=2' target='_blank' rel='noopener'>Two's complement tutorial, the top bit is negative, p. 2 (PDF)</a>.</p>"],
+  ["Two's complement: negation, overflow and sign extension", "You can read signed values now. These exercises operate on them: invert, negate, overflow, widen and compare.", [
+    ["8-bit signed: click DEC, enter 1, press NEG. What is HEX?", "FF — all ones is −1 in two's complement at every width.", L("1",8,true)],
+    ["8-bit: load 0 and press NOT. Read HEX, then switch to signed and read DEC.", "FF. NOT flips every bit, so 0000 0000 becomes 1111 1111: 255 unsigned, −1 signed. All ones is −1 at every width, which is why NOT 0 and NEG 1 give the same pattern.", L("0",8)],
+    ["8-bit signed: load 5 and press NOT. Read BIN and DEC, then press NOT again.", "1111 1010 = FA = −6, and the second NOT gives 5 back: NOT undoes itself. Line the two patterns up and every column has exactly one 1, so 5 + NOT 5 = 1111 1111 = −1. That is why NOT x is −x − 1: NOT 5 is −6, not −5.", L("5",8,true)],
+    ["8-bit signed: load 5, press NOT, then + 1 =. Now load 5 again and press NEG.", "FA → FB = −5, and NEG 5 is FB too. The + 1 cancels the −1 that NOT leaves behind, so NEG is simply NOT followed by + 1. That is all two's complement negation is.", L("5",8,true)],
+    ["8-bit signed: load FF (−1) and press NOT. Then enter 80 (−128) and press NOT.", "00 = 0 and 7F = 127. The rule NOT x = −x − 1 holds for negative x as well: −(−1) − 1 = 0 and −(−128) − 1 = 127. NOT never overflows, unlike NEG 80.", L("FF",8,true)],
+    ["8-bit signed: load 3, press NOT, then + 3 =. Why is the answer not 0?", "FC + 3 = FF = −1. NOT is not a minus sign: x + NOT x is always all ones, which is −1. Negate properly with NEG instead: 3 NEG gives FD, and FD + 3 wraps to 0 with C and Z lit.", L("3",8,true)],
+    ["8-bit signed: 127 + 1 = ?", "80 = −128. Signed overflow: the sum spilled into the sign bit, so V lights (and N, since bit 7 is set) while C stays clear.", L("7F",8,true)],
+    ["8-bit signed: load 80 (−128) and press NEG.", "Still 80 = −128. −128 has no positive partner in 8 bits; this is the classic INT_MIN edge case.", L("80",8,true)],
+    ["Do two's complement by hand: 8-bit, load 25 (37). Press NOT, then + 1. Compare with NEG 25.", "NOT gives DA, +1 gives DB. NEG 25 is also DB = −37. NEG ≡ NOT then +1.", L("25",8,true)],
+    ["16-bit signed: load 8000 then 7FFF. Read DEC each time.", "−32768 and 32767 — the two ends of int16_t.", L("8000",16,true)],
+    ["Load 80 at 8-bit. Read DEC in unsigned then signed. Now switch width to 16 (still signed).", "128 unsigned, −128 signed, then +128 — at 16 bits, bit 7 is no longer the sign bit.", L("80",8,true)],
+    ["Sign extension: 8-bit signed, enter 5 and NEG (FB = −5). Switch to 16-bit. What does DEC say? Fix it with one OR.", "00FB = 251, wrong. OR FF00 → FFFB = −5. Hardware does this automatically for a sign-extending load (lb vs lbu on RISC-V); the calculator zero-extends.", L("FB",8,true)],
+    ["8-bit: which is bigger, 7F or 80? Answer for unsigned and for signed.", "Unsigned: 80 (128 > 127). Signed: 7F (127 > −128). Same bits, opposite comparison — this is why CPUs have separate signed and unsigned branch instructions.", L("7F",8)],
+    ["8-bit signed: NOT 5 versus NEG 5.", "NOT 5 = FA = −6; NEG 5 = FB = −5. NOT x = −x − 1 always.", L("5",8,true)],
+  ], "<p><b>NOT</b> flips every bit and does nothing else. Read as a signed number, the flipped pattern is worth −x − 1: line x up with NOT x and every column holds exactly one 1, so x + NOT x = 1111 1111 = −1. For 5, 0000 0101 becomes 1111 1010, which is −6. NOT undoes itself, so pressing it twice gets x back.</p><p><b>NEG</b> is NOT followed by + 1. The + 1 cancels that stray −1 and lands on −x: 1111 1010 + 1 = 1111 1011 = −5. That is the whole of two's complement negation.</p>\n<p><b>Overflow:</b> the signed 8-bit range is −128 to 127, so 127 + 1 has no answer that fits. The bits wrap to 1000 0000, which reads as −128, and the V flag lights to tell you the signed result is wrong. Unsigned the same bits are a perfectly good 128, so C stays clear. The two flags are independent.</p>\n<p><b>The odd one out:</b> −128 has no positive partner in 8 bits, so NEG 80 gives 80 again. In C this is the INT_MIN trap.</p>\n<p><b>Sign extension:</b> making a negative number wider means copying its sign bit into every new bit: −5 is FB in 8 bits and FFFB in 16. Pad with zeros instead and FB becomes 251. The calculator zero-extends when you widen, so you repair it with OR.</p>\n<p><b>Comparisons</b> depend on the reading: 80 is bigger than 7F unsigned (128 vs 127) but smaller signed (−128 vs 127). CPUs have separate signed and unsigned compare-and-branch instructions for this reason.</p><p class='exmore'>Read more in the two's complement tutorial (PDF): <a href='docs/twos-complement.pdf#page=3' target='_blank' rel='noopener'>NOT, p. 3</a> · <a href='docs/twos-complement.pdf#page=4' target='_blank' rel='noopener'>overflow, p. 4</a> · <a href='docs/twos-complement.pdf#page=5' target='_blank' rel='noopener'>sign extension, p. 5</a>. See the overflow flag made from gates in the <a href='docs/bit-lab.html#lab' target='_blank' rel='noopener'>Bit Lab</a>.</p>"],
+  ["Word size, wrap-around and truncation", "The width selector is the single most important control: it is the register size of the machine you are pretending to be.", [
+    ["8-bit: 255 + 1 = ?", "0 — the carry out of bit 7 falls off the end of the word and lights the C flag, exactly as the carry flag in hardware would. Z lights too: the eight bits that survive are all zero.", L("FF",8)],
+    ["8-bit: 0 − 1 = ?", "FF — 255 unsigned, −1 signed. Borrow wraps the same way carry does, and sets C too; N lights because bit 7 is now set.", L("0",8)],
+    ["16-bit: FFFF × 2 = ?", "FFFE — 131070 mod 65536 = 65534.", L("FFFF",16)],
+    ["Load 1234 5678 at 32-bit, then switch to 16, then 8. What survives each time?", "5678, then 78. Narrowing the width keeps only the low bits — exactly what a C cast to a smaller integer type does.", L("12345678",32)],
+    ["Write down the largest unsigned value at 8, 16, 32 and 64 bits, in HEX and DEC. Verify with NOT 0 at each width.", "FF = 255 · FFFF = 65535 · FFFF FFFF = 4294967295 · FFFF FFFF FFFF FFFF = 18446744073709551615"],
+    ["32-bit: 65535 × 65535 = ?", "FFFE 0001 = 4294836225 — fits, because (2¹⁶−1)² < 2³².", L("0",32)],
+    ["32-bit: 65536 × 65536 = ?", "0 — the result is exactly 2³², which is one bit past the register.", L("0",32)],
+    ["8-bit: 200 + 100 = ?", "2C = 44. 300 mod 256 = 44. In C with uint8_t this is well-defined wrap-around.", L("0",8)],
+  ], "<p>A register holds a fixed number of bits. Whatever does not fit at the top is simply lost: 255 + 1 in 8 bits is 1 0000 0000, the leading 1 falls off, 0000 0000 remains and the C flag records the lost carry.</p>\n<p>So arithmetic in n bits is arithmetic <b>modulo 2ⁿ</b>: 256 for 8 bits, 65536 for 16, and so on. The largest unsigned value is all ones, 2ⁿ − 1. Subtracting past zero wraps the other way: 0 − 1 = FF.</p>\n<p><b>Truncation:</b> narrowing the width keeps only the low bits, which is what a C cast to a smaller integer type does. <b>Multiplication</b> needs twice the bits of its inputs: (2¹⁶ − 1)² still fits in 32 bits, but 2¹⁶ × 2¹⁶ = 2³² needs a 33rd bit and wraps to 0.</p><p class='exmore'>Read more in the two's complement tutorial (PDF): <a href='docs/twos-complement.pdf#page=4' target='_blank' rel='noopener'>counting modulo 256, p. 4</a> · <a href='docs/twos-complement.pdf#page=5' target='_blank' rel='noopener'>changing the width, p. 5</a>.</p>"],
+  ["AND, OR, XOR, NOR — masks and flags", "Bitwise ops are how you talk to hardware registers. Every exercise here is something you will do in real driver code.", [
+    ["Keep only the low nibble of A7.", "A7 AND 0F = 07", L("A7",8)],
+    ["Extract the high nibble of A7 as a number 0–15.", "A7 AND F0 = A0, then >> four times (or X>>Y 4) = 0A = 10.", L("A7",8)],
+    ["Set bit 3 of 40 without disturbing the others.", "40 OR 08 = 48", L("40",8)],
+    ["Clear bit 6 of 48.", "Build the mask: 40 NOT = BF. Then 48 AND BF = 08. (In C: x &= ~(1<<6).)", L("48",8)],
+    ["Toggle bit 3 of 48 twice.", "48 XOR 08 = 40, XOR 08 again = 48. XOR with a mask is its own inverse.", L("48",8)],
+    ["Is bit 5 of B5 set?", "B5 AND 20 = 20 (non-zero) → yes. B5 = 1011 0101, bit 5 is the second 1 from the left.", L("B5",8)],
+    ["XOR undoes itself: 5A XOR 3C, then XOR 3C again.", "66, then back to 5A. This is the basis of XOR encryption and of swapping without a temp.", L("5A",8)],
+    ["8-bit: 0F NOR F0, then 0F NOR 0F.", "00 and F0. NOR is NOT(OR).", L("0F",8)],
+    ["NOR as a universal gate — make NOT from NOR: 55 NOR 55.", "AA. a NOR a = NOT a.", L("55",8)],
+    ["Make OR from NOR only, with a = 0C, b = 0A: (a NOR b) NOR (a NOR b).", "0C NOR 0A = F1; F1 NOR F1 = 0E = 0C OR 0A ✓", L("0C",8)],
+    ["Make AND from NOR only: (a NOR a) NOR (b NOR b), a = 0C, b = 0A.", "0C NOR 0C = F3; 0A NOR 0A = F5; F3 NOR F5 = 08 = 0C AND 0A ✓ — every logic function can be built from NOR alone.", L("0C",8)],
+    ["A status register reads 96 (1001 0110). Bit 7 = IRQ pending, bit 4 = zero flag, bit 2 = carry, bit 1 = ready. Which are set?", "IRQ (bit 7), zero (bit 4), carry (bit 2), ready (bit 1). Test each with AND 80, AND 10, AND 04, AND 02.", L("96",8)],
+    ["Is 1234 aligned to 16 bytes? Is 1230?", "1234 AND 0F = 4 → no. 1230 AND 0F = 0 → yes. Alignment is just the low bits being zero.", L("1234",16)],
+    ["Round 1234 down to a multiple of 16, then up.", "Down: 1234 AND FFF0 = 1230. Up: (1234 + F) AND FFF0 = 1240.", L("1234",16)],
+    ["Power-of-two test: x AND (x − 1). Try 40, then 48.", "40 AND 3F = 0 → power of two. 48 AND 47 = 40 ≠ 0 → not.", L("40",8)],
+    ["Isolate the lowest set bit of 48: x AND NEG x.", "NEG 48 = B8 at 8-bit. 48 AND B8 = 08.", L("48",8)],
+    ["Clear the lowest set bit of 48: x AND (x − 1).", "48 AND 47 = 40", L("48",8)],
+    ["Compute the parity of B5 with XOR folding: (x >> 4) XOR (x AND 0F), then fold the nibble twice more.", "0B XOR 05 = 0E; (0E X>>Y 2) XOR (0E AND 3) = 03 XOR 02 = 01; (01 >> 1) XOR (01 AND 1) = 1 → odd parity (five 1-bits).", L("B5",8)],
+  ], "<p>Bitwise operations work on each bit position on its own; bit 3 of the result depends only on bit 3 of the inputs. A <b>mask</b> is a value with 1s in the positions you care about.</p>\n<p><b>AND</b> keeps bits where the mask has 1 and clears the rest: x AND 0F keeps the low nibble. <b>OR</b> sets bits: x OR 80 sets bit 7. <b>XOR</b> flips bits where the mask has 1: x XOR FF inverts everything, and x XOR x is always 0. <b>NOR</b> is NOT (x OR y).</p>\n<p>The idioms: test a flag with AND and look for a non-zero result, set it with OR, clear it with AND NOT mask, toggle it with XOR. Hardware registers are read and written exactly this way.</p><p class='exmore'>See it in gates: the <a href='docs/bit-lab.html#lab' target='_blank' rel='noopener'>Bit Lab</a> draws one gate per bit column and shows how the N, Z, C and V flags are built.</p>"],
+  ["NOT and NEG", "", [
+    ["NOT 0 at 8, 16 and 32 bits.", "FF · FFFF · FFFF FFFF", L("0",8)],
+    ["Show that NOT x + 1 = NEG x for x = 01.", "NOT 01 = FE, + 1 = FF. NEG 01 = FF. (−1)", L("1",8)],
+    ["Press NOT twice on A5. Then NEG twice.", "Both return A5 — both are involutions (except NEG of 80 at 8-bit, which is its own negative).", L("A5",8)],
+  ], "<p><b>NOT</b> flips every bit, the ones' complement. Read signed, NOT x = −x − 1; read unsigned, NOT x = 2ⁿ − 1 − x, so NOT 0 is the largest value at the current width.</p>\n<p><b>NEG</b> is two's-complement negation, NOT x + 1, so x + NEG x wraps to 0 and lights C. The flags follow a CPU: NEG sets C for any non-zero input (there is a borrow from 0 − x) and V only for the most negative value.</p><p class='exmore'>Read more: <a href='docs/twos-complement.pdf#page=3' target='_blank' rel='noopener'>Two's complement tutorial, NOT: the flip on its own, p. 3 (PDF)</a>.</p>"],
+  ["Shifts", "<b>&lt;&lt;</b> and <b>&gt;&gt;</b> shift by one. <b>X&lt;&lt;Y</b> / <b>X&gt;&gt;Y</b> take a count — note Y is typed in the <em>current base</em>, so a shift of 16 is 10 in hex.", [
+    ["8-bit: 1 << seven times, then once more.", "80, then 00. The bit fell off the top. Hardware would have put it in the carry flag.", L("1",8)],
+    ["Multiply 5 by 16 using one shift.", "5 X<<Y 4 = 50 = 80. Shift left by n is multiply by 2ⁿ.", L("5",8)],
+    ["Divide 100 by 4 and multiply 100 by 8 with shifts.", "100 X>>Y 2 = 25; 100 X<<Y 3 = 800 (hex 320).", L("64",16)],
+    ["8-bit signed, load F0 (−16). Press >> once. Is the result 78 or F8? What does that tell you about this calculator's shift?", "78 = +120 means logical (zero-fill); F8 = −8 means arithmetic (sign-fill). C's >> on a signed int is implementation-defined for exactly this reason; RISC-V has separate SRL and SRA.", L("F0",8,true)],
+    ["32-bit: 1 X<<Y 31 (type 1F in hex). Read DEC unsigned and signed.", "8000 0000 = 2147483648 unsigned, −2147483648 signed.", L("1",32)],
+    ["Extract bits 23..16 of 1234 5678 as a byte.", "1234 5678 X>>Y 10 (16 decimal) = 1234, AND FF = 34.", L("12345678",32)],
+    ["Pack the bytes 12, 34, 56, 78 into one 32-bit word, high byte first.", "((12 X<<Y 8 OR 34) X<<Y 8 OR 56) X<<Y 8 OR 78 = 1234 5678. Use parentheses.", L("0",32)],
+    ["FF << by 8 at 8-bit, at 16-bit, at 32-bit.", "00 · FF00 · 0000 FF00. Same operation, three different machines.", L("FF",8)],
+    ["32-bit: 1 X<<Y 20 (32 decimal). What happens?", "0 here. In C, shifting by ≥ the width is undefined behaviour; on x86 the count is masked to 5 bits so 1<<32 is 1<<0 = 1. Hardware and calculators disagree — know your target.", L("1",32)],
+  ], "<p><b>&lt;&lt;</b> moves every bit one place left and fills the bottom with 0: the value doubles, and the bit that falls off the top lands in C. <b>&gt;&gt;</b> moves right. Unsigned it is a <b>logical</b> shift that fills with 0 and halves the value; signed it is an <b>arithmetic</b> shift that copies the sign bit, so negative numbers stay negative and halve correctly.</p>\n<p><b>X&lt;&lt;Y</b> and <b>X&gt;&gt;Y</b> shift by a count: enter the value, press the key, enter the count in the current base, press =. Shifting by k multiplies or divides by 2ᵏ.</p>\n<p>Shifts are how bit fields are built and read: (field &lt;&lt; position) places it, and (register &gt;&gt; position) AND mask extracts it.</p><p class='exmore'>Read more: <a href='docs/twos-complement.pdf#page=6' target='_blank' rel='noopener'>Two's complement tutorial, shifts, p. 6 (PDF)</a>. Compare logical and arithmetic shifts gate by gate in the <a href='docs/bit-lab.html#lab' target='_blank' rel='noopener'>Bit Lab</a>.</p>"],
+  ["Rotates", "Rotate is a shift where the bit that falls off re-enters at the other end. CPUs use it for hashing, crypto and bit-field juggling.", [
+    ["8-bit: 81 RoL, then 81 RoR.", "RoL → 03 (top bit wrapped to bit 0). RoR → C0.", L("81",8)],
+    ["8-bit: press RoL eight times on A5.", "Back to A5. Rotating by the word width is the identity.", L("A5",8)],
+    ["8-bit: compare 80 RoL with 80 <<.", "RoL → 01, shift → 00. The shift loses the bit; the rotate keeps it.", L("80",8)],
+    ["16-bit: 8001 RoR.", "C000", L("8001",16)],
+    ["16-bit: rotate 1234 left eight times. Compare with flip₈.", "Both give 3412 — rotating a 16-bit word by 8 is a byte swap. (x86's bswap for 16-bit is literally ROL 8.)", L("1234",16)],
+  ], "<p>A <b>rotate</b> is a shift where the bit that falls off one end re-enters at the other, so nothing is lost: rotating an 8-bit value left eight times gives it back unchanged. The bit that wrapped around is copied into C.</p>\n<p>Rotates appear in hashes, ciphers and checksums, and whenever a register is really a circular bit field.</p>"],
+  ["flip₈ and flip₁₆ — endianness", "flip₈ reverses byte order, flip₁₆ reverses 16-bit halves. This is what you see when a little-endian CPU writes a register to memory and you read the bytes back.", [
+    ["32-bit: 1234 5678 flip₈.", "7856 3412 — the memory byte order of 0x12345678 on an x86 or ARM.", L("12345678",32)],
+    ["32-bit: 1234 5678 flip₁₆.", "5678 1234", L("12345678",32)],
+    ["32-bit: 0000 1234 flip₈. Read DEC before and after.", "3412 0000 — 4660 becomes 873594880. This is what a wrong-endian read looks like in a log file.", L("1234",32)],
+    ["64-bit: 0102 0304 0506 0708 flip₈, then from the original, flip₁₆.", "flip₈ → 0807 0605 0403 0201. flip₁₆ → 0708 0506 0304 0102.", L("0102030405060708",64)],
+    ["Press flip₈ twice on any value.", "Identity. Converting to network order and back is free of information loss — it just has to happen an even number of times."],
+    ["Why is flip₈ disabled at 8-bit and flip₁₆ at 8- and 16-bit?", "There is only one byte / one 16-bit unit, so there is nothing to reorder."],
+    ["TCP port 8080 is 1F90. What bytes appear on the wire (big-endian), and what would a little-endian host see if it read them as a native uint16?", "On the wire: 1F 90. Read natively little-endian: 901F = 36895. 16-bit flip₈ shows the swap. This is why htons() exists.", L("1F90",16)],
+  ], "<p>Memory holds one byte per address, so a multi-byte value has to be laid out in some order. <b>Little-endian</b> CPUs (x86, most ARM) store the lowest byte first: 1234 5678 sits in memory as 78 56 34 12. <b>Big-endian</b>, also called network byte order, stores the highest byte first: 12 34 56 78.</p>\n<p><b>flip₈</b> reverses the byte order, which converts one convention to the other. <b>flip₁₆</b> swaps 16-bit halves. Reading a little-endian register byte by byte, or decoding a network packet on a little-endian machine, is where you meet these.</p>"],
+  ["÷ and mod", "", [
+    ["100 ÷ 7 and 100 mod 7. Check that quotient × 7 + remainder = 100.", "14 and 2. 14 × 7 + 2 = 100. Integer division truncates.", L("64",32)],
+    ["Show that x mod 2ⁿ = x AND (2ⁿ − 1): 1234 mod 100 (hex) versus 1234 AND FF.", "Both 34. Compilers turn mod-by-power-of-two into an AND.", L("1234",16)],
+    ["32-bit: FFFF FFFF ÷ 10 (decimal) and mod 10.", "429496729 remainder 5 — the digits of 4294967295 peeled off the end.", L("FFFFFFFF",32)],
+    ["Divide anything by 0.", "Error shown in the pending line; AC clears it. On real hardware x86 raises #DE; ARM and RISC-V quietly return all-ones/zero.", L("1",8)],
+    ["8-bit signed: load F9 (−7), then mod 3. Does the calculator divide the signed value or the raw unsigned bit pattern? How can you tell?", "Watch the result: −7 mod 3 is −1 (C) or 2 (Python); 249 mod 3 is 0. Whichever you get tells you which interpretation the calculator uses — and this ambiguity is exactly why ISAs have separate DIV/DIVU and REM/REMU.", L("F9",8,true)],
+  ], "<p>Integer division throws the fraction away: 7 ÷ 2 = 3. <b>mod</b> gives what was left over, 7 mod 2 = 1, so (a ÷ b) × b + (a mod b) always gets a back.</p>\n<p>Dividing by a power of two is a right shift, and mod by a power of two is AND with 2ᵏ − 1: x mod 16 = x AND F. In signed mode the quotient is truncated toward zero and the remainder takes the sign of the dividend, exactly as C does. Dividing by zero is an error that AC clears.</p>"],
+  ["Parentheses and evaluation order", "The calculator evaluates left to right unless you add parentheses. Use them to make precedence explicit, as you should in C.", [
+    ["(0F OR F0) AND 3C versus 0F OR (F0 AND 3C).", "3C versus 3F. Same tokens, different trees.", L("0F",8)],
+    ["((1 X<<Y 4) OR (1 X<<Y 2)) XOR 14.", "0. You built 14 from two one-hot bits, then cancelled it.", L("1",8)],
+    ["Simple checksum: (12 + 34 + 56 + 78) AND FF.", "114 AND FF = 14. Now NEG 14 = EC: append EC and the sum of all five bytes AND FF is 00 — a two's-complement checksum.", L("12",8)],
+  ], "<p>The calculator applies operators strictly <b>left to right</b> as you press them; there is no precedence. 2 + 3 × 4 gives (2 + 3) × 4 = 20, not 14.</p>\n<p>Use ( and ) to force the order you mean. The line above the readouts shows what is pending: the value and operator waiting for their second operand, and any open parentheses.</p>"],
+  ["Characters and Unicode", "The char box loads a character's code point. Combine it with the bit grid to see why text encodings are bit manipulation.", [
+    ["Type A in the char box, then a. What is the difference?", "41 and 61 — one bit apart, bit 5 (20). Toggle bit 5 in the grid to change case; this is what tolower() does for ASCII letters.", L("41",8)],
+    ["Type 0 (the digit). How do you get its numeric value with one AND?", "30 AND 0F = 0. Likewise '7' = 37 → 7. Parsing a digit is a mask.", L("30",8)],
+    ["Type €. Note the code point and UTF-8.", "U+20AC, UTF-8 E2 82 AC — three bytes because the code point needs more than 11 bits.", L("20AC",16)],
+    ["Type 😀. Read the UTF-8 and UTF-16.", "U+1F600; UTF-8 F0 9F 98 80 (4 bytes); UTF-16 D83D DE00 (a surrogate pair).", L("1F600",32)],
+    ["Derive the UTF-16 surrogate pair for U+1F600 by hand: subtract 1 0000, then split into 10-bit halves.", "1F600 − 10000 = F600. High: (F600 X>>Y A) + D800 = 3D + D800 = D83D. Low: (F600 AND 3FF) + DC00 = 200 + DC00 = DE00 ✓", L("1F600",32)],
+    ["Derive the UTF-8 of U+2014 from its bits: 1110xxxx 10xxxxxx 10xxxxxx.", "(2014 X>>Y C) OR E0 = E2; ((2014 X>>Y 6) AND 3F) OR 80 = 80; (2014 AND 3F) OR 80 = 94 → E2 80 94 ✓", L("2014",16)],
+    ["Terminals send Ctrl-A as 01 and Esc as 1B. Find the mask that maps A → 01 and [ → 1B.", "AND 1F. Control characters are the letter with bits 5 and 6 cleared — a 1960s hardware shortcut still in every terminal.", L("41",8)],
+  ], "<p>Text is numbers too. <b>ASCII</b> assigns 7-bit codes: A is 41, a is 61, and the only difference is bit 5 (20), which is why case conversion is one AND or OR. <b>Unicode</b> gives every character a code point from U+0000 to U+10FFFF.</p>\n<p><b>UTF-8</b> stores a code point in one to four bytes. ASCII is unchanged. Anything larger starts with a byte whose leading bits count the length (110… two bytes, 1110… three, 11110… four) followed by 10… continuation bytes carrying six bits each. <b>UTF-16</b> uses one 16-bit unit, or a surrogate pair for code points above FFFF.</p>\n<p>The char box loads a character's code point; the ascii line shows each byte of the current value as a character.</p>"],
+  ["Digital design capstones", "Longer problems that chain several operations — the kind of thing you do when reading a datasheet or an instruction encoding.", [
+    ["A 32-bit control register: bit 31 = enable, bits 15:8 = prescaler, bits 2:0 = mode. Build the value for enable = 1, prescaler = 2C, mode = 5.", "(1 X<<Y 1F) OR (2C X<<Y 8) OR 5 = 8000 2C05", L("0",32)],
+    ["From 8000 2C05, read back the mode and the prescaler.", "Mode: AND 7 = 5. Prescaler: (X>>Y 8) AND FF = 2C.", L("80002C05",32)],
+    ["Change only the mode field of 8000 2C05 to 3, leaving everything else alone.", "Mask: 7 NOT = FFFF FFF8. (8000 2C05 AND FFFF FFF8) OR 3 = 8000 2C03. This read-modify-write is the universal register idiom.", L("80002C05",32)],
+    ["Gray code: g = b XOR (b >> 1). Encode A (10) and B (11). How many bits differ?", "A XOR 5 = F; B XOR 5 = E. F and E differ in one bit — Gray code's whole point, used in rotary encoders and clock-domain crossings.", L("A",8)],
+    ["Decode Gray F back to binary with a prefix-XOR fold: x XOR (x>>1), then x XOR (x>>2), then x XOR (x>>4).", "F XOR 7 = 8; 8 XOR 2 = A; A XOR 0 = A → 1010 = 10 ✓", L("F",8)],
+    ["Count the set bits of B5 using only x AND (x − 1) until you reach 0.", "B4, B0, A0, 80, 00 → five steps → popcount 5. (Kernighan's trick; hardware has POPCNT.)", L("B5",8)],
+    ["3-to-8 decoder: input 5. What is the one-hot output?", "1 X<<Y 5 = 20 = 0010 0000", L("1",8)],
+    ["Priority encoder: 28 is on the input lines. Which is the highest-priority (highest-numbered) active line?", "28 = 0010 1000 → bit 5. Shift right until the value is 1, counting shifts: five. (CLZ/BSR in hardware.)", L("28",8)],
+    ["7-segment display, segments a–g in bits 0–6. Encode the digit 3 (segments a b c d g) and 7 (a b c).", "3 → bits 0,1,2,3,6 = 0100 1111 = 4F. 7 → 07. This is a lookup-table ROM in hardware.", L("0",8)],
+    ["A device is mapped at C000–C0FF on a 16-bit bus. Write the decode test and check C05A and C15A.", "select = (addr AND FF00) == C000. C05A → C000 ✓. C15A → C100 ✗. Address decoding is one AND and one compare.", L("C05A",16)],
+    ["Split the 32-bit address 0040 2ABC into a 4 KiB page number and offset.", "Page: X>>Y C = 0040 2. Offset: AND FFF = ABC. Twelve low bits because 4096 = 2¹².", L("00402ABC",32)],
+    ["Q8.8 fixed point: represent 3.25 and multiply it by 2.0.", "3.25 × 256 = 832 = 0340; 2.0 = 0200. 0340 × 0200 = 6 8000, then X>>Y 8 = 0680 = 6.5 ✓ (product has 16 fraction bits, so shift back by 8).", L("0",32)],
+    ["Internet-style ones' complement checksum at 16-bit: 1234 + F123, fold the carry, then NOT.", "1234 + F123 wraps to 0357 with C set (the lost carry). Add the carry back: 0358. NOT → FCA7. That is the checksum field of an IP header.", L("1234",16)],
+    ["Multiply 13 × 10 by shift-and-add only.", "(13 X<<Y 3) + (13 X<<Y 1) = 104 + 26 = 130 = 82. How a multiplier without a multiplier works.", L("D",8)],
+    ["Write −5 in 8-bit sign-magnitude, ones' complement and two's complement.", "85 · FA · FB. Only two's complement makes add/sub work with the same adder as unsigned.", L("5",8,true)],
+    ["Carry vs overflow at 8-bit: compute 100 + 50 and 200 + 100 in unsigned and signed.", "100 + 50 = 96 → signed reads −106: overflow: V set, C clear. 200 + 100 = 2C: C set (unsigned wrapped) but signed −56 + 100 = 44 is correct, so V stays clear. The two flags are independent.", L("64",8)],
+    ["Decode the RISC-V instruction 0050 0093 (addi x1, x0, 5): opcode = bits 6:0, rd = 11:7, funct3 = 14:12, rs1 = 19:15, imm = 31:20.", "AND 7F = 13 (OP-IMM). (X>>Y 7) AND 1F = 1 → x1. (X>>Y C) AND 7 = 0 → ADDI. (X>>Y F) AND 1F = 0 → x0. X>>Y 14 = 005 → immediate 5. You just did what the decode stage does.", L("00500093",32)],
+  ], "<p>These chain the earlier ideas the way real problems do: masks and shifts to decode instruction or register fields, wrap-around and the C flag for checksums, two's complement for signed fields, and shifts as multiplication.</p>\n<p>Work each step on the calculator and watch the flags change. If a step is unfamiliar, the primer of the matching group above explains it.</p><p class='exmore'>Go further: the <a href='docs/bit-lab.html' target='_blank' rel='noopener'>Bit Lab</a> shows an ALU built from gates, with a breadboard version to build.</p>"],
+  ];
+
+  const root = document.getElementById("exercises");
+  if (!root) return;
+  const esc = (s) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  let n = 0;
+  const KEY = "bit-lab:legacy:pc-done";
+  let done = {};
+  try { done = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (_) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (_) {} };
+  const groups = [];
+  // Exercise numbers shift when exercises are inserted; move saved ticks from older layouts.
+  const DONE_LAYOUT = 5;
+  try {
+    const have = Number(localStorage.getItem("bit-lab:legacy:pc-done-layout") || "1");
+    if (have < DONE_LAYOUT) {
+      const moved = {};
+      for (const [k, v] of Object.entries(done)) {
+        let n = Number(k);
+        if (have < 2 && n >= 9) n += 5;                                   // layout 2 inserted five exercises after #8
+        if (have < 3) { if (n >= 14 && n <= 21) n += 9; else if (n >= 22 && n <= 30) n -= 8; }   // layout 3 swapped the groups covering 14–30
+        if (have < 4 && n >= 13) n += 1;                                  // layout 4 inserted one exercise after #12
+        if (have < 5 && n >= 16) n += 5;                                  // layout 5 inserted five exercises after #15
+        moved[n] = v;
+      }
+      done = moved; save();
+    }
+    localStorage.setItem("bit-lab:legacy:pc-done-layout", String(DONE_LAYOUT));
+  } catch (_) {}
+
+  for (const [title, intro, items, primer] of G) {
+    const det = document.createElement("details");
+    det.className = "exgroup";
+    const first = n + 1, last = n + items.length;
+    det.innerHTML = `<summary><span>${title}</span><span class="exrange">${first}–${last}</span></summary>` +
+      (intro ? `<p class="exintro">${intro}</p>` : "") +
+      (primer ? `<details class="exprimer"><summary>Primer — the idea behind this group, with an example to try</summary><div class="exprimerbody">${primer}</div></details>` : "") +
+      `<ol start="${first}"></ol>`;
+    const ol = det.querySelector("ol");
+    groups.push({ det, first, last, range: det.querySelector(".exrange") });
+    for (const [task, answer, load] of items) {
+      n++;
+      const li = document.createElement("li");
+      li.className = "ex";
+      if (done[n]) li.classList.add("done");
+      let html = `<label class="exdone"><input type="checkbox" data-n="${n}" ${done[n] ? "checked" : ""} aria-label="done"></label>` +
+                 `<span class="exnum">${n}</span><div class="exbody"><div class="extask">${task}</div><div class="exacts">`;
+      if (load) html += `<button type="button" class="exload" data-hex="${load.hex}" data-w="${load.w}" data-s="${load.s ? 1 : 0}">load ${esc(load.hex)}<small>${load.w}${load.s ? " signed" : ""}</small></button>`;
+      html += `<details class="exans"><summary>answer</summary><div>${answer}</div></details></div></div>`;
+      li.innerHTML = html;
+      ol.appendChild(li);
+    }
+    root.appendChild(det);
+  }
+  document.getElementById("excount").textContent = n + " exercises";
+
+  // Hide / show the exercises (e.g. once they are all done). Remembered on this device.
+  const section = root.closest(".exercises");
+  const toggle = document.getElementById("exToggle");
+  const HIDE_KEY = "bit-lab:legacy:pc-exercises-hidden";
+  const applyHidden = (hidden) => {
+    section.classList.toggle("collapsed", hidden);
+    toggle.textContent = hidden ? "show" : "hide";
+    toggle.setAttribute("aria-expanded", String(!hidden));
+    window.dispatchEvent(new Event("pc-layout"));
+  };
+  let hidden = false;
+  try { hidden = localStorage.getItem(HIDE_KEY) === "1"; } catch (_) {}
+  applyHidden(hidden);
+  toggle.addEventListener("click", () => {
+    hidden = !hidden;
+    applyHidden(hidden);
+    try { localStorage.setItem(HIDE_KEY, hidden ? "1" : "0"); } catch (_) {}
+  });
+  // Enter normally means "=" in the calculator; on these buttons let it activate the button instead.
+  toggle.addEventListener("keydown", (e) => { if (e.key === "Enter") e.stopPropagation(); });
+
+  // "How the exercises work" opens the help page at its Exercises section.
+  const exHelp = document.getElementById("exHelp");
+  exHelp.addEventListener("click", () => {
+    const dlg = document.getElementById("helpDlg");
+    if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
+    const h = document.getElementById("helpExercises");
+    if (h) h.scrollIntoView({ block: "start" });
+  });
+  exHelp.addEventListener("keydown", (e) => { if (e.key === "Enter") e.stopPropagation(); });
+
+  // A ticked exercise no longer takes up space: it is hidden until "show done" is pressed, and so
+  // is a group once every exercise in it is ticked. Each group's summary keeps a running count.
+  const doneBtn = document.getElementById("exDone");
+  const SHOW_DONE_KEY = "bit-lab:legacy:pc-show-done";
+  let showDone = false;
+  try { showDone = localStorage.getItem(SHOW_DONE_KEY) === "1"; } catch (_) {}
+  function refreshDone() {
+    let total = 0;
+    for (const g of groups) {
+      let c = 0;
+      for (let i = g.first; i <= g.last; i++) if (done[i]) c++;
+      total += c;
+      const all = c === g.last - g.first + 1;
+      g.det.classList.toggle("alldone", all); // a fully ticked group is tucked away with its exercises
+      g.range.textContent = `${g.first}–${g.last}` + (c === 0 ? "" : all ? " · all done" : ` · ${c} done`);
+    }
+    doneBtn.hidden = total === 0;
+    doneBtn.textContent = `${showDone ? "hide" : "show"} ${total} done`;
+    doneBtn.setAttribute("aria-pressed", String(showDone));
+    section.classList.toggle("showdone", showDone);
+    window.dispatchEvent(new Event("pc-layout"));
+  }
+  doneBtn.addEventListener("click", () => {
+    showDone = !showDone;
+    try { localStorage.setItem(SHOW_DONE_KEY, showDone ? "1" : "0"); } catch (_) {}
+    refreshDone();
+  });
+  doneBtn.addEventListener("keydown", (e) => { if (e.key === "Enter") e.stopPropagation(); });
+  refreshDone();
+
+  root.addEventListener("click", (e) => {
+    const b = e.target.closest(".exload");
+    if (!b || !window.pcLoad) return;
+    window.pcLoad(b.dataset.hex, Number(b.dataset.w), b.dataset.s === "1");
+    document.getElementById("rows").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  root.addEventListener("change", (e) => {
+    const c = e.target;
+    if (!(c instanceof HTMLInputElement) || !c.dataset.n) return;
+    done[c.dataset.n] = c.checked;
+    c.closest(".ex").classList.toggle("done", c.checked);
+    save();
+    refreshDone();
+  });
+})();
+
+(() => {
+  // Split layout: when the viewport has room for the whole calculator plus a useful slice of
+  // the exercises, keep the calculator in place and scroll only the exercises. Otherwise
+  // (phones, short windows) the page scrolls normally.
+  const MIN_EX = 120; // smallest exercises area, in px, worth pinning the calculator for
+  const root = document.documentElement;
+  const panel = document.querySelector(".panel");
+  const exercises = document.querySelector(".exercises");
+  const px = (v) => parseFloat(v) || 0;
+  let raf = 0;
+  function update() {
+    raf = 0;
+    const cs = getComputedStyle(root);
+    const panelBottom = panel.getBoundingClientRect().bottom + window.scrollY;
+    const room = window.innerHeight - panelBottom - px(cs.paddingBottom)
+      - px(cs.getPropertyValue("--split-gap")) - px(cs.getPropertyValue("--split-pad"));
+    const hidden = exercises.classList.contains("collapsed");
+    root.classList.toggle("split", !hidden && room >= MIN_EX);
+  }
+  const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
+  window.addEventListener("resize", schedule);
+  window.addEventListener("pc-layout", schedule);
+  if ("ResizeObserver" in window) {
+    const ro = new ResizeObserver(schedule);
+    for (const el of document.querySelectorAll("header.app, .controls, .panel")) ro.observe(el);
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
+  update();
+})();
+
+(() => {
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+    // The cache serves the previous version first. If a new version takes over within a few
+    // seconds of launch, reload once so the update shows now rather than next time.
+    const hadController = !!navigator.serviceWorker.controller;
+    const started = Date.now();
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (hadController && Date.now() - started < 15000) location.reload();
+    });
+  }
+  const btn = document.getElementById("installBtn");
+  let deferred = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault(); deferred = e; btn.classList.add("show");
+  });
+  btn.addEventListener("click", async () => {
+    if (!deferred) return;
+    deferred.prompt();
+    await deferred.userChoice;
+    deferred = null; btn.classList.remove("show");
+  });
+  window.addEventListener("appinstalled", () => btn.classList.remove("show"));
+})();
+</script>
+</body>
+</html>

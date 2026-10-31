@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+// Import old work once without writing to the original app's keys.
+try {
+  if (!localStorage.getItem("bit-lab:legacy:imported:v1")) {
+  for (const key of ["pc-done", "pc-done-layout", "pc-exercises-hidden", "pc-show-done", "pc-theme", "bitlab-state", "bitlab-theme", "drills-score", "readings-score"]) {
+    const target = 'bit-lab:legacy:' + key;
+    if (localStorage.getItem(target) === null) {
+      const old = localStorage.getItem(key);
+      if (old !== null) localStorage.setItem(target, old);
+    }
+  }
+  localStorage.setItem("bit-lab:legacy:imported:v1", "1");
+  }
+} catch (_) {}
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bit Lab: the ALU and its flags</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem("bit-lab:legacy:bitlab-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#EDF0EA;
+  --paper-2:#E2E7DF;
+  --paper-3:#F6F8F4;
+  --ink:#1B2620;
+  --ink-2:#4F5E57;
+  --rule:#C3CBC0;
+  --wire-off:#B4BDB2;
+  --wire-on:#E09B1A;
+  --wire-on-2:#F6C860;
+  --carry:#B23A2C;
+  --gate-fill:#F8FAF6;
+  --gate-stroke:#2D3B35;
+  --bit-off:#D7DDD3;
+  --bit-on:#F1B23A;
+  --bit-on-ink:#2B1E05;
+  --led-on:#D9471F;
+  --led-off:#C9D0C5;
+  --na:#98A39C;
+  --focus:#2F6FD1;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#131A16;
+    --paper-2:#1B241F;
+    --paper-3:#232E28;
+    --ink:#E6ECE4;
+    --ink-2:#9AA89F;
+    --rule:#2E3B34;
+    --wire-off:#3A4740;
+    --wire-on:#F0B23C;
+    --wire-on-2:#FFD98A;
+    --carry:#E86A55;
+    --gate-fill:#1F2A24;
+    --gate-stroke:#C9D4CC;
+    --bit-off:#26312B;
+    --bit-on:#F0B23C;
+    --bit-on-ink:#2B1E05;
+    --led-on:#FF6A3D;
+    --led-off:#2A3630;
+    --na:#5C6A62;
+    --focus:#7FA9F0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131A16; --paper-2:#1B241F; --paper-3:#232E28; --ink:#E6ECE4; --ink-2:#9AA89F; --rule:#2E3B34;
+  --wire-off:#3A4740; --wire-on:#F0B23C; --wire-on-2:#FFD98A; --carry:#E86A55;
+  --gate-fill:#1F2A24; --gate-stroke:#C9D4CC; --bit-off:#26312B; --bit-on:#F0B23C;
+  --bit-on-ink:#2B1E05; --led-on:#FF6A3D; --led-off:#2A3630; --na:#5C6A62; --focus:#7FA9F0;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:16px;line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+main{max-width:980px;margin:0 auto;padding:20px 16px 56px}
+code,kbd,.mono{font-family:var(--mono)}
+button{font:inherit;color:inherit}
+a{color:var(--ink)}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+h1{font-size:clamp(1.55rem,1.1rem + 1.6vw,2.1rem);font-weight:600;margin:0 0 6px;letter-spacing:-.015em;line-height:1.15}
+.lede{color:var(--ink-2);margin:0 0 12px;max-width:62ch;font-size:1.05rem}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.meta span{font:500 .78rem/1.6 var(--mono);border:1px solid var(--rule);border-radius:999px;padding:1px 10px;color:var(--ink-2)}
+.themebtn{flex:none;margin-top:4px}
+nav.toc{display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 26px;padding:8px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+nav.toc a{font:500 .84rem var(--mono);color:var(--ink-2);text-decoration:none;padding:3px 9px;border-radius:6px}
+nav.toc a:hover{color:var(--ink);background:var(--paper-2)}
+
+/* ---------- prose sections ---------- */
+.tut{margin-top:36px;border-top:1px solid var(--rule);padding-top:22px}
+.tut h2{font-size:1.4rem;font-weight:600;margin:0 0 12px;letter-spacing:-.01em;line-height:1.2}
+.tut h3{font-size:1.02rem;font-weight:600;margin:20px 0 6px}
+.tut p,.tut li{max-width:70ch}
+.tut p{margin:0 0 12px}
+.tut ul,.tut ol{padding-left:22px;margin:0 0 12px}
+.tut li{margin-bottom:5px}
+.tut strong{font-weight:600}
+.tut code{background:var(--paper-2);padding:1px 5px;border-radius:4px;font-size:.88em}
+.tut table{border-collapse:collapse;font-size:.9rem;margin:8px 0 14px;font-variant-numeric:tabular-nums}
+.tut td,.tut th{border:1px solid var(--rule);padding:5px 11px;text-align:left;vertical-align:top}
+.tut th{background:var(--paper-2);font-weight:600}
+.tut td.mono{font-family:var(--mono);font-size:.86rem}
+pre.work{font:.86rem/1.55 var(--mono);background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:10px 14px;overflow-x:auto;margin:8px 0 14px}
+.check{border-left:3px solid var(--wire-on);padding:2px 0 2px 14px;margin:14px 0}
+.check ol{margin-bottom:6px}
+.steps{list-style:none;padding:0;counter-reset:step}
+.steps>li{position:relative;padding-left:36px;margin-bottom:14px;max-width:72ch}
+.steps>li::before{
+  counter-increment:step;content:counter(step);position:absolute;left:0;top:2px;
+  width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--paper);
+  font:600 .8rem/24px var(--mono);text-align:center;
+}
+
+/* ---------- schematic ---------- */
+figure.schem{margin:10px 0 18px;background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:10px 8px 8px;overflow-x:auto}
+figure.schem svg{display:block;width:100%;min-width:680px;max-width:800px;height:auto;margin:0 auto}
+figure.schem figcaption{font-size:.84rem;color:var(--ink-2);margin:8px 6px 0;text-align:center;line-height:1.4}
+.schem .box{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.5}
+.schem .opt{stroke-dasharray:5 4}
+.schem .bus{stroke:var(--wire-on);stroke-width:3;fill:none;stroke-linejoin:round}
+.schem .sig{stroke:var(--ink-2);stroke-width:1.6;fill:none}
+.schem .ctl{stroke:var(--ink-2);stroke-width:1.6;fill:none;stroke-dasharray:4 3;stroke-linejoin:round}
+.schem .cy{stroke:var(--carry);stroke-width:2.2;fill:none}
+.schem .fb{stroke:var(--focus);stroke-width:2;fill:none;stroke-dasharray:6 4;stroke-linejoin:round}
+.schem .dot{fill:var(--wire-on)}
+.schem .dotf{fill:var(--focus)}
+.schem .tick{stroke:var(--ink-2);stroke-width:1.4}
+.schem text{font-family:var(--mono);font-size:11px;fill:var(--ink)}
+.schem .t2{fill:var(--ink-2);font-size:10px}
+.schem .tc{fill:var(--carry);font-weight:600}
+.schem .tf{fill:var(--focus)}
+.schem .badge circle{fill:var(--ink);stroke:var(--paper);stroke-width:1.5}
+.schem .badge text{fill:var(--paper);font-weight:600;font-size:10px}
+.schem .led{fill:var(--led-off);stroke:var(--rule);stroke-width:1}
+.schem .led.lit{fill:var(--led-on);stroke:var(--led-on)}
+
+/* ---------- the lab ---------- */
+.labwrap{margin-top:16px}
+.ops{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px}
+.opgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.opcap{font:500 .7rem var(--mono);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-2);margin-right:2px}
+.op{
+  font:500 .9rem var(--mono);border:1px solid var(--rule);background:var(--paper-2);border-radius:8px;
+  padding:6px 11px;cursor:pointer;
+}
+.op:hover{border-color:var(--ink-2)}
+.op[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.op:focus-visible,.small:focus-visible,.preset:focus-visible,.load:focus-visible,.themebtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;color:var(--ink-2);margin-bottom:12px;font:.84rem var(--mono)}
+.small{border:1px solid var(--rule);background:transparent;border-radius:6px;padding:3px 9px;cursor:pointer;font:500 .84rem var(--mono);color:var(--ink)}
+.small:hover{border-color:var(--ink-2)}
+.small[aria-pressed="true"]{background:var(--ink-2);color:var(--paper);border-color:var(--ink-2)}
+.circuit{
+  background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;
+  padding:10px 8px 6px;overflow-x:auto;
+}
+.circuit svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
+svg text{font-family:var(--mono);fill:var(--ink)}
+.wire{stroke:var(--wire-off);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.wire.on{stroke:var(--wire-on)}
+.wire.carry.on{stroke:var(--carry)}
+.gate{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.8}
+.bit{cursor:pointer}
+.bit rect{fill:var(--bit-off);stroke:var(--rule);stroke-width:1;transition:fill .12s}
+.bit.on rect{fill:var(--bit-on);stroke:var(--bit-on)}
+.bit text{font-weight:600;font-size:15px;pointer-events:none}
+.bit.on text{fill:var(--bit-on-ink)}
+.bit:focus{outline:none}
+.bit:focus-visible rect{stroke:var(--focus);stroke-width:2.5}
+.bit.ro{cursor:default}
+.bit.ro rect{stroke-dasharray:3 2}
+.lab{font-size:11px;fill:var(--ink-2)}
+.lab.sm{font-size:10px}
+.idx{font-size:9.5px;fill:var(--ink-2)}
+.cv{font-size:10.5px;font-weight:600}
+.cv.on{fill:var(--carry)}
+.cv.off{fill:var(--ink-2)}
+.fv{font-size:10.5px;font-weight:600}
+.fv.on{fill:var(--wire-on)}
+.fv.off{fill:var(--ink-2)}
+.cnst{font-size:11px;fill:var(--ink-2)}
+.tip{color:var(--ink-2);font-size:.82rem;margin:8px 0 0}
+
+.values{margin:16px 0 4px;overflow-x:auto}
+.values table{border-collapse:collapse;font:.9rem var(--mono);font-variant-numeric:tabular-nums;width:100%;max-width:600px}
+.values th{text-align:left;color:var(--ink-2);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;padding:4px 14px 4px 0}
+.values th.num,.values td.num{text-align:right}
+.values td{padding:5px 14px 5px 0;border-top:1px solid var(--rule);white-space:nowrap}
+.values th.rowk{color:var(--ink);font-weight:600;font-size:.9rem;text-transform:none;letter-spacing:0;border-top:1px solid var(--rule)}
+.values td.bin{font-weight:600;letter-spacing:.04em}
+.values tr.r td,.values tr.r th{background:var(--paper-3)}
+
+.flags{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin-top:14px}
+.flag{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;background:var(--paper-2)}
+.flag header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.led{width:14px;height:14px;border-radius:50%;background:var(--led-off);border:1px solid var(--rule);flex:none;transition:background .15s,box-shadow .15s}
+.led.on{background:var(--led-on);border-color:var(--led-on);box-shadow:0 0 0 3px color-mix(in srgb,var(--led-on) 25%,transparent)}
+.led.na{background:transparent;border-style:dashed;border-color:var(--na)}
+.flag h3{margin:0;font:600 1rem var(--mono)}
+.flag h3 span{color:var(--ink-2);font-weight:400;font-size:.85rem;margin-left:6px}
+.flag svg{width:100%;max-width:240px;height:auto;display:block;margin:2px 0 8px;overflow:visible}
+.flag p{margin:0;font-size:.88rem;color:var(--ink-2);line-height:1.45}
+.flag p strong{color:var(--ink);font-weight:600}
+.flag.na{opacity:.72}
+.why{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px}
+.why h2{font:600 1rem var(--mono);margin:0 0 6px}
+.why p{margin:0 0 8px;max-width:70ch;font-size:.95rem}
+.presets{margin-top:22px}
+.presets h2{font-size:1rem;margin:0 0 8px;font-weight:600}
+#presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
+.preset{
+  display:block;text-align:left;border:1px solid var(--rule);background:transparent;
+  border-radius:8px;padding:8px 10px;cursor:pointer;font:500 .86rem var(--mono);
+}
+.preset:hover{background:var(--paper-2);border-color:var(--ink-2)}
+.preset span{display:block;color:var(--ink-2);font:.84rem var(--sans);margin-top:2px}
+
+/* ---------- exercises & quiz ---------- */
+.ex{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--paper-2)}
+.ex h3{font-size:1rem;margin:0 0 8px;font-weight:600}
+.ex p{margin:0 0 8px}
+.ex .load{font:500 .84rem var(--mono);border:1px solid var(--ink);background:transparent;border-radius:6px;padding:4px 10px;cursor:pointer;margin-bottom:10px}
+.ex .load:hover{background:var(--ink);color:var(--paper)}
+details{margin-top:6px}
+summary{cursor:pointer;color:var(--ink-2);font:500 .84rem var(--mono);display:inline-block;padding:2px 9px;border:1px solid var(--rule);border-radius:6px;list-style:none;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"\25B8  "}
+details[open] summary::before{content:"\25BE  "}
+summary:hover{color:var(--ink);border-color:var(--ink-2)}
+details p{margin:8px 0 0;color:var(--ink);font-size:.93rem}
+.lab-anchor{scroll-margin-top:12px}
+
+/* ---------- footer ---------- */
+footer.site{margin-top:44px;border-top:1px solid var(--rule);padding-top:14px;font:.84rem var(--mono);color:var(--ink-2);display:flex;flex-wrap:wrap;gap:6px 20px}
+footer.site a{color:var(--ink-2)}
+footer.site a:hover{color:var(--ink)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* ---------- block diagram & full adder widget ---------- */
+svg.blockdiag{width:100%;max-width:420px;height:auto;display:block;margin:6px 0 14px}
+.fawrap{display:grid;grid-template-columns:minmax(240px,370px) minmax(0,1fr);gap:14px 26px;align-items:start;margin:10px 0 16px}
+@media (max-width:640px){.fawrap{grid-template-columns:minmax(0,1fr)}}
+.fa{background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:8px 6px}
+.fa svg{display:block;width:100%;height:auto}
+.jdot{fill:var(--wire-off)}
+.jdot.on{fill:var(--wire-on)}
+.jdot.carry.on{fill:var(--carry)}
+.faeq{font:.9rem/1.5 var(--mono);margin:0 0 10px}
+table.truth{border-collapse:collapse;font:.86rem var(--mono);font-variant-numeric:tabular-nums;margin:0 0 8px}
+table.truth th,table.truth td{border:1px solid var(--rule);padding:3px 11px;text-align:center}
+table.truth th{background:var(--paper-2);font-weight:600}
+table.truth tr.cur td{background:var(--bit-on);color:var(--bit-on-ink);font-weight:600}
+.clk{fill:none;stroke:var(--gate-stroke);stroke-width:1.5}
+
+/* ---------- 4-bit chain widget ---------- */
+.chainwrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:640px){.chainwrap{grid-template-columns:minmax(0,1fr)}}
+#chainTable{overflow-x:auto}
+table.add th,table.add td{padding:3px 8px}
+.gate.sel{stroke:var(--focus);stroke-width:2.6}
+.fabox{cursor:pointer}
+.bit.wait rect{fill:transparent;stroke:var(--na);stroke-dasharray:3 2}
+.bit.wait text{fill:var(--na)}
+table.add td.k{text-align:left;color:var(--ink-2);font-size:.8rem;white-space:nowrap}
+table.add td.cin{color:var(--carry);font-weight:600}
+table.add tr.sum td{border-top:2px solid var(--ink-2);font-weight:600}
+table.add td.q{color:var(--na)}
+
+/* ---------- CMP and the branches ---------- */
+.asmwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 24px;margin:4px 0 10px}
+@media (max-width:760px){.asmwrap{grid-template-columns:minmax(0,1fr)}}
+.asmwrap h3{margin:8px 0 4px}
+table.asm{width:100%}
+table.asm td{text-align:left;padding:3px 8px}
+table.asm td.mn{font-weight:600}
+table.asm td.k{color:var(--ink-2)}
+table.asm tr.take td{background:var(--bit-on);color:var(--bit-on-ink)}
+table.asm tr.take td.k{color:var(--bit-on-ink)}
+
+/* ---------- the same thing as a program ---------- */
+.asmprog{margin:0 0 6px;white-space:pre}
+.asmprog .ln{display:block;opacity:.5;padding:0 6px;margin:0 -6px;border-radius:4px}
+.asmprog .ln.run{opacity:1;background:var(--bit-on);color:var(--bit-on-ink)}
+.asmprog .cm{color:var(--ink-2)}
+.asmprog .ln.run .cm{color:var(--bit-on-ink);opacity:.8}
+ol.trace{margin:4px 0 14px;padding-left:22px}
+ol.trace li{margin:0 0 4px}
+
+/* ---------- under the hood ---------- */
+.hood{background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:8px 14px 4px;overflow-x:auto;margin:8px 0 14px;font:.8rem var(--mono);font-variant-numeric:tabular-nums}
+.hood h4{margin:8px 0 6px;font:600 .86rem var(--sans)}
+.hood h4+ .hrow .hb.c{color:var(--ink-2);font-size:9px}
+.hrow{display:flex;align-items:center;white-space:nowrap;margin:2px 0}
+.hrow .hl{width:132px;flex:none;color:var(--ink-2)}
+.hrow .hv{margin-left:12px;color:var(--ink-2);white-space:normal;flex:1 1 auto;min-width:22ch;line-height:1.35}
+.hrow{align-items:flex-start}
+.hrow .hl,.hrow .hb{margin-top:1px}
+.hb{display:inline-flex;width:15px;height:17px;flex:none;align-items:center;justify-content:center;border:1px solid var(--rule);background:var(--bit-off);font-weight:600;font-size:10.5px;margin-right:1px;border-radius:2px;color:var(--ink)}
+.hb.on{background:var(--bit-on);border-color:var(--bit-on);color:var(--bit-on-ink)}
+.hb.fill{border:1px dashed var(--ink-2)}
+.hb.fill.on{border-color:var(--bit-on-ink)}
+.hb.gap{margin-right:7px}
+.hb.blank{visibility:hidden}
+.hb.c{background:transparent;border-color:transparent;color:var(--ink-2);font-weight:500}
+.hb.c.on{color:var(--carry);font-weight:700}
+.hb.c.v{border-color:var(--carry);border-style:dashed}
+.hb.top{box-shadow:0 0 0 2px var(--carry) inset}
+.hflags{display:flex;flex-wrap:wrap;gap:4px 18px;margin:8px 0 2px;color:var(--ink-2)}
+.hflags b{color:var(--ink)}
+.hnote{color:var(--ink-2);font:.82rem/1.5 var(--sans);margin:6px 0 10px;white-space:normal}
+.hnote code{background:var(--paper);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<nav aria-label="Bit Lab navigation" style="padding:12px 16px;font:16px system-ui;display:flex;gap:24px;flex-wrap:wrap"><a href="../../#/">← Bit Lab lessons</a><a href="../../#/practice">Practice</a></nav>
+<main>
+  <div class="top">
+    <div>
+      <p class="crumbs"><a href="notes.html" title="From gates to a compiled if: contents">Home</a> · part 5 of 9</p>
+      <h1>Bit Lab: the ALU and its flags</h1>
+      <p class="lede">A hands-on lab on bitwise operations, binary arithmetic and the N Z C V condition flags, built from gates you can see.</p>
+    </div>
+    <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
+  </div>
+  <div class="meta"><span>Level: beginner digital design</span><span>Time: 45–60 min</span><span>Needs: nothing to install</span></div>
+  <nav class="toc" aria-label="Contents">
+    <a href="#prereq">Prerequisites</a><a href="#goals">Learning goals</a><a href="#background">Background</a>
+    <a href="#lab">The lab</a><a href="#exercises">Exercises</a><a href="#quiz">Check yourself</a><a href="#build">Build it</a><a href="#next">What's next</a>
+  </nav>
+
+  <section class="tut" id="prereq" style="margin-top:0;border-top:0;padding-top:0">
+    <h2>Prerequisites</h2>
+    <p>You should already be comfortable with:</p>
+    <ul>
+      <li>Reading a number in binary and hex, and converting between them (e.g. <code>0b1010</code> = <code>0xA</code> = 10).</li>
+      <li>The truth tables of NOT, AND, OR and XOR.</li>
+      <li>The idea that a CPU register holds a fixed number of bits (here 4 or 8).</li>
+    </ul>
+    <p>This is part 5 of <a href="notes.html"><em>From gates to a compiled if</em></a>. Three other parts build the pieces this lab uses from those gates, with inputs you can tap: <a href="gates-to-alu.html"><em>From gates to an ALU</em></a> (a full adder, then four of them chained), <a href="adding-to-subtracting.html"><em>From adding to subtracting</em></a> (wrap-around, NOT then add 1, and the borrow as a carry) and <a href="gates-to-register.html"><em>From gates to a register</em></a> (a latch, a clock, a 4-bit register). Read them first if you want the ground under your feet; the background below only summarises them.</p>
+    <p><strong>Notation.</strong> Gate equations on this page use the usual Boolean shorthand: <code>A ⊕ B</code> is XOR (1 exactly when the inputs differ), <code>A·B</code> or <code>AB</code> is AND, <code>A + B</code> is OR when it appears inside a gate equation, and <code>¬A</code> is NOT. So the full adder's carry-out, <code>A·B + cin·(A ⊕ B)</code>, reads "A and B, or cin and (A xor B)". Everywhere else on the page, + is ordinary addition.</p>
+    <div class="check">
+      <p>Self-check — if you can answer these without the lab, you're ready:</p>
+      <ol>
+        <li>What is <code>0b0110 AND 0b1010</code>?</li>
+        <li>What is the largest unsigned value an 8-bit register can hold?</li>
+        <li>What does <code>1 XOR 1</code> give?</li>
+      </ol>
+      <details><summary>Answers</summary><p>1. <code>0b0010</code>. &nbsp;2. 255 (<code>0xFF</code>). &nbsp;3. 0.</p></details>
+    </div>
+    <p>You do <strong>not</strong> need to know what an ALU is, what a flag is, what a clock does, or anything about two's complement. The background section introduces all of them.</p>
+  </section>
+
+  <section class="tut" id="goals">
+    <h2>Learning goals</h2>
+    <p>By the end of this lab you will be able to:</p>
+    <ol>
+      <li>Explain why bitwise logic ops need no communication between bit positions (columns), while addition does.</li>
+      <li>Trace a carry rippling through a chain of full adders and predict the result.</li>
+      <li>Show how subtraction and negation are built from addition using invert-and-add-one.</li>
+      <li>State what each of the N, Z, C and V flags means and which gates produce it.</li>
+      <li>Distinguish unsigned overflow (C) from signed overflow (V), and predict both for a given addition.</li>
+      <li>Describe what the three kinds of shift do to the bits and to the carry flag.</li>
+    </ol>
+  </section>
+
+  <section class="tut" id="background">
+    <h2>Background</h2>
+    <p><strong>What an ALU is.</strong> Inside every CPU there is one circuit whose whole job is to take one or two numbers and produce a new number from them: add, subtract, AND, shift and so on. It's called the <em>arithmetic logic unit</em>, or ALU. It has no memory and no clock of its own — it is pure combinational logic, a web of gates, so its output changes the moment its inputs do. Everything else in a CPU is plumbing to get numbers into the ALU and results out of it.</p>
+    <svg class="blockdiag" viewBox="0 0 420 196" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Block diagram: registers A and B feed the ALU, which outputs a result and four flags; an instruction register feeds the control unit, which selects the ALU operation">
+  <g text-anchor="middle" dominant-baseline="middle">
+    <g class="gate">
+      <rect x="20" y="22" width="84" height="30" rx="4"/><rect x="20" y="102" width="84" height="30" rx="4"/>
+      <rect x="276" y="30" width="100" height="30" rx="4"/><rect x="276" y="98" width="100" height="38" rx="4"/>
+      <rect x="20" y="156" width="140" height="34" rx="4"/><rect x="174" y="156" width="114" height="34" rx="4"/>
+    </g>
+    <path d="M150,15 L230,55 L230,95 L150,135 L150,85 L165,75 L150,65 Z" class="gate"/>
+    <text x="62" y="37" class="lab">register A</text><text x="62" y="117" class="lab">register B</text>
+    <text x="192" y="76" style="font-size:13px;font-weight:600">ALU</text>
+    <text x="326" y="45" class="lab">result</text>
+    <text x="326" y="110" class="lab">flags</text><text x="326" y="125" class="lab">N Z C V</text>
+    <text x="90" y="167" class="lab">instruction register</text><text x="90" y="182" class="idx">ADD R0, R1, R2</text>
+    <text x="231" y="167" class="lab">control unit</text><text x="231" y="182" class="idx">decodes the opcode</text>
+    <path class="wire on" d="M104,37 L150,37"/><path class="wire on" d="M104,117 L150,117"/>
+    <path class="wire on" d="M230,62 L276,45"/><path class="wire on carry" d="M230,88 L276,117"/>
+    <path class="wire" d="M160,173 L174,173"/>
+    <path class="wire" d="M200,156 L200,110"/>
+    <text x="206" y="138" class="idx" text-anchor="start">operation</text>
+  </g>
+</svg>
+    <p>A <em>register</em> is just a row of bits the CPU holds on to — in this lab, A and B are 4 or 8 bits wide. An instruction like <code>add</code> selects which operation the ALU performs, the ALU computes, and the result is written back to a register. Alongside the result the ALU also outputs a few single bits of information <em>about</em> the result: was it zero, was it negative, did it overflow. These are the <em>flags</em>. They are what makes <code>if</code> statements and loops possible: a conditional branch simply tests a flag left by the previous ALU operation.</p>
+    <p><strong>Where the operation comes from.</strong> The instruction is itself a number, fetched from memory into the <em>instruction register</em>. A few of its bits, the <em>opcode</em>, go to the <em>control unit</em>, which decodes them into the wires that tell the ALU what to do and which registers to use. So "add" never reaches the ALU as a word: it arrives as a pattern on the operation lines, and the ALU is wired so that pattern selects the adder. Some example instructions, in a generic assembly notation:</p>
+    <table>
+      <tr><th>Instruction</th><th>What the ALU computes</th><th>Result goes to</th><th>Flags</th></tr>
+      <tr><td><code>ADD R0, R1, R2</code></td><td>R1 + R2</td><td>register R0</td><td>N Z C V</td></tr>
+      <tr><td><code>SUB R0, R1, R2</code></td><td>R1 − R2, done as R1 + NOT R2 + 1</td><td>register R0</td><td>N Z C V</td></tr>
+      <tr><td><code>AND R0, R1, R2</code></td><td>R1 AND R2, one gate per bit position</td><td>register R0</td><td>N Z</td></tr>
+      <tr><td><code>LSL R0, R1, #1</code></td><td>R1 shifted left one place</td><td>register R0</td><td>N Z C</td></tr>
+      <tr><td><code>CMP R1, R2</code></td><td>R1 − R2, result thrown away</td><td>nowhere, only the flags</td><td>N Z C V</td></tr>
+      <tr><td><code>BEQ label</code></td><td>nothing: the branch unit tests Z</td><td>the program counter, if Z = 1</td><td>reads Z</td></tr>
+    </table>
+    <p><code>CMP</code> followed by <code>BEQ</code> is how <code>if (a == b)</code> runs: the subtraction leaves Z set exactly when the two values were equal, and the branch reads it. In the lab below there is no control unit; you are it. The operation buttons are its output wires.</p>
+    <p>The lab below is a miniature ALU: two input registers, the gate network for one operation at a time, a result, and the four flags.</p>
+    <p><strong>Two readings of the same bits.</strong> An 8-bit pattern has no intrinsic sign. Read as <em>unsigned</em>, <code>0xFF</code> is 255. Read as <em>two's complement signed</em>, the top bit counts as −128, so <code>0xFF</code> is −1 and the range is −128…127. The hardware adds the same way regardless; the flags let software decide whether the answer is trustworthy under the reading it cares about.</p>
+    <h3>The companion pages, in brief</h3>
+    <p><strong>From gates to an ALU.</strong> Bitwise ops use one gate per bit position. Addition uses one <em>full adder</em> per bit position, and a full adder is only five gates: sum = A ⊕ B ⊕ cin and carry-out = A·B + cin·(A ⊕ B). Four of them, each carry-out wired to the next carry-in, add two 4-bit numbers the way you add on paper, and the carry ripples from bit 0 upward. The lab draws each full adder as a box marked <b>FA</b> (short for full adder). To see inside the box, with inputs you can tap and a ripple you can watch, read the companion page <a href="gates-to-alu.html"><em>From gates to an ALU</em></a>.</p>
+    <p><strong>From adding to subtracting.</strong> A register with 8 bits holds 256 patterns and wraps round: count down past 0 and you are at 255. So 3 − 5 lands on 254, which is 0xFE, and 0xFE is also the pattern for −2. That is what the lab shows when you pick <code>A − B</code>, and it is not a mistake: the same bits are 254 to one reading and −2 to the other. The adder does it without a subtractor. Inverting every bit of B gives 255 − B, so adding NOT B and then 1 adds 256 − B, which modulo 256 is subtracting B. In the drawing, <code>A − B</code> is the adder with an inverter under every B bit and the first carry-in set to 1. The carry out of the top adder then reports whether a borrow was needed: C = 1 means no borrow. The companion page <a href="adding-to-subtracting.html"><em>From adding to subtracting</em></a> shows this on a 16-position wheel and in bits you can tap.</p>
+    <p><strong>Shifts.</strong> The last three operations move bits sideways and need no gates at all, only wiring: each bit's wire is connected one column over. Shifting left moves every bit up a column, which doubles the number, and the bit that falls off the top lands in C. Shifting right halves the number, but there are two right shifts, because the column that empties at the top has to be filled with something. One fills it with 0, which is right for an unsigned number; its traditional name is the <em>logical</em> shift. The other fills it with a copy of the old top bit, so a negative number stays negative, which is right for a signed one; that is the <em>arithmetic</em> shift. The lab's buttons say what each does rather than its name. This is one of the pairs of instructions that exist only because the same bits have two readings; the two kinds of branch, on the next page, are another. In C, <code>&gt;&gt;</code> on an unsigned variable is the logical shift and on a signed variable is, in practice, the arithmetic one, so again the declaration chooses. Java and JavaScript spell them the other way round from what you might guess: <code>&gt;&gt;</code> is arithmetic and <code>&gt;&gt;&gt;</code> is logical. One more thing to expect: the arithmetic shift rounds toward minus infinity, so −3 shifted right once is −2, not −1.</p>
+    <p><strong>From gates to a register.</strong> The ALU needs no memory: a gate's output depends only on its present inputs. The registers on either side of it do, and they are made of the same kinds of gates wired with <em>feedback</em>, an output led back round to an input, so a pair of NOR gates can hold a bit for as long as the power is on. A <em>clock</em>, a signal that swings between 0 and 1 billions of times a second, decides the one instant at which registers take in a new value. The companion page <a href="gates-to-register.html"><em>From gates to a register</em></a> builds a latch from five gates and a 4-bit register you can clock.</p>
+    <h3>The flags</h3>
+<p><strong>The flags.</strong> After an operation the ALU records four one-bit facts, which conditional branches then test. They are four separate stored bits, not one four-way value: each flag has its own flip-flop (the memory cell built on the <a href="gates-to-register.html">From gates to a register</a> page), loaded at the same clock edge as the result, and any combination can be set at once. <code>0x80 + 0x80</code> sets C and V together, and <code>0xFF + 1</code> sets Z and C. Real CPUs keep these four bits inside a wider <em>status register</em> next to things like interrupt and mode bits; on ARM it is 32 bits wide with N, Z, C and V as its top four.</p>
+    <table>
+      <tr><th>Flag</th><th>Meaning</th><th>Built from</th></tr>
+      <tr><td>N</td><td>result is negative when read as signed</td><td>result's top bit, straight through</td></tr>
+      <tr><td>Z</td><td>result is zero</td><td>NOR of every result bit</td></tr>
+      <tr><td>C</td><td>unsigned result didn't fit (or a bit was shifted out)</td><td>carry out of the top adder</td></tr>
+      <tr><td>V</td><td>signed result didn't fit</td><td>carry <em>into</em> the top bit XOR carry <em>out</em> of it</td></tr>
+    </table>
+    <p>This lab follows the ARM / Harris &amp; Harris convention: after subtraction, C = 1 means <em>no borrow</em> was needed. x86 stores the opposite sense for subtraction, so if you later read Intel manuals, keep that in mind.</p>
+  </section>
+
+  <section class="tut lab-anchor" id="lab">
+    <h2>The lab</h2>
+    <p>Below is the miniature ALU from the diagram above, opened up so you can see the gates. The top rows are the input registers A and B; the bottom row is the result R. Between them is a drawing of the circuit for the chosen operation: one gate or adder per bit column, with wires lit amber when they carry a 1 and carries shown in red. The page works out the result in software and lights the drawing to match, so it shows what each gate would do rather than simulating the gates themselves. The four flags are wired into the drawing too: N is a tap off the top result bit, Z is one wide NOR across every result bit, C is the carry out of the top adder, and V is an XOR of the carry into the top adder and the carry out of it. The cards under the circuit repeat each flag's gates with an explanation of its current value.</p>
+    <p>Tap a bit to flip it. Pick an operation from the buttons. Switch to 4-bit when you want fewer columns to trace by hand.</p>
+  </section>
+
+  <div class="ops" id="ops" role="group" aria-label="Operation"></div>
+  <div class="row">
+    <span>Width</span>
+    <button class="small" data-w="4" aria-pressed="false">4-bit</button>
+    <button class="small" data-w="8" aria-pressed="true">8-bit</button>
+    <span style="margin-left:auto"></span>
+    <button class="small" id="randA">random A</button>
+    <button class="small" id="randB">random B</button>
+    <button class="small" id="clear">clear</button>
+  </div>
+
+  <div class="circuit"><svg id="circuit" xmlns="http://www.w3.org/2000/svg" aria-label="Gate-level circuit"></svg></div>
+  <p class="tip">Tap a bit in A or B to flip it. Amber wires carry a 1; red carries are the ripple between adders.</p>
+
+  <p class="tip">Both readings are always shown below. The hardware is just bits and does not know which one you mean. Which reading a program uses, and how, is the next page: <a href="who-decides.html">Signed or unsigned: who decides?</a></p>
+  <div class="values" id="values"></div>
+
+  <div class="flags" id="flags"></div>
+
+  <section class="why" id="why"></section>
+
+  <section class="presets">
+    <h2>Try these</h2>
+    <div id="presets"></div>
+  </section>
+
+  <section class="tut" id="exercises">
+    <h2>Guided exercises</h2>
+    <p>For each one, predict the result and flags <em>before</em> you look. Each "Load" button sets the lab up for you.</p>
+
+    <div class="ex"><h3>1. Columns that don't talk</h3>
+      <button class="load" data-ex='{"op":"AND","w":8,"a":170,"b":15}'>Load AND 0xAA, 0x0F</button>
+      <p>Flip bit 7 of A. Which result bits change? Now flip bit 0 of B. Which change? Why do no other columns react?</p>
+      <details><summary>Answer</summary><p>Only the same column changes each time. Each AND gate sees just its own pair of inputs — there is no wire between columns.</p></details></div>
+
+    <div class="ex"><h3>2. Masking and setting</h3>
+      <button class="load" data-ex='{"op":"AND","w":8,"a":181,"b":15}'>Load AND 0xB5, 0x0F</button>
+      <p>Read the result in hex. Then switch to OR with the same inputs. What does AND with <code>0x0F</code> do to a byte, and what does OR with <code>0x0F</code> do?</p>
+      <details><summary>Answer</summary><p>AND keeps only the low nibble (<code>0x05</code>). OR forces the low nibble to all ones (<code>0xBF</code>). This is how software clears and sets individual bits.</p></details></div>
+
+    <div class="ex"><h3>3. Watch the ripple</h3>
+      <button class="load" data-ex='{"op":"ADD","w":4,"a":7,"b":1}'>Load 4-bit 7 + 1</button>
+      <p>Trace it by hand first: bit 0 is 1 + 1, which gives sum 0 and carry 1. Continue for each column. How far does the carry travel? Now set A to 15 and repeat.</p>
+      <details><summary>Answer</summary><p>7 + 1: the carry travels through bits 0–2 and stops at bit 3, giving 8. 15 + 1: it ripples through every column and out the top, so R = 0, Z = 1, C = 1. The top adder can't produce its answer until every adder to its right has.</p></details></div>
+
+    <div class="ex"><h3>4. Same bits, two overflows</h3>
+      <button class="load" data-ex='{"op":"ADD","w":8,"a":127,"b":1}'>Load 0x7F + 1</button>
+      <p>Note C and V. Then load <code>0xFF + 1</code> from "Try these" and compare. In each case, which reading (signed or unsigned) gave a wrong answer?</p>
+      <details><summary>Answer</summary><p>0x7F + 1: unsigned 127 + 1 = 128 fits, C = 0; signed 127 + 1 should be 128 but the result reads −128, V = 1. 0xFF + 1: unsigned 255 + 1 doesn't fit, C = 1; signed −1 + 1 = 0 is correct, V = 0. The flags report on the two readings independently.</p></details></div>
+
+    <div class="ex"><h3>5. The V rule</h3>
+      <button class="load" data-ex='{"op":"ADD","w":8,"a":128,"b":128}'>Load 0x80 + 0x80</button>
+      <p>Look at the two red carries feeding the V gate: carry into bit 7 and carry out of bit 7. Find inputs where both are 1 (V = 0), where only the out is 1, and where only the in is 1. State the rule in words.</p>
+      <details><summary>Answer</summary><p>V = 1 exactly when the carry into the sign bit differs from the carry out of it. Adding two positives that produce a negative (carry in only), or two negatives that produce a positive (carry out only), is overflow. If both carries agree the sign bit is still telling the truth.</p><p>Why that rule is the same as "the true answer is outside the signed range": the carry out of the top bit is the 256 (or 16) that fell off the end, and the carry into it is what the top column needed for its own sum. If both happen they cancel, and if neither happens nothing was lost, so in both cases the top bit shows the true sign. If exactly one happens, the top bit has been given the opposite sign from the true answer, which can only occur when the true answer did not fit. That is the number-line picture on <a href="adding-to-subtracting.html#paper">From adding to subtracting</a>, seen from inside the adder.</p></details></div>
+
+    <div class="ex"><h3>6. Subtraction is addition in disguise</h3>
+      <button class="load" data-ex='{"op":"SUB","w":8,"a":5,"b":3}'>Load 5 − 3</button>
+      <p>Find the inverters on the B inputs and the 1 on the first carry-in. Now swap to 3 − 5. What are R, N and C, and what does C mean here?</p>
+      <details><summary>Answer</summary><p>5 − 3 = 2 with C = 1 (no borrow). 3 − 5 = 0xFE, which is −2 signed, so N = 1; C = 0 because a borrow was needed. In ARM style C = 1 means "A ≥ B as unsigned".</p></details></div>
+
+    <div class="ex"><h3>7. The number that can't be negated</h3>
+      <button class="load" data-ex='{"op":"NEG","w":8,"a":128,"b":0}'>Load −(0x80)</button>
+      <p>Negate 0x80. What comes out, and which flag tells you something went wrong? Why can this happen?</p>
+      <details><summary>Answer</summary><p>The result is 0x80 again, with V = 1. −128 negated should be +128, but the signed range only reaches 127. Two's complement has one more negative value than positive.</p></details></div>
+
+    <div class="ex"><h3>8. Three shifts</h3>
+      <button class="load" data-ex='{"op":"SHR","w":8,"a":146,"b":0}'>Load 0x92, logical shift right</button>
+      <p>Compare the two right shifts on 0x92. Which one is "divide by 2" for a signed number, and why does the other give the wrong answer? Then shift 0x81 left and explain where the top bit went.</p>
+      <details><summary>Answer</summary><p>0x92 is −110 signed. The arithmetic shift copies the sign bit down and gives 0xC9 = −55 (correct). The logical shift fills with 0 and gives 0x49 = 73, correct only for the unsigned reading (146 ÷ 2). Shifting 0x81 left pushes the 1 at bit 7 out into C.</p></details></div>
+  </section>
+
+  <section class="tut" id="quiz">
+    <h2>Check yourself</h2>
+    <p>Answer without the lab, then verify.</p>
+    <ol>
+      <li>Which single gate type, if you had enough of them, could build everything else on this page?
+        <details><summary>Answer</summary><p>NAND (or NOR). Both are functionally complete.</p></details></li>
+      <li>In 8-bit, what are R, N, Z, C and V after <code>0x40 + 0x40</code>?
+        <details><summary>Answer</summary><p>R = 0x80, N = 1, Z = 0, C = 0, V = 1 (64 + 64 = 128 overflows the signed range).</p></details></li>
+      <li>A branch instruction wants "jump if A &lt; B as signed numbers" after computing A − B. Which flags does it test?
+        <details><summary>Answer</summary><p>N ≠ V. If no overflow happened, N alone says the result was negative; if overflow did happen, the sign is inverted, so N must be flipped. XOR-ing them handles both.</p></details></li>
+      <li>And "jump if A &lt; B as unsigned numbers"?
+        <details><summary>Answer</summary><p>C = 0 under the ARM convention (a borrow was needed). Under x86 it would be C = 1.</p></details></li>
+      <li>Why is the Z flag computed with a NOR rather than an OR?
+        <details><summary>Answer</summary><p>OR of all bits is 1 when the result is non-zero. We want 1 when the result <em>is</em> zero, so the OR is inverted.</p></details></li>
+      <li>In an 8-bit ripple-carry adder, which result bit is ready last, and what does that imply about speed?
+        <details><summary>Answer</summary><p>Bit 7 and the carry flag, because they depend on the carry from every column before them. Adder delay grows with width, which is why real CPUs use carry-lookahead or similar.</p></details></li>
+    </ol>
+  </section>
+
+  <section class="tut" id="build">
+    <h2>Build it for real</h2>
+    <p>If "register" and "ALU" still feel abstract, here is the smallest build that makes them physical, in 4 bits, using the same chips as Ben Eater's breadboard computer. You do not have to build it; reading the five steps is enough to see what the words mean. A bit is one wire sitting at 5 V or 0 V, shown by an LED. A register is a chip that remembers a few such wires. An ALU is a chip with no memory whose output wires are a pure function of its input wires.</p>
+    <figure class="schem">
+<svg viewBox="0 0 780 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="schemTitle">
+<title id="schemTitle">Schematic of the 4-bit bench build: DIP switches feed registers A and B; register B passes through four XOR gates to a 74HC283 adder whose sum outputs drive four LEDs, a NOR gate for Z and the V logic; the carry-out drives the C LED; a SUB switch controls the XOR gates and the carry-in; a dashed feedback path returns the sums to register A.</title>
+<g text-anchor="middle" dominant-baseline="middle">
+  <!-- data buses (4 wires each) -->
+  <path class="bus" d="M116,62 H160"/>
+  <path class="bus" d="M260,62 H440"/>
+  <path class="bus" d="M116,172 H160"/>
+  <path class="bus" d="M260,172 H300"/>
+  <path class="bus" d="M390,172 H440"/>
+  <path class="bus" d="M560,100 H612"/>
+  <path class="bus" d="M612,90 V110"/>
+  <path class="bus" d="M600,100 V233 H610"/>
+  <!-- bus width ticks -->
+  <path class="tick" d="M346,68 L354,56"/><text class="t2" x="360" y="54">4</text>
+  <path class="tick" d="M411,178 L419,166"/><text class="t2" x="425" y="164">4</text>
+  <path class="tick" d="M572,106 L580,94"/><text class="t2" x="584" y="90">4</text>
+  <!-- control lines -->
+  <path class="ctl" d="M116,255 H420 V190 H440"/>
+  <path class="ctl" d="M345,255 V194"/>
+  <path class="ctl" d="M116,335 H210 V194"/>
+  <path class="ctl" d="M210,150 V84"/>
+  <text class="t2" x="226" y="118">clk</text>
+  <text class="t2" x="238" y="245">SUB = 1 inverts B and adds 1</text>
+  <!-- carry out -->
+  <path class="cy" d="M560,170 H637"/>
+  <!-- flag signals -->
+  <path class="sig" d="M696,233 H714"/>
+  <path class="sig" d="M588,293 H610"/>
+  <path class="sig" d="M720,293 H742"/>
+  <!-- step 4 feedback -->
+  <path class="fb" d="M600,100 V18 H140 V62"/>
+  <text class="tf" x="370" y="9">D inputs of register A ← S, instead of the switches</text>
+  <circle class="dot" cx="600" cy="100" r="3.5"/>
+  <circle class="dotf" cx="140" cy="62" r="3.5"/>
+
+  <!-- blocks -->
+  <rect class="box" x="20" y="40" width="96" height="44" rx="6"/>
+  <text x="68" y="58">DIP switch A</text><text class="t2" x="68" y="74">4 switches</text>
+  <rect class="box" x="20" y="150" width="96" height="44" rx="6"/>
+  <text x="68" y="168">DIP switch B</text><text class="t2" x="68" y="184">4 switches</text>
+  <rect class="box" x="20" y="240" width="96" height="30" rx="6"/>
+  <text x="68" y="256">SUB switch</text>
+  <rect class="box opt" x="20" y="320" width="96" height="30" rx="6"/>
+  <text x="68" y="336">clock button</text>
+
+  <rect class="box opt" x="160" y="40" width="100" height="44" rx="6"/>
+  <text x="210" y="58">74HC173</text><text class="t2" x="210" y="74">register A</text>
+  <rect class="box opt" x="160" y="150" width="100" height="44" rx="6"/>
+  <text x="210" y="168">74HC173</text><text class="t2" x="210" y="184">register B</text>
+
+  <rect class="box" x="300" y="150" width="90" height="44" rx="6"/>
+  <text x="345" y="168">74HC86</text><text class="t2" x="345" y="184">XOR × 4</text>
+
+  <rect class="box" x="440" y="50" width="120" height="150" rx="6"/>
+  <text x="500" y="118">74HC283</text><text class="t2" x="500" y="134">4-bit adder</text>
+  <text class="t2" x="452" y="62" text-anchor="start">A</text>
+  <text class="t2" x="452" y="172" text-anchor="start">B</text>
+  <text class="t2" x="452" y="190" text-anchor="start">cin</text>
+  <text class="t2" x="548" y="100" text-anchor="end">S</text>
+  <text class="tc" x="548" y="170" text-anchor="end">C</text>
+
+  <!-- sum LEDs -->
+  <text class="t2" x="664" y="78">sum LEDs = R</text>
+  <circle class="led" cx="628" cy="100" r="7"/><circle class="led" cx="652" cy="100" r="7"/>
+  <circle class="led" cx="676" cy="100" r="7"/><circle class="led" cx="700" cy="100" r="7"/>
+  <text class="t2" x="628" y="120">S3</text><text class="t2" x="652" y="120">S2</text>
+  <text class="t2" x="676" y="120">S1</text><text class="t2" x="700" y="120">S0</text>
+  <text class="t2" x="664" y="136">S3 doubles as N</text>
+  <!-- carry LED -->
+  <circle class="led" cx="644" cy="170" r="7"/>
+  <text class="tc" x="660" y="170" text-anchor="start">C</text>
+  <text class="t2" x="644" y="190">carry-out LED</text>
+  <!-- Z -->
+  <rect class="box" x="610" y="216" width="86" height="34" rx="6"/>
+  <text x="653" y="230">74HC4002</text><text class="t2" x="653" y="244">4-input NOR</text>
+  <circle class="led" cx="722" cy="233" r="7"/>
+  <text x="738" y="233" text-anchor="start">Z</text>
+  <!-- V -->
+  <text class="t2" x="584" y="293" text-anchor="end">A3, B′3, S3</text>
+  <rect class="box" x="610" y="276" width="110" height="34" rx="6"/>
+  <text x="665" y="290">V logic</text><text class="t2" x="665" y="304">XOR × 3 + AND</text>
+  <circle class="led" cx="750" cy="293" r="7"/>
+  <text x="766" y="293" text-anchor="start">V</text>
+
+  <!-- step badges -->
+  <g class="badge">
+    <circle cx="22" cy="42" r="9"/><text x="22" y="42">1</text>
+    <circle cx="22" cy="152" r="9"/><text x="22" y="152">1</text>
+    <circle cx="442" cy="52" r="9"/><text x="442" y="52">1</text>
+    <circle cx="616" cy="88" r="9"/><text x="616" y="88">1</text>
+    <circle cx="22" cy="242" r="9"/><text x="22" y="242">2</text>
+    <circle cx="302" cy="152" r="9"/><text x="302" y="152">2</text>
+    <circle cx="612" cy="218" r="9"/><text x="612" y="218">2</text>
+    <circle cx="612" cy="278" r="9"/><text x="612" y="278">2</text>
+    <circle cx="162" cy="42" r="9"/><text x="162" y="42">3</text>
+    <circle cx="162" cy="152" r="9"/><text x="162" y="152">3</text>
+    <circle cx="22" cy="322" r="9"/><text x="22" y="322">3</text>
+    <circle cx="600" cy="18" r="9"/><text x="600" y="18">4</text>
+  </g>
+  <!-- legend -->
+  <g class="badge">
+    <circle cx="30" cy="366" r="8"/><text x="30" y="366">1</text>
+    <circle cx="200" cy="366" r="8"/><text x="200" y="366">2</text>
+    <circle cx="390" cy="366" r="8"/><text x="390" y="366">3</text>
+    <circle cx="570" cy="366" r="8"/><text x="570" y="366">4</text>
+  </g>
+  <text class="t2" x="44" y="366" text-anchor="start">adder and LEDs</text>
+  <text class="t2" x="214" y="366" text-anchor="start">subtract and flags</text>
+  <text class="t2" x="404" y="366" text-anchor="start">registers and clock</text>
+  <text class="t2" x="584" y="366" text-anchor="start">accumulator feedback</text>
+</g>
+</svg>
+      <figcaption>The 4-bit bench build. Thick amber lines are 4-wire buses, dashed grey lines are control signals, red is the carry, and the dashed blue path is the step-5 feedback. The badges show which step adds each part; dashed boxes are the register parts.</figcaption>
+    </figure>
+    <ol class="steps">
+      <li><strong>One full adder from five gates.</strong> Wire the full adder from the <a href="gates-to-alu.html">From gates to an ALU</a> page with three chips: a 74HC86 (four XOR gates), a 74HC08 (four AND gates) and a 74HC32 (four OR gates). Three switches give A, B and carry-in, each with a 10 kΩ resistor to ground so an open switch reads 0; two LEDs show sum and carry-out. Flick through all eight rows of the truth table. You have built the box the lab draws as FA.</li>
+      <li><strong>Four of them make the adder.</strong> Chain four full adders, each carry-out into the next carry-in and the first carry-in to ground, and you have the ripple-carry adder the lab draws: that is two 74HC86, two 74HC08 and one 74HC32. Or buy the same four adders in one chip, the 74HC283. Either way, two 4-way DIP switches feed A and B, and five LEDs show the sums and the carry-out. Set A to <code>0111</code> and B to <code>0001</code>: the sum LEDs show <code>1000</code> the instant the switch closes. There is no clock and no "run"; the outputs just follow the inputs, which is all "ALU" means. Set A to <code>1111</code> and B to <code>0001</code> and the sums go dark while the carry-out LED lights. That LED is the C flag, and on the 74HC283 it is literally pin 9. The LED on S3 is N. The DIP switches are registers you load by hand.</li>
+      <li><strong>Subtraction and the other flags.</strong> Insert a 74HC86 between the B switches and the adder, with a SUB switch on the second input of every gate and on the adder's carry-in. SUB off passes B through; SUB on inverts B and the carry-in adds the 1, so the adder computes A + NOT B + 1, which is A − B. For Z, feed the four sum lines into one gate of a 74HC4002 (a 4-input NOR) and light an LED from its output. For V, overflow means the two numbers entering the adder had the same top bit and the sum's top bit differs: with spare XOR gates and one AND gate from a 74HC08, compute XNOR(A3, B′3) AND XOR(A3, S3), where B′3 is the bit-3 XOR output, the operand the adder actually sees.</li>
+      <li><strong>Registers: the numbers stay put.</strong> Put a 74HC173, a 4-bit D register, between each DIP switch and the adder: switches into its D inputs, its Q outputs into the adder and four LEDs, and one push button on the clock pin of both chips. Set the switches to <code>0111</code> and press the button: the register LEDs show <code>0111</code>. Now flip the switches to anything else; the register LEDs do not move. The chip is remembering, and that is the whole of what a register is. Its load-enable pins decide whether a press changes it. To see the memory in pure gates first, wire the D latch from the <a href="gates-to-register.html">From gates to a register</a> page with a 74HC02 (four NOR gates), a 74HC08 and a 74HC04 inverter; the 74HC173 is four sharper versions of that cell. The adder now works on "registers A and B", the block diagram at the top of this page, and in this build you are the control unit: the SUB switch is an operation line, and each press of the clock executes one instruction.</li>
+      <li><strong>The payoff: an accumulator.</strong> Move four jumpers so the adder's sum outputs feed register A's D inputs instead of the switches. Load B with <code>0001</code>. Each press of the button now performs A ← A + B and the A LEDs count <code>0000</code>, <code>0001</code>, <code>0010</code> and so on. Load B with <code>0011</code> and it counts in threes; switch SUB on and it counts down. That is one CPU instruction, <code>ADD A, B</code>, per button press, and "the result is written back to a register" stops being a metaphor. Debounce the button first, for instance with a 74HC14 Schmitt inverter and a 10 kΩ resistor with a 1 µF capacitor, or one press adds several times.</li>
+    </ol>
+    <h3>74HC283 pins</h3>
+    <table>
+      <tr><th>Signal</th><th>Pins</th></tr>
+      <tr><td>A0, A1, A2, A3</td><td class="mono">5, 3, 14, 12</td></tr>
+      <tr><td>B0, B1, B2, B3</td><td class="mono">6, 2, 15, 11</td></tr>
+      <tr><td>S0, S1, S2, S3</td><td class="mono">4, 1, 13, 10</td></tr>
+      <tr><td>carry in</td><td class="mono">7</td></tr>
+      <tr><td>carry out</td><td class="mono">9</td></tr>
+      <tr><td>5 V, ground</td><td class="mono">16, 8</td></tr>
+    </table>
+    <h3>Worked on the bench</h3>
+<pre class="work">5 − 3   A = 0101  B = 0011  SUB = 1
+        B after the XORs = 1100, carry in = 1
+        0101 + 1100 + 1 = 1 0010   sum LEDs 0010 (2), carry LED on: no borrow
+
+3 − 5   0011 + 1010 + 1 = 0 1110   sum LEDs 1110 (−2 signed, 14 unsigned)
+                                   carry LED off: a borrow happened; N LED on
+
+7 + 1   0111 + 0001     = 0 1000   carry off; V on: both inputs had top bit 0,
+                                   the sum has top bit 1</pre>
+    <h3>What bites beginners</h3>
+    <ul>
+      <li>CMOS inputs must never float: a pull-down resistor on every switch input, and unused gate inputs tied to ground.</li>
+      <li>A 0.1 µF capacitor across each chip's power pins, close to the chip.</li>
+      <li>The 74HC283 computes its carries with lookahead logic, so you will not see a ripple on it. To watch the ripple the lab draws, use the four gate-built adders from step 2.</li>
+    </ul>
+    <p>Mapped onto the lab: the DIP switches are rows A and B, the adder and XOR chips are the drawing, the sum LEDs are row R, and the four flag LEDs are the flag cards. The register step is what the lab leaves out, because the lab has no clock.</p>
+  </section>
+
+  <section class="tut" id="next">
+    <h2>What's next</h2>
+    <ul>
+      <li>The quiz's two comparisons, signed less-than = N ⊕ V and unsigned less-than = NOT C, are the condition logic a CPU uses for <code>if</code> and loops. Part 4, <a href="who-decides.html">Signed or unsigned: who decides?</a>, shows every ARM branch built that way and a compiled <code>if</code> using them.</li>
+      <li>Part 6, the <a href="flag-drills.html">flag drills</a>, makes the flags reflex: predict N Z C V, pick the branches that fire, recover the type from compiled code.</li>
+      <li>Build the bench version above, then swap the 74HC283 for four gate-built adders and watch a real ripple.</li>
+      <li>Put a multiplexer in front of the adder so one circuit does ADD, SUB, AND and OR: that is the ALU in Harris &amp; Harris, chapter 5, and the Nand2Tetris ALU in project 2. Wider adders avoid the ripple with carry-lookahead and carry-select designs.</li>
+      <li>To build a whole machine from gates to a running program, with a simulator and graded projects, take the <a href="https://snowch.github.io/digital-design/">Digital Design course</a>.</li>
+    </ul>
+  </section>
+
+  <nav class="pager" aria-label="Series navigation"><a class="prev" href="c-meets-the-wheel.html">Previous: Where C meets the wheel</a><a class="up" href="notes.html">Contents</a><a class="next" href="gates-to-register.html">Next: From gates to a register</a></nav>
+  <footer class="site">
+    <a href="notes.html">From gates to a compiled if: contents</a>
+    <a href="../">Programmer Calculator app</a>
+    <a href="twos-complement.pdf">Two's complement tutorial (PDF)</a>
+  </footer>
+</main>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- operations ---------- */
+const OPS = [
+  {id:'NOT', label:'NOT A', unary:true, kind:'logic', gate:'not'},
+  {id:'AND', label:'A AND B', kind:'logic', gate:'and'},
+  {id:'OR',  label:'A OR B',  kind:'logic', gate:'or'},
+  {id:'XOR', label:'A XOR B', kind:'logic', gate:'xor'},
+  {id:'NAND',label:'A NAND B',kind:'logic', gate:'nand'},
+  {id:'NOR', label:'A NOR B', kind:'logic', gate:'nor'},
+  {id:'ADD', label:'A + B',   kind:'arith'},
+  {id:'SUB', label:'A − B',   kind:'arith', invB:true, cin:1},
+  {id:'INC', label:'A + 1',   kind:'arith', unary:true, constB:0, cin:1},
+  {id:'NEG', label:'−A',      kind:'arith', unary:true, invA:true, constB:0, cin:1, flipLabel:true},
+  {id:'SHL', label:'A << 1',  kind:'shift', unary:true, dir:'left'},
+  {id:'SHR', label:'A >> 1, fill with 0',  kind:'shift', unary:true, dir:'right'},
+  {id:'ASR', label:'A >> 1, keep the sign', kind:'shift', unary:true, dir:'right', arith:true},
+];
+const opById = id => OPS.find(o=>o.id===id);
+
+const state = { op:'ADD', w:8, a:0b01111111, b:0b00000001 };
+try{
+  const s = JSON.parse(localStorage.getItem('bit-lab:legacy:bitlab-state')||'null');
+  if(s && opById(s.op) && (s.w===4||s.w===8)){ Object.assign(state,s); }
+}catch(e){}
+function persist(){ try{ localStorage.setItem('bit-lab:legacy:bitlab-state', JSON.stringify(state)); }catch(e){} }
+
+const bit = (x,i) => (x>>i)&1;
+const mask = w => (1<<w)-1;
+
+/* returns full computation record */
+function compute(){
+  const op = opById(state.op), w = state.w, M = mask(w);
+  const a = state.a & M, b = op.constB!==undefined ? op.constB : (state.b & M);
+  const r = {op, w, a, b, bitsA:[], bitsB:[], bitsR:[], carries:null, result:0,
+             n:0, z:0, c:null, v:null, cNote:'', vNote:'', shiftOut:null};
+  const xa = op.invA ? (~a & M) : a;
+  const xb = op.invB ? (~b & M) : b;
+  for(let i=0;i<w;i++){ r.bitsA.push(bit(a,i)); r.bitsB.push(bit(b,i)); }
+  r.xa = xa; r.xb = xb;
+
+  if(op.kind==='logic'){
+    let res=0;
+    for(let i=0;i<w;i++){
+      const x=bit(a,i), y=bit(b,i); let o;
+      switch(op.gate){
+        case 'not': o = x^1; break;
+        case 'and': o = x&y; break;
+        case 'or':  o = x|y; break;
+        case 'xor': o = x^y; break;
+        case 'nand':o = (x&y)^1; break;
+        case 'nor': o = (x|y)^1; break;
+      }
+      res |= o<<i;
+    }
+    r.result = res;
+  } else if(op.kind==='arith'){
+    const carries = [op.cin||0]; let res=0;
+    for(let i=0;i<w;i++){
+      const x=bit(xa,i), y=bit(xb,i), cin=carries[i];
+      const s = x^y^cin, cout = (x&y)|(cin&(x^y));
+      res |= s<<i; carries.push(cout);
+    }
+    r.carries = carries; r.result = res;
+    r.c = carries[w]; r.v = carries[w]^carries[w-1];
+  } else { // shift
+    let res, out;
+    if(op.dir==='left'){ res=(a<<1)&M; out=bit(a,w-1); }
+    else { res=a>>1; out=bit(a,0); if(op.arith && bit(a,w-1)) res|=1<<(w-1); }
+    r.result=res; r.c=out; r.shiftOut=out;
+  }
+  for(let i=0;i<w;i++) r.bitsR.push(bit(r.result,i));
+  r.n = bit(r.result,w-1);
+  r.z = r.result===0 ? 1 : 0;
+  return r;
+}
+
+const signed = (x,w) => (x & (1<<(w-1))) ? x-(1<<w) : x;
+const hex = (x,w) => '0x'+x.toString(16).toUpperCase().padStart(w/4,'0');
+const bin = (x,w) => x.toString(2).padStart(w,'0');
+
+/* ---------- SVG helpers ---------- */
+const NS='http://www.w3.org/2000/svg';
+function el(tag, attrs, parent){
+  const e=document.createElementNS(NS,tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+function wire(parent, pts, on, extra){
+  return el('path',{d:'M'+pts.map(p=>p.join(',')).join(' L'), class:'wire'+(on?' on':'')+(extra?' '+extra:'')},parent);
+}
+function txt(parent,x,y,s,cls,anchor){
+  const t=el('text',{x,y,class:cls||'',  'text-anchor':anchor||'middle','dominant-baseline':'middle'},parent);
+  t.textContent=s; return t;
+}
+/* gate shapes drawn in a box with top-left (x,y), width 30, height 24, inputs at top, output at bottom.
+   Returns {in1:[x,y], in2:[x,y], out:[x,y]} for wiring. */
+function drawGate(parent, type, x, y, w=30, h=24){
+  const cx=x+w/2, g=el('g',{},parent);
+  const bubble = (bx,by)=>el('circle',{cx:bx,cy:by,r:3.2,class:'gate'},g);
+  let out=[cx,y+h];
+  switch(type){
+    case 'not':
+      el('path',{d:`M${x+4},${y} L${x+w-4},${y} L${cx},${y+h-6} Z`,class:'gate'},g);
+      bubble(cx,y+h-3); out=[cx,y+h];
+      return {in1:[cx,y], in2:null, out};
+    case 'and': case 'nand':
+      el('path',{d:`M${x},${y} L${x+w},${y} L${x+w},${y+h-w/2} A${w/2},${w/2} 0 0 1 ${x},${y+h-w/2} Z`,class:'gate'},g);
+      break;
+    case 'or': case 'nor': case 'xor':
+      el('path',{d:`M${x},${y} Q${cx},${y+6} ${x+w},${y} Q${x+w},${y+h-4} ${cx},${y+h} Q${x},${y+h-4} ${x},${y} Z`,class:'gate'},g);
+      if(type==='xor') el('path',{d:`M${x},${y-4} Q${cx},${y+2} ${x+w},${y-4}`,class:'gate',fill:'none'},g);
+      break;
+  }
+  if(type==='nand'||type==='nor'){ bubble(cx,y+h+3); out=[cx,y+h+6]; }
+  return {in1:[x+8,y], in2:[x+w-8,y], out};
+}
+
+/* ---------- main circuit ---------- */
+function bitCell(parent, x, y, val, label, editable, onToggle){
+  const g=el('g',{class:'bit'+(val?' on':'')+(editable?'':' ro'), transform:`translate(${x-14},${y-14})`},parent);
+  if(editable){ g.setAttribute('tabindex','0'); g.setAttribute('role','switch'); g.setAttribute('aria-checked', val?'true':'false'); g.setAttribute('aria-label',label); }
+  el('rect',{width:28,height:28,rx:5},g);
+  txt(g,14,15,String(val));
+  if(editable){
+    g.addEventListener('click',onToggle);
+    g.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();onToggle();} });
+  }
+  return g;
+}
+
+function renderCircuit(r){
+  const svg=document.getElementById('circuit');
+  svg.innerHTML='';
+  const op=r.op, w=r.w;
+  const colW=46, left=66, right=58;
+  const W=left+colW*w+right;
+  const unary=!!op.unary;
+  const yA=22, yB=unary?null:70, yG = unary?82:130, yR = yG+ (op.kind==='arith'?98:92);
+  const H=yR+106;
+  svg.setAttribute('viewBox',`0 -8 ${W} ${H+8}`);
+  const W8=left+colW*8+right, avail=(svg.parentElement&&svg.parentElement.clientWidth?svg.parentElement.clientWidth-16:760);
+  const scale=Math.min(760,Math.max(420,avail))/W8;  // the scale the 8-bit drawing gets; use it at 4 bits too so the drawing never grows taller
+  svg.style.width=Math.round(W*scale)+'px'; svg.style.maxWidth='none'; svg.style.minWidth='0';
+  const colX = i => left + colW*(w-1-i) + colW/2;   // bit i (LSB right)
+
+  // row labels
+  txt(svg,W-right+30,yA,'A','lab');
+  if(!unary) txt(svg,W-right+30,yB,'B','lab');
+  txt(svg,W-right+30,yR,'R','lab');
+
+  // bit index labels above A
+  for(let i=0;i<w;i++) txt(svg,colX(i),-1,'b'+i,'idx');
+
+  // input cells
+  for(let i=0;i<w;i++){
+    bitCell(svg,colX(i),yA,r.bitsA[i],`A bit ${i}`,true,()=>{state.a^=(1<<i);update();});
+    if(!unary) bitCell(svg,colX(i),yB,r.bitsB[i],`B bit ${i}`,true,()=>{state.b^=(1<<i);update();});
+  }
+
+  if(op.kind==='logic'){
+    for(let i=0;i<w;i++){
+      const x=colX(i), gx=x-15;
+      const gt=drawGate(svg,op.gate,gx,yG);
+      if(op.gate==='not'){
+        wire(svg,[[x,yA+14],[x,yG]],r.bitsA[i]);
+      } else {
+        wire(svg,[[x,yA+14],[x,yA+30],[gt.in1[0],yA+30],[gt.in1[0],yG]],r.bitsA[i]);
+        wire(svg,[[x,yB+14],[gt.in2[0],yB+14+0.01],[gt.in2[0],yG]],r.bitsB[i]);
+      }
+      wire(svg,[[gt.out[0],gt.out[1]],[x,yR-14]],r.bitsR[i]);
+    }
+  }
+  else if(op.kind==='arith'){
+    const bw=34,bh=30;
+    for(let i=0;i<w;i++){
+      const x=colX(i), bx=x-bw/2, by=yG;
+      const xa=bit(r.xa,i), xb=bit(r.xb,i);
+      // A input (maybe inverted)
+      if(op.invA){
+        wire(svg,[[x-8,yA+14],[x-8,yG-24]],r.bitsA[i]);
+        const g=drawGate(svg,'not',x-23,yG-24,30,18);
+        wire(svg,[[x-8,yG-6],[x-8,by]],xa);
+      } else {
+        wire(svg,[[x-8,yA+14],[x-8,by]],xa);
+      }
+      // B input
+      if(op.constB!==undefined){
+        txt(svg,x+8,by-12,String(op.constB),'cnst');
+        wire(svg,[[x+8,by-6],[x+8,by]],xb);
+      } else if(op.invB){
+        wire(svg,[[x+8,yB+14],[x+8,yG-24]],r.bitsB[i]);
+        drawGate(svg,'not',x-7,yG-24,30,18);
+        wire(svg,[[x+8,yG-6],[x+8,by]],xb);
+      } else {
+        wire(svg,[[x+8,yB+14],[x+8,by]],xb);
+      }
+      // adder box
+      el('rect',{x:bx,y:by,width:bw,height:bh,rx:4,class:'gate'},svg);
+      txt(svg,x,by+bh/2+1,'FA','lab');
+      // sum out
+      wire(svg,[[x,by+bh],[x,yR-14]],r.bitsR[i]);
+      // carry out: from left edge of this box to right edge of next (left) box
+      const cy=by+bh/2, cout=r.carries[i+1];
+      const toX = (i===w-1) ? left-36 : colX(i+1)+bw/2;
+      wire(svg,[[bx,cy],[toX,cy]],cout,'carry');
+      const midX=(bx+toX)/2;
+      txt(svg,midX,cy-8,String(cout),'cv '+(cout?'on':'off'));
+      if(i===w-1){ txt(svg,left-46,cy,'C','lab'); }
+      // carry in for LSB
+      if(i===0){
+        const cin=r.carries[0];
+        wire(svg,[[bx+bw,cy],[bx+bw+30,cy]],cin,'carry');
+        txt(svg,bx+bw+15,cy-8,String(cin),'cv '+(cin?'on':'off'));
+        txt(svg,bx+bw+40,cy,'cin','lab');
+      }
+    }
+  }
+  else { // shift
+    for(let i=0;i<w;i++){
+      const x=colX(i);
+      const dest = op.dir==='left' ? i+1 : i-1;
+      if(dest>=0 && dest<w){
+        wire(svg,[[x,yA+14],[x,yA+34],[colX(dest),yR-34],[colX(dest),yR-14]],r.bitsA[i]);
+      } else {
+        // shifted out → C
+        const ex = op.dir==='left' ? left-36 : W-right+36;
+        wire(svg,[[x,yA+14],[x,yA+34],[ex,yG+20]],r.bitsA[i],'carry');
+        txt(svg,ex+(op.dir==='left'?-10:10),yG+20,'C','lab');
+      }
+    }
+    // fill-in bit
+    const fillIdx = op.dir==='left' ? 0 : w-1;
+    const fx=colX(fillIdx);
+    if(op.arith){
+      const srcX=colX(w-1);
+      wire(svg,[[srcX,yA+14],[srcX,yA+26],[fx,yR-26],[fx,yR-14]],r.bitsA[w-1]);
+      txt(svg,fx,yR-40,'sign copy','cnst');
+    } else {
+      txt(svg,fx,yR-40,'0','cnst');
+      wire(svg,[[fx,yR-34],[fx,yR-14]],0);
+    }
+  }
+
+  // ---- the four flags, wired from the result row and the top carries ----
+  {
+    const xTop=colX(w-1), yBot=yR+14;
+    // N: the top result bit, straight through
+    wire(svg,[[xTop,yBot],[xTop,yR+28],[left-22,yR+28]],r.n);
+    el('circle',{cx:xTop,cy:yR+28,r:3,class:'jdot'+(r.n?' on':'')},svg);
+    txt(svg,left-32,yR+28,'N','lab');
+    txt(svg,left-12,yR+19,String(r.n),'fv '+(r.n?'on':'off'));
+    // Z: one wide NOR across every result bit
+    const gy=yR+40, gh=24, x0=colX(w-1)-16, x1=colX(0)+16, zx=(x0+x1)/2;
+    for(let i=0;i<w;i++) wire(svg,[[colX(i),yBot],[colX(i),gy]],r.bitsR[i]);
+    el('path',{d:`M${x0},${gy} Q${zx},${gy+6} ${x1},${gy} Q${x1},${gy+gh-4} ${zx},${gy+gh} Q${x0},${gy+gh-4} ${x0},${gy} Z`,class:'gate'},svg);
+    el('circle',{cx:zx,cy:gy+gh+3,r:3.2,class:'gate'},svg);
+    wire(svg,[[zx,gy+gh+6],[zx,gy+gh+20]],r.z);
+    txt(svg,zx,gy+gh+30,'Z','lab');
+    txt(svg,zx+11,gy+gh+13,String(r.z),'fv '+(r.z?'on':'off'));
+    txt(svg,x1+10,gy+gh/2,'NOR of R','lab','start');
+    // V: carry into the top adder XOR carry out of it (arithmetic only)
+    if(op.kind==='arith'){
+      const cy=yG+15, cin=r.carries[w-1], cout=r.carries[w], bw2=17;
+      const midX=(colX(w-1)+bw2 + colX(w-2)-bw2)/2;
+      const gx=left-58, gyv=cy+28;
+      wire(svg,[[midX,cy],[midX,cy+22],[gx+8,cy+22],[gx+8,gyv]],cin,'carry');
+      el('circle',{cx:midX,cy:cy,r:3,class:'jdot carry'+(cin?' on':'')},svg);
+      wire(svg,[[left-36,cy],[left-36,gyv]],cout,'carry');
+      el('circle',{cx:left-36,cy:cy,r:3,class:'jdot carry'+(cout?' on':'')},svg);
+      drawGate(svg,'xor',gx,gyv);
+      wire(svg,[[gx+15,gyv+24],[gx+15,gyv+32]],r.v);
+      txt(svg,gx+15,gyv+41,'V','lab');
+      txt(svg,gx+26,gyv+29,String(r.v),'fv '+(r.v?'on':'off'));
+    }
+  }
+  // result cells
+  for(let i=0;i<w;i++) bitCell(svg,colX(i),yR,r.bitsR[i],`result bit ${i}`,false);
+}
+
+/* ---------- flag cards ---------- */
+function flagSvg(kind, r){
+  const svg=el('svg',{viewBox:'0 0 220 70',xmlns:NS});
+  const w=r.w;
+  if(kind==='N'){
+    txt(svg,20,16,`R bit ${w-1}`,'lab','start');
+    wire(svg,[[20,36],[170,36]],r.n);
+    txt(svg,190,36,'N','lab');
+  }
+  if(kind==='Z'){
+    const n=w, top=20, step=42/(n-1), gx=110;
+    txt(svg,20,8,`R bits ${w-1}…0`,'lab sm','start');
+    for(let i=0;i<n;i++){ const y=top+step*i; wire(svg,[[20,y],[gx+8,y]],r.bitsR[w-1-i]); }
+    el('path',{d:`M${gx},14 Q${gx+30},41 ${gx},68 Q${gx+28},68 ${gx+48},41 Q${gx+28},14 ${gx},14 Z`,class:'gate'},svg);
+    el('circle',{cx:gx+51,cy:41,r:3.2,class:'gate'},svg);
+    wire(svg,[[gx+55,41],[gx+78,41]],r.z);
+    txt(svg,gx+90,41,'Z','lab');
+  }
+  if(kind==='C'){
+    if(r.c===null){ txt(svg,110,36,'not set by this operation','lab'); }
+    else {
+      const src = r.op.kind==='shift' ? `bit shifted out` : `carry out of bit ${w-1}`;
+      txt(svg,20,16,src,'lab','start');
+      wire(svg,[[20,36],[170,36]],r.c,'carry');
+      txt(svg,190,36,'C','lab');
+    }
+  }
+  if(kind==='V'){
+    if(r.v===null){ txt(svg,110,36,'not set by this operation','lab'); }
+    else {
+      const cin=r.carries[w-1], cout=r.carries[w];
+      txt(svg,20,8,`carry into bit ${w-1}`,'lab sm','start');
+      wire(svg,[[20,22],[140,22]],cin,'carry');
+      txt(svg,20,64,`carry out of bit ${w-1}`,'lab sm','start');
+      wire(svg,[[20,50],[140,50]],cout,'carry');
+      el('path',{d:'M136,12 Q156,36 136,60 Q166,60 188,36 Q166,12 136,12 Z',class:'gate'},svg);
+      el('path',{d:'M130,12 Q150,36 130,60',class:'gate',fill:'none'},svg);
+      wire(svg,[[188,36],[204,36]],r.v);
+      txt(svg,213,36,'V','lab');
+    }
+  }
+  return svg;
+}
+
+function flagText(kind,r){
+  const w=r.w, sr=signed(r.result,w), ur=r.result;
+  const sa=signed(r.a,w), sb=signed(r.b,w);
+  switch(kind){
+    case 'N': return r.n
+      ? `Top bit is 1, so read as signed the result is negative (<strong>${sr}</strong>).`
+      : `Top bit is 0, so read as signed the result is zero or positive (<strong>${sr}</strong>).`;
+    case 'Z': return r.z
+      ? `Every result bit is 0 — the NOR of all bits is 1.`
+      : `At least one result bit is 1, so the NOR of all bits is 0.`;
+    case 'C':
+      if(r.c===null) return `Logic operations don't produce a carry. Most CPUs leave C unchanged or clear it.`;
+      if(r.op.kind==='shift') return r.c
+        ? `The bit that fell off the end was 1, so C catches it.`
+        : `The bit that fell off the end was 0.`;
+      if(r.op.id==='SUB') return r.c
+        ? `Unsigned ${r.a} − ${r.b} needed <strong>no borrow</strong> (${r.a} ≥ ${r.b}). ARM/RISC style: C=1 means no borrow; x86 inverts this.`
+        : `Unsigned ${r.a} − ${r.b} needed a <strong>borrow</strong> (${r.a} &lt; ${r.b}) — the true answer wrapped around.`;
+      return r.c
+        ? `As <strong>unsigned</strong>, ${r.a} + ${r.b} = ${r.a+r.b}, which doesn't fit in ${w} bits (max ${mask(w)}). The 1 that spilled out of bit ${w-1} is C.`
+        : `As <strong>unsigned</strong>, the true sum fits in ${w} bits, so nothing spilled out.`;
+    case 'V':
+      if(r.v===null) return `Overflow only has meaning for signed arithmetic.`;
+      return r.v
+        ? `As <strong>signed</strong>, the true answer is outside ${-(1<<(w-1))}…${(1<<(w-1))-1}. The carry into the sign bit (${r.carries[w-1]}) differs from the carry out (${r.carries[w]}), so the sign flipped the wrong way: got ${sr}. Why those two carries: the carry out is the ${1<<w} that fell off the end, the carry in is what the top column itself needed; when only one of them happened, the top bit was left showing the wrong sign for the true answer, which is the same thing as the answer lying outside the range.`
+        : `As <strong>signed</strong>, the answer ${sr} fits. Carry into and out of the sign bit agree (${r.carries[w-1]} and ${r.carries[w]}), so the sign is trustworthy. Either nothing fell off the end and the top column needed nothing, or both happened and cancelled: the top bit shows the true sign.`;
+  }
+}
+
+function renderFlags(r){
+  const host=document.getElementById('flags'); host.innerHTML='';
+  const names={N:'negative',Z:'zero',C:'carry',V:'overflow'};
+  const vals={N:r.n,Z:r.z,C:r.c,V:r.v};
+  for(const k of ['N','Z','C','V']){
+    const v=vals[k], na=v===null;
+    const card=document.createElement('article');
+    card.className='flag'+(na?' na':'');
+    card.innerHTML=`<header><span class="led ${na?'na':(v?'on':'')}"></span><h3>${k}<span>${names[k]}${na?'':' = '+v}</span></h3></header>`;
+    card.appendChild(flagSvg(k,r));
+    const p=document.createElement('p'); p.innerHTML=flagText(k,r); card.appendChild(p);
+    host.appendChild(card);
+  }
+}
+
+/* ---------- values + explanation ---------- */
+function renderValues(r){
+  const w=r.w, unary=!!r.op.unary;
+  const grp=x=>x.replace(/(\d{4})(?=\d)/g,'$1 ');
+  const row=(k,x,cls)=>`<tr${cls?' class="'+cls+'"':''}><th class="rowk" scope="row">${k}</th><td class="bin">${grp(bin(x,w))}</td><td>${hex(x,w)}</td><td class="num">${x}</td><td class="num">${signed(x,w)}</td></tr>`;
+  let h='<table><thead><tr><th></th><th>binary</th><th>hex</th><th class="num">unsigned</th><th class="num">signed</th></tr></thead><tbody>';
+  h+=row('A',r.a); if(!unary) h+=row('B',r.b); h+=row('R',r.result,'r');
+  document.getElementById('values').innerHTML=h+'</tbody></table>';
+}
+
+const WHY={
+  NOT:`Each bit goes through its own inverter — a NOT gate — so there is no interaction between columns. NOT A equals −A − 1 in two's complement: invert then add 1 is how negation is built.`,
+  AND:`One AND gate per column. A 1 survives only where <em>both</em> inputs are 1. Used for masking: AND with 0b00001111 keeps the low nibble.`,
+  OR:`One OR gate per column. A 1 appears wherever <em>either</em> input is 1. Used to set bits.`,
+  XOR:`One XOR gate per column. A 1 appears where the inputs <em>differ</em>. XOR with 1 flips a bit; XOR with itself gives zero (Z=1). XOR is also the sum half of an adder.`,
+  NAND:`AND followed by an inverter (the bubble). NAND is functionally complete — every other gate can be built from it, which is why Nand2Tetris starts here.`,
+  NOR:`OR followed by an inverter. The zero flag is a big NOR of all result bits.`,
+  ADD:`Each column is a full adder: sum = A ⊕ B ⊕ cin, carry = AB + cin(A ⊕ B). Carries ripple right to left, so bit 7 can't settle until bit 0 has. The same bits mean different numbers depending on how you read them: C tells you about the unsigned reading, V about the signed one.`,
+  SUB:`A − B is done as A + NOT B + 1: the inverters under B flip every bit, and the 1 on the first carry-in finishes the negation, so the adder computes A + (255 − B) + 1 at 8 bits, or A + (15 − B) + 1 at 4, which is A − B plus 256 or 16, and that extra 256 or 16 is the carry that falls off the top. No separate subtractor is needed. C = 1 therefore means "no borrow was needed", the convention ARM and RISC-V-style cores use; x86 stores the opposite. If the result looks wrong, say 0xFE for 3 − 5, read <a href="adding-to-subtracting.html">From adding to subtracting</a>: it is 254 and −2 at once.`,
+  INC:`Add with B wired to 0 and the first carry-in set to 1. Only one 1 ever enters, and it ripples left until it hits a 0.`,
+  NEG:`Two's complement negation: invert A and add 1 (B wired to 0, cin = 1), the trick from <a href="adding-to-subtracting.html">From adding to subtracting</a>. Try A = 0x80: negating the most negative number overflows, so V = 1 and the result is unchanged. On the wheel of that page, −128 sits exactly opposite 0 and has no positive partner to land on.`,
+  SHL:`Shift left by one place: LSL on ARM, <code>&lt;&lt;</code> in C. Every bit moves one column left, a 0 fills the bottom and the old top bit lands in C. It is wiring, not gates. The number doubles, under either reading, as long as nothing meaningful falls off: for unsigned that means C = 0 afterwards, for signed it means the top bit did not change.`,
+  SHR:`Shift right by one place, filling the emptied top column with 0. The traditional name is the <em>logical</em> shift right, LSR on ARM. Every bit moves one column right and the old bottom bit lands in C. It halves the unsigned reading, and gets a negative number wrong, because the 0 at the top makes it positive. In C this is what <code>&gt;&gt;</code> does to an <code>unsigned</code> variable; in Java and JavaScript it is spelt <code>&gt;&gt;&gt;</code>.`,
+  ASR:`Shift right by one place, filling the emptied top column with a copy of the old top bit (the "sign copy" wire), so a negative number stays negative. The traditional name is the <em>arithmetic</em> shift right, ASR on ARM. It halves the signed reading, rounding toward minus infinity: −3 becomes −2. In C this is what <code>&gt;&gt;</code> does, in practice, to a signed variable; in Java and JavaScript it is plain <code>&gt;&gt;</code>. Compare the two right-shift buttons on 0x92: 73 or −55 from the same bits.`,
+};
+function renderWhy(r){
+  document.getElementById('why').innerHTML=`<h2>${r.op.label}</h2><p>${WHY[r.op.id]}</p>`;
+}
+
+/* ---------- presets ---------- */
+const PRESETS=[
+  {t:'0x7F + 1 — signed overflow, no carry', s:{op:'ADD',w:8,a:0x7F,b:0x01}},
+  {t:'0xFF + 1 — unsigned carry, result zero', s:{op:'ADD',w:8,a:0xFF,b:0x01}},
+  {t:'0x80 + 0x80 — both C and V', s:{op:'ADD',w:8,a:0x80,b:0x80}},
+  {t:'5 − 3 — no borrow, C=1', s:{op:'SUB',w:8,a:5,b:3}},
+  {t:'3 − 5 — borrow, N=1', s:{op:'SUB',w:8,a:3,b:5}},
+  {t:'−(0x80) — the one negation that overflows', s:{op:'NEG',w:8,a:0x80,b:0}},
+  {t:'0x81 << 1 — top bit into C', s:{op:'SHL',w:8,a:0x81,b:0}},
+  {t:'NOT 0 — all ones, N=1', s:{op:'NOT',w:8,a:0,b:0}},
+  {t:'0b1010 XOR 0b1010 — zero flag', s:{op:'XOR',w:4,a:0b1010,b:0b1010}},
+];
+
+/* ---------- controls ---------- */
+function renderOps(){
+  const host=document.getElementById('ops'); host.innerHTML='';
+  for(const [kind,cap] of [['logic','Logic'],['arith','Arithmetic'],['shift','Shift']]){
+    const g=document.createElement('div'); g.className='opgroup'; g.setAttribute('role','group'); g.setAttribute('aria-label',cap);
+    const c=document.createElement('span'); c.className='opcap'; c.textContent=cap; g.appendChild(c);
+    for(const o of OPS){
+      if(o.kind!==kind) continue;
+      const b=document.createElement('button');
+      b.className='op'; b.textContent=o.label; b.setAttribute('aria-pressed', o.id===state.op?'true':'false');
+      b.addEventListener('click',()=>{state.op=o.id;update();});
+      g.appendChild(b);
+    }
+    host.appendChild(g);
+  }
+  document.querySelectorAll('[data-w]').forEach(b=>b.setAttribute('aria-pressed', +b.dataset.w===state.w?'true':'false'));
+}
+document.querySelectorAll('[data-w]').forEach(b=>b.addEventListener('click',()=>{state.w=+b.dataset.w;state.a&=mask(state.w);state.b&=mask(state.w);update();}));
+document.getElementById('randA').addEventListener('click',()=>{state.a=Math.floor(Math.random()*(1<<state.w));update();});
+document.getElementById('randB').addEventListener('click',()=>{state.b=Math.floor(Math.random()*(1<<state.w));update();});
+document.getElementById('clear').addEventListener('click',()=>{state.a=0;state.b=0;update();});
+(function(){
+  const host=document.getElementById('presets');
+  for(const p of PRESETS){
+    const b=document.createElement('button'); b.className='preset';
+    const [pt,pd]=p.t.split(' — ');
+    b.innerHTML='<b></b><span></span>'; b.firstChild.textContent=pt; b.lastChild.textContent=pd;
+    b.addEventListener('click',()=>{Object.assign(state,p.s);update();window.scrollTo({top:0,behavior:'smooth'});});
+    host.appendChild(b);
+  }
+})();
+
+document.querySelectorAll('[data-ex]').forEach(b=>b.addEventListener('click',()=>{
+  Object.assign(state, JSON.parse(b.dataset.ex)); update();
+  document.getElementById('lab').scrollIntoView({behavior:'smooth'});
+}));
+
+window.addEventListener('resize',()=>{ clearTimeout(window.__bitlabResize); window.__bitlabResize=setTimeout(update,120); });
+/* ---------- theme ---------- */
+(function(){
+  const btn=document.getElementById('themeBtn'); if(!btn) return;
+  const THEMES=['auto','light','dark'];
+  let theme='auto'; try{ theme=localStorage.getItem('bit-lab:legacy:bitlab-theme')||'auto'; }catch(e){}
+  if(!THEMES.includes(theme)) theme='auto';
+  const apply=()=>{
+    if(theme==='auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme',theme);
+    btn.textContent='theme: '+theme; btn.setAttribute('aria-label','Theme: '+theme+'. Activate to change');
+  };
+  apply();
+  btn.addEventListener('click',()=>{ theme=THEMES[(THEMES.indexOf(theme)+1)%THEMES.length]; try{localStorage.setItem('bit-lab:legacy:bitlab-theme',theme);}catch(e){} apply(); });
+})();
+
+/* ---------- one full adder, gate by gate ---------- */
+function drawFullAdder(host,a,b,c,onToggle){
+  host.innerHTML='';
+  const svg=el('svg',{viewBox:'0 -12 360 274',xmlns:NS,'aria-label':'One full adder: two XOR gates, two AND gates and one OR gate'},host);
+  const p=a^b, g=a&b, pc=p&c, s=p^c, co=g|pc, ed=!!onToggle;
+  const dot=(x,y,on)=>el('circle',{cx:x,cy:y,r:3,class:'jdot'+(on?' on':'')},svg);
+  txt(svg,50,-1,'A','lab'); txt(svg,110,-1,'B','lab'); txt(svg,250,-1,'carry in','lab');
+  wire(svg,[[50,40],[50,50],[73,50],[73,70]],a); wire(svg,[[50,44],[133,44],[133,70]],a); dot(50,44,a);
+  wire(svg,[[110,40],[110,56],[87,56],[87,70]],b); wire(svg,[[110,56],[147,56],[147,70]],b); dot(110,56,b);
+  wire(svg,[[80,94],[80,110],[73,110],[73,150]],p); wire(svg,[[80,110],[187,110],[187,150]],p); dot(80,110,p);
+  wire(svg,[[250,40],[250,126],[87,126],[87,150]],c); wire(svg,[[201,126],[201,150]],c); dot(201,126,c);
+  wire(svg,[[140,94],[140,100],[302,100],[302,200]],g);
+  wire(svg,[[194,174],[194,190],[288,190],[288,200]],pc);
+  wire(svg,[[80,174],[80,200]],s); wire(svg,[[295,224],[295,232]],co,'carry');
+  drawGate(svg,'xor',65,70); drawGate(svg,'and',125,70); drawGate(svg,'xor',65,150); drawGate(svg,'and',179,150); drawGate(svg,'or',280,200);
+  txt(svg,100,82,'XOR','lab','start'); txt(svg,160,78,'AND','lab','start'); txt(svg,100,162,'XOR','lab','start'); txt(svg,214,162,'AND','lab','start'); txt(svg,316,212,'OR','lab','start');
+  txt(svg,120,118,'A ⊕ B','lab','start'); txt(svg,306,150,'A · B','lab','start');
+  bitCell(svg,50,26,a,'A',ed,()=>onToggle('a'));
+  bitCell(svg,110,26,b,'B',ed,()=>onToggle('b'));
+  bitCell(svg,250,26,c,'carry in',ed,()=>onToggle('c'));
+  bitCell(svg,80,214,s,'sum',false); txt(svg,100,214,'sum','lab','start');
+  bitCell(svg,295,246,co,'carry out',false); txt(svg,275,246,'carry out','lab','end');
+  return {s,co};
+}
+const fa={a:1,b:1,c:0};
+function renderFA(){
+  const host=document.getElementById('fa'); if(!host) return;
+  const {a,b,c}=fa;
+  const {s,co}=drawFullAdder(host,a,b,c,k=>{fa[k]^=1;renderFA();});
+  document.getElementById('faEq').innerHTML=`sum = A ⊕ B ⊕ cin = <b>${s}</b><br>carry out = A·B + cin·(A ⊕ B) = <b>${co}</b>`;
+  let t='<table class="truth"><tr><th>A</th><th>B</th><th>cin</th><th>sum</th><th>cout</th></tr>';
+  for(let i=0;i<8;i++){
+    const A=(i>>2)&1, B=(i>>1)&1, C=i&1, P=A^B, S=P^C, CO=(A&B)|(P&C);
+    t+=`<tr${(A===a&&B===b&&C===c)?' class="cur"':''}><td>${A}</td><td>${B}</td><td>${C}</td><td>${S}</td><td>${CO}</td></tr>`;
+  }
+  document.getElementById('faTable').innerHTML=t+'</table>';
+}
+renderFA();
+
+/* ---------- four full adders make a 4-bit adder ---------- */
+const chain={a:[1,1,1,0],b:[1,0,0,0],sel:0,stage:4,timer:null};
+function chainCalc(){
+  const c=[0], s=[];
+  for(let i=0;i<4;i++){ const x=chain.a[i], y=chain.b[i], ci=c[i]; s.push(x^y^ci); c.push((x&y)|(ci&(x^y))); }
+  return {s,c};
+}
+function renderChain(){
+  const host=document.getElementById('chain'); if(!host) return;
+  host.innerHTML='';
+  const {s,c}=chainCalc(), w=4, colW=72, left=66, W=424, yA=22, yB=66, by=104, bw=34, bh=30, yR=176, H=200;
+  const svg=el('svg',{viewBox:`0 -10 ${W} ${H+10}`,xmlns:NS,'aria-label':'Four full adders chained into a 4-bit ripple-carry adder'},host);
+  const colX=i=>left+colW*(w-1-i)+colW/2;
+  txt(svg,left-34,yA,'A','lab'); txt(svg,left-34,yB,'B','lab'); txt(svg,left-34,yR,'sum','lab');
+  for(let i=0;i<w;i++){
+    const x=colX(i), settled=i<chain.stage, bx=x-bw/2, cy=by+bh/2;
+    txt(svg,x,-3,'bit '+i,'idx');
+    wire(svg,[[x-8,yA+14],[x-8,by]],chain.a[i]);
+    wire(svg,[[x+8,yB+14],[x+8,by]],chain.b[i]);
+    const cout=c[i+1], toX=(i===w-1)?left-28:colX(i+1)+bw/2;
+    wire(svg,[[bx,cy],[toX,cy]],settled&&cout,'carry');
+    txt(svg,(bx+toX)/2,cy-8,settled?String(cout):'?','cv '+(settled&&cout?'on':'off'));
+    if(i===w-1) txt(svg,left-38,cy,'C','lab');
+    if(i===0){ wire(svg,[[bx+bw,cy],[bx+bw+26,cy]],0,'carry'); txt(svg,bx+bw+13,cy-8,'0','cv off'); txt(svg,bx+bw+38,cy,'cin','lab'); }
+    wire(svg,[[x,by+bh],[x,yR-14]],settled&&s[i]);
+    const box=el('rect',{x:bx,y:by,width:bw,height:bh,rx:4,class:'gate fabox'+(i===chain.sel?' sel':''),tabindex:'0',role:'button','aria-label':`open full adder for bit ${i}`},svg);
+    box.addEventListener('click',()=>{chain.sel=i;renderChain();});
+    box.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();chain.sel=i;renderChain();} });
+    const fl=txt(svg,x,cy+1,'FA','lab'); fl.style.pointerEvents='none';
+    bitCell(svg,x,yA,chain.a[i],`A bit ${i}`,true,()=>{chain.a[i]^=1;chain.stage=4;renderChain();});
+    bitCell(svg,x,yB,chain.b[i],`B bit ${i}`,true,()=>{chain.b[i]^=1;chain.stage=4;renderChain();});
+    const cell=bitCell(svg,x,yR,settled?s[i]:0,`sum bit ${i}`,false);
+    if(!settled){ cell.classList.add('wait'); cell.querySelector('text').textContent='?'; }
+  }
+  const k=chain.sel;
+  drawFullAdder(document.getElementById('chainFA'),chain.a[k],chain.b[k],c[k],null);
+  const from = k===0 ? 'the cin wire, tied to 0' : `bit ${k-1}`;
+  const to = k===3 ? 'the C flag' : `bit ${k+1}`;
+  document.getElementById('chainNote').innerHTML=`<b>Bit ${k} opened.</b> Its inputs are A = ${chain.a[k]}, B = ${chain.b[k]} and a carry in of ${c[k]} from ${from}. It produces sum ${s[k]} and a carry out of ${c[k+1]}, which goes to ${to}.`;
+  const q=(v,i)=> i<chain.stage ? String(v) : '<span class="q">?</span>';
+  const cols=[3,2,1,0];
+  let t='<table class="truth add"><tr><th></th><th>C</th>'+cols.map(i=>`<th>bit ${i}</th>`).join('')+'</tr>';
+  t+='<tr><td class="k">carry in</td><td></td>'+cols.map(i=>`<td class="cin">${q(c[i],i)}</td>`).join('')+'</tr>';
+  t+='<tr><td class="k">A</td><td></td>'+cols.map(i=>`<td>${chain.a[i]}</td>`).join('')+'</tr>';
+  t+='<tr><td class="k">+ B</td><td></td>'+cols.map(i=>`<td>${chain.b[i]}</td>`).join('')+'</tr>';
+  t+='<tr class="sum"><td class="k">= sum</td>'+`<td class="cin">${q(c[4],3)}</td>`+cols.map(i=>`<td>${q(s[i],i)}</td>`).join('')+'</tr></table>';
+  document.getElementById('chainTable').innerHTML=t;
+}
+const chainRippleBtn=document.getElementById('chainRipple');
+if(chainRippleBtn) chainRippleBtn.addEventListener('click',()=>{
+  if(chain.timer) clearInterval(chain.timer);
+  chain.stage=0; renderChain();
+  chain.timer=setInterval(()=>{ chain.stage++; renderChain(); if(chain.stage>=4){ clearInterval(chain.timer); chain.timer=null; } },550);
+});
+renderChain();
+
+/* ---------- gates drawn sideways: inputs on the left, output on the right ---------- */
+function gateR(parent,type,cx,cy){
+  const g=el('g',{transform:`translate(${cx},${cy}) rotate(-90) translate(-15,-12)`},parent);
+  drawGate(g,type,0,0);
+  if(type==='not') return {in1:[cx-12,cy], out:[cx+12,cy]};
+  const bub=(type==='nor'||type==='nand');
+  return {in1:[cx-12,cy+7], in2:[cx-12,cy-7], out:[cx+(bub?18:12),cy]};
+}
+
+/* ---------- one bit of memory: a D latch from five gates ---------- */
+const latch={d:1,e:1,q:0};
+function renderLatch(){
+  const host=document.getElementById('latch'); if(!host) return;
+  host.innerHTML='';
+  const svg=el('svg',{viewBox:'0 -6 380 216',xmlns:NS,'aria-label':'A D latch: an inverter, two AND gates and two cross-coupled NOR gates'},host);
+  const {d,e}=latch, s=d&e, r=(d^1)&e;
+  if(s) latch.q=1; else if(r) latch.q=0;
+  const q=latch.q, nq=q^1, nd=d^1;
+  const dot=(x,y,on)=>el('circle',{cx:x,cy:y,r:3,class:'jdot'+(on?' on':'')},svg);
+  wire(svg,[[50,70],[70,70],[70,50],[88,50]],d);
+  wire(svg,[[70,70],[70,143],[138,143]],d); dot(70,70,d);
+  wire(svg,[[112,50],[120,50],[120,55],[138,55]],nd);
+  wire(svg,[[50,165],[60,165],[60,157],[138,157]],e);
+  wire(svg,[[100,157],[100,69],[138,69]],e); dot(100,157,e);
+  wire(svg,[[162,62],[238,62]],r);
+  wire(svg,[[162,150],[238,150]],s);
+  wire(svg,[[268,69],[306,69]],q);
+  wire(svg,[[268,143],[306,143]],nq);
+  wire(svg,[[285,69],[285,96],[215,96],[215,136],[238,136]],q); dot(285,69,q);
+  wire(svg,[[285,143],[285,116],[222,116],[222,76],[238,76]],nq); dot(285,143,nq);
+  gateR(svg,'not',100,50); gateR(svg,'and',150,62); gateR(svg,'and',150,150); gateR(svg,'nor',250,69); gateR(svg,'nor',250,143);
+  txt(svg,100,30,'NOT','lab'); txt(svg,150,38,'AND','lab'); txt(svg,150,174,'AND','lab'); txt(svg,250,45,'NOR','lab'); txt(svg,250,167,'NOR','lab');
+  txt(svg,200,53,'R = ¬D·E','lab'); txt(svg,200,160,'S = D·E','lab');
+  txt(svg,36,43,'D','lab'); txt(svg,36,138,'enable','lab'); txt(svg,320,42,'Q','lab'); txt(svg,320,170,'¬Q','lab');
+  bitCell(svg,36,70,d,'D',true,()=>{latch.d^=1;renderLatch();});
+  bitCell(svg,36,165,e,'enable',true,()=>{latch.e^=1;renderLatch();});
+  bitCell(svg,320,69,q,'Q',false); bitCell(svg,320,143,nq,'not Q',false);
+  document.getElementById('latchNote').innerHTML = e
+    ? `enable = 1: the latch is <strong>transparent</strong>. ${d?'S':'R'} = 1 ${d?'sets':'resets'} the NOR pair, so Q follows D: Q = <strong>${q}</strong>.`
+    : `enable = 0: both AND gates put out 0, so the NOR pair sees only its own feedback and <strong>holds</strong> Q = <strong>${q}</strong>. Change D all you like.`;
+}
+renderLatch();
+
+/* ---------- a 4-bit register: four flip-flops, one clock ---------- */
+const reg={d:[1,0,1,0],q:[0,0,0,0],load:1,pulse:0,note:'Press the clock to copy D into Q.'};
+function renderReg(){
+  const host=document.getElementById('reg'); if(!host) return;
+  host.innerHTML='';
+  const svg=el('svg',{viewBox:'0 -8 360 194',xmlns:NS,'aria-label':'A 4-bit register: four D flip-flops sharing one clock and one load line'},host);
+  const xs=[86,154,222,290];
+  wire(svg,[[56,98],[318,98]],reg.pulse,'carry'); txt(svg,50,98,'clock','lab sm','end');
+  wire(svg,[[56,110],[318,110]],reg.load); txt(svg,324,110,'load','lab sm','start');
+  xs.forEach((x,i)=>{
+    const b=3-i, dv=reg.d[b], qv=reg.q[b];
+    txt(svg,x,3,'b'+b,'idx');
+    wire(svg,[[x,44],[x,74]],dv);
+    el('rect',{x:x-20,y:74,width:40,height:40,rx:4,class:'gate'},svg);
+    txt(svg,x,83,'D','idx'); txt(svg,x,95,'DFF','lab'); txt(svg,x,107,'Q','idx');
+    el('path',{d:`M${x-20},94 L${x-14},98 L${x-20},102`,class:'clk'},svg);
+    wire(svg,[[x,114],[x,144]],qv);
+    bitCell(svg,x,30,dv,`D bit ${b}`,true,()=>{reg.d[b]^=1;renderReg();});
+    bitCell(svg,x,158,qv,`Q bit ${b}`,false);
+  });
+  const val=a=>a.slice().reverse().join('');
+  document.getElementById('regNote').innerHTML=`D = ${val(reg.d)} &nbsp; Q = <strong>${val(reg.q)}</strong><br><span class="small-note">${reg.note}</span>`;
+  const rl=document.getElementById('regLoad'); if(rl) rl.setAttribute('aria-pressed', reg.load?'true':'false');
+}
+const regClockBtn=document.getElementById('regClock');
+if(regClockBtn) regClockBtn.addEventListener('click',()=>{
+  if(reg.load){ reg.q=reg.d.slice(); reg.note='Rising edge with load = 1: every flip-flop copied its D into Q.'; }
+  else { reg.note='Rising edge with load = 0: the edge was ignored and Q kept its value.'; }
+  reg.pulse=1; renderReg();
+  setTimeout(()=>{reg.pulse=0;renderReg();},350);
+});
+const regLoadBtn=document.getElementById('regLoad');
+if(regLoadBtn) regLoadBtn.addEventListener('click',()=>{ reg.load^=1; reg.note=reg.load?'load = 1: the next clock edge will copy D.':'load = 0: clock edges are ignored; Q holds.'; renderReg(); });
+renderReg();
+
+function update(){
+  const r=compute();
+  renderOps(); renderCircuit(r); renderValues(r); renderFlags(r); renderWhy(r);
+  persist();
+}
+(function(){ try{ const h=new URLSearchParams(location.hash.replace(/^#/,'')); const op=h.get('op'); if(op&&OPS.some(o=>o.id===op)){ state.op=op; const w=Number(h.get('w')); if(w===4||w===8) state.w=w; const M=(1<<state.w)-1; if(h.has('a')) state.a=Number(h.get('a'))&M; if(h.has('b')) state.b=Number(h.get('b'))&M; setTimeout(()=>{ const el=document.getElementById('lab'); if(el) el.scrollIntoView(); },50); } }catch(e){} })();
+update();
+})();
+</script>
+</body>
+</html>

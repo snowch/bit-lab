@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+// Import old work once without writing to the original app's keys.
+try {
+  if (!localStorage.getItem("bit-lab:legacy:imported:v1")) {
+  for (const key of ["pc-done", "pc-done-layout", "pc-exercises-hidden", "pc-show-done", "pc-theme", "bitlab-state", "bitlab-theme", "drills-score", "readings-score"]) {
+    const target = 'bit-lab:legacy:' + key;
+    if (localStorage.getItem(target) === null) {
+      const old = localStorage.getItem(key);
+      if (old !== null) localStorage.setItem(target, old);
+    }
+  }
+  localStorage.setItem("bit-lab:legacy:imported:v1", "1");
+  }
+} catch (_) {}
+</script>
+<meta charset="utf-8">
+<title>Two's complement: a short tutorial</title>
+<style>
+  :root { --ink: #1b1f24; --muted: #555d68; --rule: #c9ced6; --accent: #1452CC; --warn: #B3261E; --soft: #eef2fb; --soft2: #f5f6f8; }
+  html { font-size: 11pt; }
+  body { margin: 0; color: var(--ink); font-family: "Liberation Serif", "DejaVu Serif", serif; line-height: 1.45; }
+  h1, h2, h3, h4 { font-family: "Liberation Sans", "DejaVu Sans", sans-serif; color: var(--ink); line-height: 1.2; break-after: avoid; }
+  h1 { font-size: 26pt; margin: 0 0 4pt; }
+  .subtitle { font-family: "Liberation Sans", sans-serif; font-size: 13pt; color: var(--muted); margin: 0 0 18pt; }
+  h2 { font-size: 15.5pt; margin: 22pt 0 8pt; padding-bottom: 3pt; border-bottom: 1.2pt solid var(--rule); }
+  h3 { font-size: 12pt; margin: 14pt 0 5pt; }
+  p { margin: 0 0 8pt; }
+  ul, ol { margin: 0 0 8pt 1.2em; padding: 0; }
+  li { margin: 0 0 3pt; }
+  .b, code { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; font-size: 9.6pt; white-space: nowrap; }
+  .lead { font-size: 11.5pt; }
+  table { border-collapse: collapse; margin: 6pt 0 10pt; font-size: 10pt; break-inside: avoid; }
+  th, td { border: 0.6pt solid var(--rule); padding: 3.5pt 7pt; text-align: left; vertical-align: top; }
+  th { background: var(--soft2); font-family: "Liberation Sans", sans-serif; font-size: 9.5pt; }
+  td.num, th.num { text-align: right; }
+  td.c, th.c { text-align: center; }
+  .weights td, .weights th { text-align: center; min-width: 2.2em; }
+  .weights .neg { color: var(--warn); font-weight: bold; }
+  .box { background: var(--soft); border-left: 3pt solid var(--accent); padding: 7pt 10pt; margin: 8pt 0 10pt; break-inside: avoid; }
+  .box.warn { background: #fbeeed; border-left-color: var(--warn); }
+  .box p:last-child { margin-bottom: 0; }
+  .work { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; font-size: 9.6pt; background: var(--soft2); padding: 6pt 10pt; margin: 4pt 0 10pt; white-space: pre; line-height: 1.4; break-inside: avoid; border-radius: 3pt; }
+  figure { margin: 6pt auto 10pt; text-align: center; break-inside: avoid; }
+  figcaption { font-size: 9.5pt; color: var(--muted); margin-top: 2pt; }
+  .two { display: flex; gap: 16pt; align-items: flex-start; }
+  .two > * { flex: 1 1 0; }
+  .toc { columns: 2; column-gap: 24pt; font-family: "Liberation Sans", sans-serif; font-size: 10pt; margin: 0 0 6pt; }
+  .toc ol { margin: 0 0 0 1.4em; }
+  .toc li { margin: 0 0 2pt; break-inside: avoid; }
+  .small { font-size: 9.5pt; color: var(--muted); }
+  .pb { break-before: page; }
+  .answers li { margin-bottom: 5pt; }
+  .cheat { break-inside: avoid; }
+  .cheat tr { break-inside: avoid; }
+  .cheat td:first-child { font-family: "Liberation Sans", sans-serif; font-weight: bold; width: 22%; }
+  .range td, .range th { white-space: nowrap; }
+  .range td.num { text-align: right; }
+</style>
+</head>
+<body>
+<nav aria-label="Bit Lab navigation" style="padding:12px 16px;font:16px system-ui;display:flex;gap:24px;flex-wrap:wrap"><a href="../../#/">← Bit Lab lessons</a><a href="../../#/practice">Practice</a></nav>
+
+<h1>Two's complement</h1>
+<p class="subtitle">How computers store negative numbers, and why the ordinary adder still works</p>
+
+<p class="lead">A byte is eight switches. It can hold 256 different patterns and not one of them is a minus sign. Yet every CPU adds, subtracts and compares negative numbers all day long. This tutorial explains the convention that makes that possible, <b>two's complement</b>, from first principles, with worked examples and a set of practice problems. Everything is shown in 8 bits because the patterns are short; the rules are identical at 16, 32 and 64 bits.</p>
+
+<div class="toc"><ol>
+<li>Bits have no sign</li>
+<li>Place value, quickly</li>
+<li>Two ideas that almost work</li>
+<li>Two's complement: the top bit is negative</li>
+<li>Writing a negative number</li>
+<li>NOT: the flip on its own</li>
+<li>Why the arithmetic works: counting modulo 256</li>
+<li>Overflow: when the true answer does not fit</li>
+<li>The lopsided range</li>
+<li>Changing the width: sign extension and truncation</li>
+<li>Reading hex directly</li>
+<li>Comparing signed and unsigned</li>
+<li>Shifts</li>
+<li>Practice problems, with answers</li>
+<li>Cheat sheet</li>
+</ol></div>
+
+<h2>1. Bits have no sign</h2>
+<p>Write 5 in a byte and you get <span class="b">0000 0101</span>. Now try to write −5. There is nowhere to put the sign: a bit is a 0 or a 1, nothing else. So a negative number has to be <i>some pattern of bits</i> together with an agreement about how to read it. The machine does not know what a pattern means; it only knows how to add patterns together. A good convention is one where that adder, built for ordinary counting, produces the right answers for negative numbers too, without any extra circuitry. Two's complement is that convention, and it is the one every modern processor uses.</p>
+
+<h2>2. Place value, quickly</h2>
+<p>In an unsigned byte each bit has a weight, a power of two, counting from the right: 1, 2, 4, 8, 16, 32, 64, 128. The value is the sum of the weights whose bit is 1.</p>
+<table class="weights">
+<tr><th>bit</th><th>7</th><th>6</th><th>5</th><th>4</th><th>3</th><th>2</th><th>1</th><th>0</th></tr>
+<tr><th>weight</th><td>128</td><td>64</td><td>32</td><td>16</td><td>8</td><td>4</td><td>2</td><td>1</td></tr>
+<tr><th>example</th><td>1</td><td>0</td><td>1</td><td>1</td><td>0</td><td>1</td><td>1</td><td>0</td></tr>
+</table>
+<p>The example row is <span class="b">1011 0110</span> = 128 + 32 + 16 + 4 + 2 = <b>182</b>.</p>
+<p>Patterns get long, so they are written in <b>hex</b>: one hex digit stands for exactly four bits (a nibble), 0 to 9 and then A = 10, B = 11, C = 12, D = 13, E = 14, F = 15. Group the bits in fours and translate each group: <span class="b">1011 0110</span> is <span class="b">B6</span>. The grouping in fours used throughout this document is there to make that translation easy.</p>
+<table>
+<tr><th>nibble</th><td class="b">0000</td><td class="b">0001</td><td class="b">0010</td><td class="b">0011</td><td class="b">0100</td><td class="b">0101</td><td class="b">0110</td><td class="b">0111</td><td class="b">1000</td><td class="b">1001</td><td class="b">1010</td><td class="b">1011</td><td class="b">1100</td><td class="b">1101</td><td class="b">1110</td><td class="b">1111</td></tr>
+<tr><th>hex</th><td class="c">0</td><td class="c">1</td><td class="c">2</td><td class="c">3</td><td class="c">4</td><td class="c">5</td><td class="c">6</td><td class="c">7</td><td class="c">8</td><td class="c">9</td><td class="c">A</td><td class="c">B</td><td class="c">C</td><td class="c">D</td><td class="c">E</td><td class="c">F</td></tr>
+</table>
+
+<h2>3. Two ideas that almost work</h2>
+<h3>Sign and magnitude</h3>
+<p>The obvious idea: use the top bit as the sign and the other seven as the size. <span class="b">0000 0101</span> is +5 and <span class="b">1000 0101</span> is −5. It reads naturally, but it fails the test that matters. Add +5 and −5 with an ordinary binary adder and you get <span class="b">1000 1010</span>, which reads as −10. The adder would need special circuits that look at the signs and sometimes subtract instead. It also has two zeros, <span class="b">0000 0000</span> and <span class="b">1000 0000</span>, which every comparison then has to treat as equal.</p>
+<h3>Ones' complement</h3>
+<p>A better idea: to negate, flip every bit. +5 is <span class="b">0000 0101</span>, so −5 is <span class="b">1111 1010</span>. Now 5 + (−5) gives <span class="b">1111 1111</span>, which is the second zero of this system, and the adder is only right if a carry out of the top is fed back in at the bottom, the so-called end-around carry. Close, but still two zeros and still an adjustment.</p>
+<p>Two's complement fixes both problems with one change: after flipping the bits, add one. Every negative number moves along by one, the two zeros collapse into one, and the plain adder becomes exactly right.</p>
+
+<h2>4. Two's complement: the top bit is negative</h2>
+<p>The whole convention fits in one sentence: <b>the top bit is worth −128 instead of +128.</b> All the other weights stay as they were.</p>
+<table class="weights">
+<tr><th>bit</th><th>7</th><th>6</th><th>5</th><th>4</th><th>3</th><th>2</th><th>1</th><th>0</th></tr>
+<tr><th>weight</th><td class="neg">−128</td><td>64</td><td>32</td><td>16</td><td>8</td><td>4</td><td>2</td><td>1</td></tr>
+</table>
+<p>To read a pattern, add up the weights exactly as before, remembering that the top one is negative.</p>
+<table>
+<tr><th>pattern</th><th>hex</th><th>calculation</th><th class="num">value</th></tr>
+<tr><td class="b">0000 0101</td><td class="b">05</td><td>4 + 1</td><td class="num">5</td></tr>
+<tr><td class="b">0111 1111</td><td class="b">7F</td><td>64 + 32 + 16 + 8 + 4 + 2 + 1</td><td class="num">127</td></tr>
+<tr><td class="b">1000 0000</td><td class="b">80</td><td>−128</td><td class="num">−128</td></tr>
+<tr><td class="b">1000 0001</td><td class="b">81</td><td>−128 + 1</td><td class="num">−127</td></tr>
+<tr><td class="b">1111 1011</td><td class="b">FB</td><td>−128 + 64 + 32 + 16 + 8 + 2 + 1</td><td class="num">−5</td></tr>
+<tr><td class="b">1111 1111</td><td class="b">FF</td><td>−128 + 127</td><td class="num">−1</td></tr>
+</table>
+<p>Three things follow immediately from the negative weight:</p>
+<ul>
+<li>A pattern is negative exactly when its top bit is 1, because −128 outweighs everything the other seven bits can add (at most 127).</li>
+<li>The range is −128 to 127. The most negative value is the top bit alone; the most positive is everything but the top bit.</li>
+<li>−1 is all ones: the seven positive weights add to 127, and 127 − 128 = −1. That is true at every width.</li>
+</ul>
+
+<figure>
+<svg viewBox="0 0 300 300" width="300" height="300" xmlns="http://www.w3.org/2000/svg"><circle cx="150" cy="150" r="108" fill="none" stroke="#333" stroke-width="1.4"/><line x1="150.0" y1="42.0" x2="150.0" y2="49.0" stroke="#333" stroke-width="1.2"/><line x1="171.1" y1="44.1" x2="170.4" y2="47.5" stroke="#333" stroke-width="0.7"/><line x1="191.3" y1="50.2" x2="190.0" y2="53.5" stroke="#333" stroke-width="0.7"/><line x1="210.0" y1="60.2" x2="208.1" y2="63.1" stroke="#333" stroke-width="0.7"/><line x1="226.4" y1="73.6" x2="221.4" y2="78.6" stroke="#333" stroke-width="1.2"/><line x1="239.8" y1="90.0" x2="236.9" y2="91.9" stroke="#333" stroke-width="0.7"/><line x1="249.8" y1="108.7" x2="246.5" y2="110.0" stroke="#333" stroke-width="0.7"/><line x1="255.9" y1="128.9" x2="252.5" y2="129.6" stroke="#333" stroke-width="0.7"/><line x1="258.0" y1="150.0" x2="251.0" y2="150.0" stroke="#333" stroke-width="1.2"/><line x1="255.9" y1="171.1" x2="252.5" y2="170.4" stroke="#333" stroke-width="0.7"/><line x1="249.8" y1="191.3" x2="246.5" y2="190.0" stroke="#333" stroke-width="0.7"/><line x1="239.8" y1="210.0" x2="236.9" y2="208.1" stroke="#333" stroke-width="0.7"/><line x1="226.4" y1="226.4" x2="221.4" y2="221.4" stroke="#333" stroke-width="1.2"/><line x1="210.0" y1="239.8" x2="208.1" y2="236.9" stroke="#333" stroke-width="0.7"/><line x1="191.3" y1="249.8" x2="190.0" y2="246.5" stroke="#333" stroke-width="0.7"/><line x1="171.1" y1="255.9" x2="170.4" y2="252.5" stroke="#333" stroke-width="0.7"/><line x1="150.0" y1="258.0" x2="150.0" y2="251.0" stroke="#333" stroke-width="1.2"/><line x1="128.9" y1="255.9" x2="129.6" y2="252.5" stroke="#333" stroke-width="0.7"/><line x1="108.7" y1="249.8" x2="110.0" y2="246.5" stroke="#333" stroke-width="0.7"/><line x1="90.0" y1="239.8" x2="91.9" y2="236.9" stroke="#333" stroke-width="0.7"/><line x1="73.6" y1="226.4" x2="78.6" y2="221.4" stroke="#333" stroke-width="1.2"/><line x1="60.2" y1="210.0" x2="63.1" y2="208.1" stroke="#333" stroke-width="0.7"/><line x1="50.2" y1="191.3" x2="53.5" y2="190.0" stroke="#333" stroke-width="0.7"/><line x1="44.1" y1="171.1" x2="47.5" y2="170.4" stroke="#333" stroke-width="0.7"/><line x1="42.0" y1="150.0" x2="49.0" y2="150.0" stroke="#333" stroke-width="1.2"/><line x1="44.1" y1="128.9" x2="47.5" y2="129.6" stroke="#333" stroke-width="0.7"/><line x1="50.2" y1="108.7" x2="53.5" y2="110.0" stroke="#333" stroke-width="0.7"/><line x1="60.2" y1="90.0" x2="63.1" y2="91.9" stroke="#333" stroke-width="0.7"/><line x1="73.6" y1="73.6" x2="78.6" y2="78.6" stroke="#333" stroke-width="1.2"/><line x1="90.0" y1="60.2" x2="91.9" y2="63.1" stroke="#333" stroke-width="0.7"/><line x1="108.7" y1="50.2" x2="110.0" y2="53.5" stroke="#333" stroke-width="0.7"/><line x1="128.9" y1="44.1" x2="129.6" y2="47.5" stroke="#333" stroke-width="0.7"/><text x="150.0" y="26.0" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#333">0</text><text x="150.0" y="66.0" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#1452CC" font-weight="bold">0</text><text x="237.7" y="62.3" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#333">32</text><text x="209.4" y="90.6" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#1452CC" font-weight="bold">32</text><text x="274.0" y="150.0" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#333">64</text><text x="234.0" y="150.0" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#1452CC" font-weight="bold">64</text><text x="237.7" y="237.7" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#333">96</text><text x="209.4" y="209.4" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#1452CC" font-weight="bold">96</text><text x="150.0" y="274.0" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#333">128</text><text x="150.0" y="234.0" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#1452CC" font-weight="bold">−128</text><text x="62.3" y="237.7" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#333">160</text><text x="90.6" y="209.4" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#1452CC" font-weight="bold">−96</text><text x="26.0" y="150.0" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#333">192</text><text x="66.0" y="150.0" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#1452CC" font-weight="bold">−64</text><text x="62.3" y="62.3" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#333">224</text><text x="90.6" y="90.6" font-size="10.5" text-anchor="middle" dominant-baseline="middle" fill="#1452CC" font-weight="bold">−32</text><line x1="149.0" y1="72.0" x2="148.6" y2="38.0" stroke="#B3261E" stroke-width="1.6" stroke-dasharray="3 2"/><line x1="151.0" y1="228.0" x2="151.4" y2="262.0" stroke="#B3261E" stroke-width="1.6" stroke-dasharray="3 2"/><text x="150" y="12" font-size="9.5" text-anchor="middle" fill="#B3261E">unsigned wraps 255 → 0</text><text x="150" y="292" font-size="9.5" text-anchor="middle" fill="#B3261E">signed wraps 127 → −128</text><text x="150" y="142" font-size="10" text-anchor="middle" fill="#333">outside: unsigned</text><text x="150" y="160" font-size="10" text-anchor="middle" fill="#1452CC" font-weight="bold">inside: signed</text></svg>
+<figcaption>The 256 byte patterns laid around a circle. Unsigned reading counts all the way round; signed reading uses the same patterns but calls the top half −128 up to −1.</figcaption>
+</figure>
+
+<p>The circle shows the key fact: unsigned and signed are <i>the same patterns</i>. Only the labels differ. The patterns from <span class="b">00</span> to <span class="b">7F</span> mean the same thing either way; the patterns from <span class="b">80</span> to <span class="b">FF</span> are 128 to 255 unsigned and −128 to −1 signed. Each negative value is its unsigned reading minus 256.</p>
+
+<table>
+<tr><th>pattern</th><th class="num">unsigned</th><th class="num">signed</th><th>note</th></tr>
+<tr><td class="b">0000 0000</td><td class="num">0</td><td class="num">0</td><td>one zero, the same in both readings</td></tr>
+<tr><td class="b">0000 0001</td><td class="num">1</td><td class="num">1</td><td></td></tr>
+<tr><td class="b">0111 1111</td><td class="num">127</td><td class="num">127</td><td>largest positive signed value</td></tr>
+<tr><td class="b">1000 0000</td><td class="num">128</td><td class="num">−128</td><td>top bit set: the readings part company</td></tr>
+<tr><td class="b">1000 0001</td><td class="num">129</td><td class="num">−127</td><td>129 − 256</td></tr>
+<tr><td class="b">1111 1110</td><td class="num">254</td><td class="num">−2</td><td>254 − 256</td></tr>
+<tr><td class="b">1111 1111</td><td class="num">255</td><td class="num">−1</td><td>255 − 256</td></tr>
+</table>
+
+<h2>5. Writing a negative number</h2>
+<p>Reading is one direction; you also need to produce the pattern for a given negative number. There are three equivalent ways. Learn the first, use whichever you like.</p>
+
+<h3>Method 1: invert, then add one</h3>
+<p>Write the positive number, flip every bit, add 1.</p>
+<div class="work">   5 =  0000 0101
+flip  =  1111 1010
+ + 1  =  1111 1011   = FB  = −5
+
+   1 =  0000 0001          100 =  0110 0100
+flip  =  1111 1110        flip  =  1001 1011
+ + 1  =  1111 1111 = −1    + 1  =  1001 1100  = 9C = −100</div>
+<p>The same recipe turns a negative number back into a positive one: flip <span class="b">1111 1011</span> to get <span class="b">0000 0100</span>, add 1, and 5 is back. Negating twice returns the original (with one exception, covered in section 9).</p>
+
+<div class="box">
+<p><b>Why it works.</b> A bit and its flip are always 0 and 1 in some order, so they add to 1 in every column. Therefore x + flip(x) is all ones, <span class="b">1111 1111</span>, which reads as −1. Rearranged: flip(x) = −x − 1. The flip on its own is one short of the negation, and the extra 1 makes up the difference: flip(x) + 1 = −x.</p>
+<p>So the flip is <i>not</i> the negative. Flipping 5 gives <span class="b">1111 1010</span> = −6. Adding 1 gives −5. The flip on its own is the NOT operation, and section 6 is about it.</p>
+</div>
+
+<h3>Method 2: subtract from 256</h3>
+<p>In 8 bits, −x has the same pattern as 256 − x. For −5, compute 256 − 5 = 251 and write 251 in binary: <span class="b">1111 1011</span>, the same pattern as before. In hex this is a one-line subtraction: <span class="b">0x100 − 0x05 = 0xFB</span>. For 16 bits use 65536 (<span class="b">0x10000</span>), for 32 bits 2<sup>32</sup>, and in general 2<sup>n</sup>. Section 7 explains why this is the same thing as method 1.</p>
+
+<h3>Method 3: the right-to-left shortcut</h3>
+<p>Reading from the right, copy the bits up to and including the first 1, then flip everything to the left of it.</p>
+<div class="work">100 =  0110 0100         rightmost 1 is bit 2
+       01100 | 100        copy "100", flip "01100"
+       10011 | 100
+    =  1001 1100  = 9C = −100</div>
+<p>This is method 1 done in one pass: the trailing zeros and the first 1 are exactly the bits that the "add one" carries through and restores.</p>
+
+<h2>6. NOT: the flip on its own</h2>
+<p>The flip in method 1 is an operation in its own right. Every processor has it; C and most other languages write it <code>~x</code>, and assembly and calculators call it <b>NOT</b>. It inverts every bit and does nothing else. In particular it does not add the 1, which makes it easy to confuse with negation, and the two are never equal.</p>
+<table>
+<tr><th class="num">x</th><th>pattern</th><th>NOT x</th><th class="num">signed</th><th class="num">unsigned</th></tr>
+<tr><td class="num">0</td><td class="b">0000 0000</td><td class="b">1111 1111</td><td class="num">−1</td><td class="num">255</td></tr>
+<tr><td class="num">5</td><td class="b">0000 0101</td><td class="b">1111 1010</td><td class="num">−6</td><td class="num">250</td></tr>
+<tr><td class="num">127</td><td class="b">0111 1111</td><td class="b">1000 0000</td><td class="num">−128</td><td class="num">128</td></tr>
+<tr><td class="num">−1</td><td class="b">1111 1111</td><td class="b">0000 0000</td><td class="num">0</td><td class="num">0</td></tr>
+<tr><td class="num">−5</td><td class="b">1111 1011</td><td class="b">0000 0100</td><td class="num">4</td><td class="num">4</td></tr>
+<tr><td class="num">−128</td><td class="b">1000 0000</td><td class="b">0111 1111</td><td class="num">127</td><td class="num">127</td></tr>
+</table>
+<p>Compare the signed column with x and one rule covers every row: <b>NOT x = −x − 1</b>. Section 5 showed why: x + NOT x is all ones, which is −1. So NOT 5 is −6, not −5; NOT 0 is −1, not 0; NOT −5 is 4; and NOT always changes the sign, because −x − 1 is on the other side of zero from x. Read unsigned, NOT x is 255 − x, and in n bits 2<sup>n</sup> − 1 − x: the same patterns under the other reading.</p>
+<div class="box">
+<p><b>NOT against negation.</b> Negation is NOT followed by add one, so NOT x = −x − 1: the NOT result always lands one below the negation. In hex, NOT subtracts every digit from F and stops there: NOT <span class="b">25</span> = <span class="b">DA</span> (−38), while −<span class="b">25</span> = <span class="b">DB</span> (−37). NOT applied twice gives x back, and so does negation applied twice, but mixing them does not: negating NOT x gives x + 1, and NOT of −x gives x − 1.</p>
+</div>
+<p>Where NOT turns up: <code>~0</code> is the all-ones pattern at any width (−1 signed, the largest unsigned value); <code>x &amp; ~mask</code> clears the bits of a mask; and since <code>~x</code> equals −x − 1, code uses the two forms interchangeably. Java's <code>binarySearch</code>, for example, reports a missing key as <code>~insertionPoint</code>, which is always negative, and a second <code>~</code> recovers the insertion point.</p>
+
+<h2>7. Why the arithmetic works: counting modulo 256</h2>
+<p>A byte cannot hold 256 or anything larger. When an addition carries out of the top bit, that carry has nowhere to go and is simply dropped. Dropping a carry out of bit 7 subtracts exactly 256 from the true result, so a byte does arithmetic <b>modulo 256</b>: 250 + 10 = 260, and the byte keeps 260 − 256 = 4.</p>
+<p>Now put the two facts together. The pattern for −5 is the pattern for 251. Adding 251 is, modulo 256, the same as subtracting 5. So an adder that only knows about unsigned numbers automatically subtracts, which is to say it does signed arithmetic, with no changes at all.</p>
+<div class="work">7 − 3  as  7 + (−3):     0000 0111          7
+                      +  1111 1101       + 253 (the pattern for −3)
+                      ----------------
+                      1  0000 0100       = 260; drop the carry → 4   ✓
+
+3 − 7  as  3 + (−7):     0000 0011          3
+                      +  1111 1001       + 249 (the pattern for −7)
+                      ----------------
+                         1111 1100       = 252, which reads as −4    ✓
+
+5 + (−5):                0000 0101
+                      +  1111 1011
+                      ----------------
+                      1  0000 0000       drop the carry → 0          ✓</div>
+<p>In the first and third sums a carry fell off the end; in the second none did. Either way the eight bits that remain are the right answer. The hardware never needs to know whether you meant the patterns as signed or unsigned. That is the point of the whole design: one adder, one subtractor, one multiplier for the low bits, and two ways of reading the result.</p>
+
+<h2>8. Overflow: when the true answer does not fit</h2>
+<p>Modulo arithmetic has a cost. If the true answer lies outside −128 to 127, the eight bits you get are the right answer modulo 256 but the wrong answer as a signed number. This is <b>signed overflow</b>.</p>
+<div class="work">127 + 1:      0111 1111 + 0000 0001  =  1000 0000  = −128   (true answer 128 does not fit)
+−128 − 1:     1000 0000 − 0000 0001  =  0111 1111  =  127   (true answer −129 does not fit)
+100 + 50:     0110 0100 + 0011 0010  =  1001 0110  = −106   (true answer 150 does not fit)</div>
+<p>Notice that nothing fell off the end in these three sums. Overflow is not about losing a carry; it is about the result landing on the wrong side of the sign boundary in the circle of section 4. The rule for spotting it is simple:</p>
+<div class="box">
+<p><b>Overflow rule.</b> Adding two numbers of the same sign can overflow, and it has overflowed exactly when the result has the opposite sign. Adding numbers of opposite signs can never overflow, because the true answer lies between them. (Subtraction follows by negating the second operand.)</p>
+</div>
+<p>The unsigned reading has its own, separate notion of "did not fit": a carry out of the top bit means the unsigned result exceeded 255. The two events are independent, which is easy to see from four small sums:</p>
+<table>
+<tr><th>sum</th><th>8-bit result</th><th>carry out of bit 7?</th><th>unsigned reading</th><th>signed reading</th></tr>
+<tr><td>5 + 3</td><td class="b">0000 1000</td><td>no</td><td>8, correct</td><td>8, correct</td></tr>
+<tr><td>255 + 1</td><td class="b">0000 0000</td><td>yes</td><td>0, wrapped</td><td>−1 + 1 = 0, correct</td></tr>
+<tr><td>100 + 50</td><td class="b">1001 0110</td><td>no</td><td>150, correct</td><td>−106, overflow</td></tr>
+<tr><td>200 + 100</td><td class="b">0010 1100</td><td>yes</td><td>44, wrapped</td><td>−56 + 100 = 44, correct</td></tr>
+</table>
+<p class="small">In C, unsigned arithmetic is defined to wrap; signed overflow is undefined behaviour, which is why compilers are allowed to assume it never happens.</p>
+
+<h2>9. The lopsided range</h2>
+<p>There are 256 patterns. One of them is zero, so 255 are left for everything else, and 255 is odd: the positives and negatives cannot be equal in number. Two's complement gives the extra pattern to the negatives: −128 exists, +128 does not.</p>
+<p>This has a famous consequence. Negate −128 by the recipe: flip <span class="b">1000 0000</span> to get <span class="b">0111 1111</span>, add 1, and you are back at <span class="b">1000 0000</span>. The negation of −128 is −128. In C, <code>abs(INT_MIN)</code> and <code>INT_MIN / -1</code> both overflow for this reason, and <code>-x</code> is not always positive for negative x. Every width has the same edge case: −32768 in 16 bits, −2 147 483 648 in 32 bits.</p>
+
+<h2>10. Changing the width: sign extension and truncation</h2>
+<h3>Widening</h3>
+<p>To make a signed number wider, copy its sign bit into all the new bits. This is <b>sign extension</b>.</p>
+<div class="work">  −5   8-bit   1111 1011                        =  FB
+      16-bit   1111 1111 1111 1011              =  FFFB
+      32-bit   1111 1111 1111 1111 1111 1111 1111 1011  =  FFFF FFFB
+
+  +5   8-bit   0000 0101                        =  05
+      16-bit   0000 0000 0000 0101              =  0005</div>
+<p>Check the 16-bit case by reading it: the top bit is worth −32768, and the rest add to 32763, so <span class="b">FFFB</span> = −5. Padding with zeros instead, called <b>zero extension</b>, is right for unsigned numbers and wrong for negative signed ones: <span class="b">00FB</span> is 251, not −5. This is the classic conversion bug. In C, widening a signed <code>int8_t</code> sign-extends and widening an unsigned <code>uint8_t</code> zero-extends; processors have separate load instructions for the two cases, for example <code>movsx</code> and <code>movzx</code> on x86, or <code>lb</code> and <code>lbu</code> on RISC-V.</p>
+<h3>Narrowing</h3>
+<p>To make a number narrower, keep the low bits and drop the rest. <span class="b">FFFB</span> narrowed to 8 bits is <span class="b">FB</span>, still −5. <span class="b">0100</span> (256) narrowed to 8 bits is <span class="b">00</span>: the value is gone. Narrowing is safe only when the value fits the smaller range, which is the same as saying that every dropped bit is a copy of the new sign bit.</p>
+
+<h2>11. Reading hex directly</h2>
+<p>With a little practice you never need the binary.</p>
+<ul>
+<li>A signed value is negative when its first hex digit is 8 to F, because that is where the top bit lives. <span class="b">7F</span> is positive, <span class="b">80</span> is negative; <span class="b">7FFF</span> is positive, <span class="b">8000</span> is negative.</li>
+<li>To read a negative byte, subtract 256 from its unsigned value: <span class="b">FB</span> = 251 − 256 = −5; <span class="b">9C</span> = 156 − 256 = −100. For 16 bits subtract 65536: <span class="b">FFFB</span> = 65531 − 65536 = −5. For 32 bits subtract 2<sup>32</sup>.</li>
+<li>To negate in hex, subtract every digit from F and then add 1: <span class="b">25</span> → <span class="b">DA</span> → <span class="b">DB</span>, so −37 is <span class="b">DB</span>. This is method 1 done a nibble at a time.</li>
+</ul>
+<table class="range">
+<tr><th>width</th><th class="num">most negative</th><th class="num">most positive</th><th class="num">−1</th></tr>
+<tr><td>8 bits</td><td class="num">−128<br><span class="b">80</span></td><td class="num">127<br><span class="b">7F</span></td><td class="num"><span class="b">FF</span></td></tr>
+<tr><td>16 bits</td><td class="num">−32 768<br><span class="b">8000</span></td><td class="num">32 767<br><span class="b">7FFF</span></td><td class="num"><span class="b">FFFF</span></td></tr>
+<tr><td>32 bits</td><td class="num">−2 147 483 648<br><span class="b">8000 0000</span></td><td class="num">2 147 483 647<br><span class="b">7FFF FFFF</span></td><td class="num"><span class="b">FFFF FFFF</span></td></tr>
+<tr><td>64 bits</td><td class="num">−9 223 372 036 854 775 808<br><span class="b">8000 0000 0000 0000</span></td><td class="num">9 223 372 036 854 775 807<br><span class="b">7FFF FFFF FFFF FFFF</span></td><td class="num"><span class="b">FFFF FFFF FFFF FFFF</span></td></tr>
+</table>
+
+<h2>12. Comparing signed and unsigned</h2>
+<p>Because the two readings disagree about the top half of the patterns, they disagree about order too. <span class="b">80</span> is larger than <span class="b">7F</span> unsigned (128 against 127) and smaller signed (−128 against 127). Processors therefore provide two families of comparison: "below" and "above" for unsigned, "less" and "greater" for signed, and the compiler picks one from the types in your program.</p>
+<p>Mixing the readings in one expression is a well-known trap. In C the comparison <code>-1 &lt; 1u</code> is false, because −1 is converted to unsigned, becomes <span class="b">FFFF FFFF</span>, and that is the largest unsigned value there is.</p>
+
+<h2>13. Shifts</h2>
+<p>Shifting left one place doubles a number, and the top bit falls off. It can overflow just like addition: <span class="b">0100 0000</span> (64) shifted left is <span class="b">1000 0000</span>, which reads as −128.</p>
+<p>Shifting right halves a number, and the question is what to feed in at the top. A <b>logical</b> shift feeds in 0, which is right for unsigned values. An <b>arithmetic</b> shift feeds in a copy of the sign bit, which keeps negative numbers negative: <span class="b">1111 1010</span> (−6) becomes <span class="b">1111 1101</span> (−3), and <span class="b">1111 1011</span> (−5) becomes <span class="b">1111 1101</span> as well, so −5 halved rounds down to −3, toward minus infinity rather than toward zero. C leaves the right shift of a negative value implementation-defined; in practice compilers produce the arithmetic shift for signed types and the logical one for unsigned.</p>
+
+<h2>14. Practice problems</h2>
+<p>Work in 8 bits unless the problem says otherwise. Answers follow.</p>
+<ol>
+<li>Read <span class="b">1110 0011</span> as an unsigned number and as a signed number.</li>
+<li>Write −20 as an 8-bit pattern, in binary and in hex.</li>
+<li>Read <span class="b">9C</span> as a signed byte, then negate it by flipping and adding one and read the result.</li>
+<li><span class="b">7F</span> + <span class="b">02</span>: give the 8-bit result and say whether it is a signed overflow.</li>
+<li><span class="b">F0</span> + <span class="b">20</span>: give the 8-bit result, say whether a carry fell off the top, and say whether it is a signed overflow.</li>
+<li>Sign-extend <span class="b">B4</span> to 16 bits, then zero-extend it instead. Read both results as signed 16-bit numbers.</li>
+<li>Which is larger, <span class="b">C8</span> or <span class="b">32</span>, as unsigned bytes and as signed bytes?</li>
+<li>In 16 bits, what is the pattern for −1000? Give it in hex.</li>
+<li>Read <span class="b">8000</span> as a signed 16-bit number. What happens when you negate it?</li>
+<li>Explain why <span class="b">8000</span> − <span class="b">0001</span> = <span class="b">7FFF</span> is an overflow in the signed reading.</li>
+<li>Read the 16-bit pattern <span class="b">1111 1111 1111 1011</span>, then narrow it to 8 bits. Does the value survive, and how could you have known without reading it?</li>
+<li>Read the 32-bit pattern <span class="b">FFFF FF9C</span> as a signed number.</li>
+<li>Give NOT <span class="b">25</span> (bitwise NOT, <code>~</code>) in hex and as a signed value, then give the negation of <span class="b">25</span>. Finally, what is NOT <span class="b">1111 1011</span> (−5)?</li>
+</ol>
+
+<h3>Answers</h3>
+<ol class="answers">
+<li>Unsigned: 128 + 64 + 32 + 2 + 1 = 227. Signed: the top bit is set, so 227 − 256 = −29.</li>
+<li>20 is <span class="b">0001 0100</span>; flip to <span class="b">1110 1011</span>; add 1 to get <span class="b">1110 1100</span> = <span class="b">EC</span>. Check: 236 − 256 = −20.</li>
+<li><span class="b">9C</span> = 156 − 256 = −100. Flipping <span class="b">1001 1100</span> gives <span class="b">0110 0011</span>; adding 1 gives <span class="b">0110 0100</span> = <span class="b">64</span> = 100.</li>
+<li><span class="b">81</span>, which reads as −127. Yes: 127 + 2 = 129 does not fit, and two positives gave a negative.</li>
+<li><span class="b">10</span> = 16, and a carry fell off the top (0xF0 + 0x20 = 0x110). Not a signed overflow: the operands have opposite signs (−16 and 32) and −16 + 32 = 16 is exactly what the result says.</li>
+<li>Sign-extended: <span class="b">FFB4</span> = −76 (the same value as the byte, since <span class="b">B4</span> = 180 − 256 = −76). Zero-extended: <span class="b">00B4</span> = 180, a different number.</li>
+<li>Unsigned: <span class="b">C8</span> (200 against 50). Signed: <span class="b">32</span> (50 against −56).</li>
+<li>1000 is <span class="b">03E8</span>; flip to <span class="b">FC17</span>; add 1 to get <span class="b">FC18</span>. Check: 65536 − 1000 = 64536 = <span class="b">FC18</span>.</li>
+<li>−32768, the most negative 16-bit value. Negating it gives <span class="b">8000</span> again: flip to <span class="b">7FFF</span>, add 1, and you are back where you started.</li>
+<li>The true answer is −32768 − 1 = −32769, which is below the range, and the pattern <span class="b">7FFF</span> reads as +32767. A negative minus a positive produced a positive: overflow.</li>
+<li>It is −5 (65531 − 65536). Narrowed to <span class="b">FB</span> it is still −5. The value survives because every dropped bit was a 1, a copy of the new sign bit, so nothing but redundant sign copies was thrown away.</li>
+<li>The first digit is F, so it is negative: 4 294 967 196 − 4 294 967 296 = −100. Faster: the low byte is <span class="b">9C</span> = −100 and the upper bytes are all sign copies.</li>
+<li>NOT <span class="b">25</span> = <span class="b">DA</span>, which reads as 218 − 256 = −38. The negation is <span class="b">DB</span> = −37, one more, because negation is NOT followed by add one. NOT <span class="b">1111 1011</span> = <span class="b">0000 0100</span> = 4, which is −(−5) − 1.</li>
+</ol>
+
+<h2>15. Cheat sheet</h2>
+<table class="cheat">
+<tr><td>Reading</td><td>Add the bit weights; the top bit is worth −2<sup>n−1</sup>. A pattern is negative exactly when its top bit is 1.</td></tr>
+<tr><td>Range</td><td>−2<sup>n−1</sup> to 2<sup>n−1</sup> − 1. For 8 bits: −128 to 127. One more negative than positive.</td></tr>
+<tr><td>Landmarks</td><td>−1 is all ones. The most negative value is 1 followed by zeros. Zero is unique.</td></tr>
+<tr><td>Negating</td><td>Flip every bit and add 1; equivalently, subtract from 2<sup>n</sup>; equivalently, copy up to the first 1 from the right and flip the rest. Negating the most negative value gives it back.</td></tr>
+<tr><td>NOT (~x)</td><td>Flips every bit and nothing else: NOT x = −x − 1, because x + NOT x is all ones, which is −1. NOT 5 is −6; negation is NOT x + 1. In hex, subtract each digit from F.</td></tr>
+<tr><td>Arithmetic</td><td>The adder does not know about signs. Everything is modulo 2<sup>n</sup>, and −x is the same pattern as 2<sup>n</sup> − x, so adding the pattern for −x subtracts x.</td></tr>
+<tr><td>Overflow</td><td>Only when adding numbers of the same sign; it has happened when the result has the other sign. Independent of whether a carry fell off the top.</td></tr>
+<tr><td>Widening</td><td>Copy the sign bit into the new bits (sign extension). Zero extension is for unsigned values only.</td></tr>
+<tr><td>Narrowing</td><td>Keep the low bits. Safe only when every dropped bit equals the new sign bit.</td></tr>
+<tr><td>Hex</td><td>First digit 8 to F means negative. Negative value = unsigned value − 2<sup>n</sup>. Negate by subtracting each digit from F and adding 1.</td></tr>
+<tr><td>Order</td><td>Signed and unsigned readings order the top half of the patterns oppositely; never compare the two readings in one expression.</td></tr>
+</table>
+
+<p class="small" style="margin-top:18pt">Practise the same ideas interactively with the Programmer Calculator at snowch.github.io/programmer-calculator, whose exercise groups on reading and operating on two's complement follow this tutorial.</p>
+
+</body>
+</html>

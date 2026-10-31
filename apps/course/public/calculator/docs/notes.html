@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+// Import old work once without writing to the original app's keys.
+try {
+  if (!localStorage.getItem("bit-lab:legacy:imported:v1")) {
+  for (const key of ["pc-done", "pc-done-layout", "pc-exercises-hidden", "pc-show-done", "pc-theme", "bitlab-state", "bitlab-theme", "drills-score", "readings-score"]) {
+    const target = 'bit-lab:legacy:' + key;
+    if (localStorage.getItem(target) === null) {
+      const old = localStorage.getItem(key);
+      if (old !== null) localStorage.setItem(target, old);
+    }
+  }
+  localStorage.setItem("bit-lab:legacy:imported:v1", "1");
+  }
+} catch (_) {}
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>From gates to a compiled if</title>
+<meta name="description" content="Seven short interactive pages from logic gates to a compiled if: an adder, subtraction, an ALU with flags, the signed and unsigned branches, widening loads, and drills.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem("bit-lab:legacy:bitlab-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#EDF0EA;
+  --paper-2:#E2E7DF;
+  --paper-3:#F6F8F4;
+  --ink:#1B2620;
+  --ink-2:#4F5E57;
+  --rule:#C3CBC0;
+  --wire-off:#B4BDB2;
+  --wire-on:#E09B1A;
+  --wire-on-2:#F6C860;
+  --carry:#B23A2C;
+  --gate-fill:#F8FAF6;
+  --gate-stroke:#2D3B35;
+  --bit-off:#D7DDD3;
+  --bit-on:#F1B23A;
+  --bit-on-ink:#2B1E05;
+  --led-on:#D9471F;
+  --led-off:#C9D0C5;
+  --na:#98A39C;
+  --focus:#2F6FD1;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#131A16;
+    --paper-2:#1B241F;
+    --paper-3:#232E28;
+    --ink:#E6ECE4;
+    --ink-2:#9AA89F;
+    --rule:#2E3B34;
+    --wire-off:#3A4740;
+    --wire-on:#F0B23C;
+    --wire-on-2:#FFD98A;
+    --carry:#E86A55;
+    --gate-fill:#1F2A24;
+    --gate-stroke:#C9D4CC;
+    --bit-off:#26312B;
+    --bit-on:#F0B23C;
+    --bit-on-ink:#2B1E05;
+    --led-on:#FF6A3D;
+    --led-off:#2A3630;
+    --na:#5C6A62;
+    --focus:#7FA9F0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131A16; --paper-2:#1B241F; --paper-3:#232E28; --ink:#E6ECE4; --ink-2:#9AA89F; --rule:#2E3B34;
+  --wire-off:#3A4740; --wire-on:#F0B23C; --wire-on-2:#FFD98A; --carry:#E86A55;
+  --gate-fill:#1F2A24; --gate-stroke:#C9D4CC; --bit-off:#26312B; --bit-on:#F0B23C;
+  --bit-on-ink:#2B1E05; --led-on:#FF6A3D; --led-off:#2A3630; --na:#5C6A62; --focus:#7FA9F0;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:16px;line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+main{max-width:980px;margin:0 auto;padding:20px 16px 56px}
+code,kbd,.mono{font-family:var(--mono)}
+button{font:inherit;color:inherit}
+a{color:var(--ink)}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+h1{font-size:clamp(1.55rem,1.1rem + 1.6vw,2.1rem);font-weight:600;margin:0 0 6px;letter-spacing:-.015em;line-height:1.15}
+.lede{color:var(--ink-2);margin:0 0 12px;max-width:62ch;font-size:1.05rem}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.meta span{font:500 .78rem/1.6 var(--mono);border:1px solid var(--rule);border-radius:999px;padding:1px 10px;color:var(--ink-2)}
+.themebtn{flex:none;margin-top:4px}
+nav.toc{display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 26px;padding:8px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+nav.toc a{font:500 .84rem var(--mono);color:var(--ink-2);text-decoration:none;padding:3px 9px;border-radius:6px}
+nav.toc a:hover{color:var(--ink);background:var(--paper-2)}
+
+/* ---------- prose sections ---------- */
+.tut{margin-top:36px;border-top:1px solid var(--rule);padding-top:22px}
+.tut h2{font-size:1.4rem;font-weight:600;margin:0 0 12px;letter-spacing:-.01em;line-height:1.2}
+.tut h3{font-size:1.02rem;font-weight:600;margin:20px 0 6px}
+.tut p,.tut li{max-width:70ch}
+.tut p{margin:0 0 12px}
+.tut ul,.tut ol{padding-left:22px;margin:0 0 12px}
+.tut li{margin-bottom:5px}
+.tut strong{font-weight:600}
+.tut code{background:var(--paper-2);padding:1px 5px;border-radius:4px;font-size:.88em}
+.tut table{border-collapse:collapse;font-size:.9rem;margin:8px 0 14px;font-variant-numeric:tabular-nums}
+.tut td,.tut th{border:1px solid var(--rule);padding:5px 11px;text-align:left;vertical-align:top}
+.tut th{background:var(--paper-2);font-weight:600}
+.tut td.mono{font-family:var(--mono);font-size:.86rem}
+pre.work{font:.86rem/1.55 var(--mono);background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:10px 14px;overflow-x:auto;margin:8px 0 14px}
+.check{border-left:3px solid var(--wire-on);padding:2px 0 2px 14px;margin:14px 0}
+.check ol{margin-bottom:6px}
+.steps{list-style:none;padding:0;counter-reset:step}
+.steps>li{position:relative;padding-left:36px;margin-bottom:14px;max-width:72ch}
+.steps>li::before{
+  counter-increment:step;content:counter(step);position:absolute;left:0;top:2px;
+  width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--paper);
+  font:600 .8rem/24px var(--mono);text-align:center;
+}
+
+/* ---------- schematic ---------- */
+figure.schem{margin:10px 0 18px;background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:10px 8px 8px;overflow-x:auto}
+figure.schem svg{display:block;width:100%;min-width:680px;max-width:800px;height:auto;margin:0 auto}
+figure.schem figcaption{font-size:.84rem;color:var(--ink-2);margin:8px 6px 0;text-align:center;line-height:1.4}
+.schem .box{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.5}
+.schem .opt{stroke-dasharray:5 4}
+.schem .bus{stroke:var(--wire-on);stroke-width:3;fill:none;stroke-linejoin:round}
+.schem .sig{stroke:var(--ink-2);stroke-width:1.6;fill:none}
+.schem .ctl{stroke:var(--ink-2);stroke-width:1.6;fill:none;stroke-dasharray:4 3;stroke-linejoin:round}
+.schem .cy{stroke:var(--carry);stroke-width:2.2;fill:none}
+.schem .fb{stroke:var(--focus);stroke-width:2;fill:none;stroke-dasharray:6 4;stroke-linejoin:round}
+.schem .dot{fill:var(--wire-on)}
+.schem .dotf{fill:var(--focus)}
+.schem .tick{stroke:var(--ink-2);stroke-width:1.4}
+.schem text{font-family:var(--mono);font-size:11px;fill:var(--ink)}
+.schem .t2{fill:var(--ink-2);font-size:10px}
+.schem .tc{fill:var(--carry);font-weight:600}
+.schem .tf{fill:var(--focus)}
+.schem .badge circle{fill:var(--ink);stroke:var(--paper);stroke-width:1.5}
+.schem .badge text{fill:var(--paper);font-weight:600;font-size:10px}
+.schem .led{fill:var(--led-off);stroke:var(--rule);stroke-width:1}
+.schem .led.lit{fill:var(--led-on);stroke:var(--led-on)}
+
+/* ---------- the lab ---------- */
+.labwrap{margin-top:16px}
+.ops{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px}
+.opgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.opcap{font:500 .7rem var(--mono);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-2);margin-right:2px}
+.op{
+  font:500 .9rem var(--mono);border:1px solid var(--rule);background:var(--paper-2);border-radius:8px;
+  padding:6px 11px;cursor:pointer;
+}
+.op:hover{border-color:var(--ink-2)}
+.op[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.op:focus-visible,.small:focus-visible,.preset:focus-visible,.load:focus-visible,.themebtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;color:var(--ink-2);margin-bottom:12px;font:.84rem var(--mono)}
+.small{border:1px solid var(--rule);background:transparent;border-radius:6px;padding:3px 9px;cursor:pointer;font:500 .84rem var(--mono);color:var(--ink)}
+.small:hover{border-color:var(--ink-2)}
+.small[aria-pressed="true"]{background:var(--ink-2);color:var(--paper);border-color:var(--ink-2)}
+.circuit{
+  background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;
+  padding:10px 8px 6px;overflow-x:auto;
+}
+.circuit svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
+svg text{font-family:var(--mono);fill:var(--ink)}
+.wire{stroke:var(--wire-off);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.wire.on{stroke:var(--wire-on)}
+.wire.carry.on{stroke:var(--carry)}
+.gate{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.8}
+.bit{cursor:pointer}
+.bit rect{fill:var(--bit-off);stroke:var(--rule);stroke-width:1;transition:fill .12s}
+.bit.on rect{fill:var(--bit-on);stroke:var(--bit-on)}
+.bit text{font-weight:600;font-size:15px;pointer-events:none}
+.bit.on text{fill:var(--bit-on-ink)}
+.bit:focus{outline:none}
+.bit:focus-visible rect{stroke:var(--focus);stroke-width:2.5}
+.bit.ro{cursor:default}
+.bit.ro rect{stroke-dasharray:3 2}
+.lab{font-size:11px;fill:var(--ink-2)}
+.lab.sm{font-size:10px}
+.idx{font-size:9.5px;fill:var(--ink-2)}
+.cv{font-size:10.5px;font-weight:600}
+.cv.on{fill:var(--carry)}
+.cv.off{fill:var(--ink-2)}
+.fv{font-size:10.5px;font-weight:600}
+.fv.on{fill:var(--wire-on)}
+.fv.off{fill:var(--ink-2)}
+.cnst{font-size:11px;fill:var(--ink-2)}
+.tip{color:var(--ink-2);font-size:.82rem;margin:8px 0 0}
+
+.values{margin:16px 0 4px;overflow-x:auto}
+.values table{border-collapse:collapse;font:.9rem var(--mono);font-variant-numeric:tabular-nums;width:100%;max-width:600px}
+.values th{text-align:left;color:var(--ink-2);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;padding:4px 14px 4px 0}
+.values th.num,.values td.num{text-align:right}
+.values td{padding:5px 14px 5px 0;border-top:1px solid var(--rule);white-space:nowrap}
+.values th.rowk{color:var(--ink);font-weight:600;font-size:.9rem;text-transform:none;letter-spacing:0;border-top:1px solid var(--rule)}
+.values td.bin{font-weight:600;letter-spacing:.04em}
+.values tr.r td,.values tr.r th{background:var(--paper-3)}
+
+.flags{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin-top:14px}
+.flag{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;background:var(--paper-2)}
+.flag header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.led{width:14px;height:14px;border-radius:50%;background:var(--led-off);border:1px solid var(--rule);flex:none;transition:background .15s,box-shadow .15s}
+.led.on{background:var(--led-on);border-color:var(--led-on);box-shadow:0 0 0 3px color-mix(in srgb,var(--led-on) 25%,transparent)}
+.led.na{background:transparent;border-style:dashed;border-color:var(--na)}
+.flag h3{margin:0;font:600 1rem var(--mono)}
+.flag h3 span{color:var(--ink-2);font-weight:400;font-size:.85rem;margin-left:6px}
+.flag svg{width:100%;max-width:240px;height:auto;display:block;margin:2px 0 8px;overflow:visible}
+.flag p{margin:0;font-size:.88rem;color:var(--ink-2);line-height:1.45}
+.flag p strong{color:var(--ink);font-weight:600}
+.flag.na{opacity:.72}
+.why{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px}
+.why h2{font:600 1rem var(--mono);margin:0 0 6px}
+.why p{margin:0 0 8px;max-width:70ch;font-size:.95rem}
+.presets{margin-top:22px}
+.presets h2{font-size:1rem;margin:0 0 8px;font-weight:600}
+#presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
+.preset{
+  display:block;text-align:left;border:1px solid var(--rule);background:transparent;
+  border-radius:8px;padding:8px 10px;cursor:pointer;font:500 .86rem var(--mono);
+}
+.preset:hover{background:var(--paper-2);border-color:var(--ink-2)}
+.preset span{display:block;color:var(--ink-2);font:.84rem var(--sans);margin-top:2px}
+
+/* ---------- exercises & quiz ---------- */
+.ex{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--paper-2)}
+.ex h3{font-size:1rem;margin:0 0 8px;font-weight:600}
+.ex p{margin:0 0 8px}
+.ex .load{font:500 .84rem var(--mono);border:1px solid var(--ink);background:transparent;border-radius:6px;padding:4px 10px;cursor:pointer;margin-bottom:10px}
+.ex .load:hover{background:var(--ink);color:var(--paper)}
+details{margin-top:6px}
+summary{cursor:pointer;color:var(--ink-2);font:500 .84rem var(--mono);display:inline-block;padding:2px 9px;border:1px solid var(--rule);border-radius:6px;list-style:none;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"\25B8  "}
+details[open] summary::before{content:"\25BE  "}
+summary:hover{color:var(--ink);border-color:var(--ink-2)}
+details p{margin:8px 0 0;color:var(--ink);font-size:.93rem}
+.lab-anchor{scroll-margin-top:12px}
+
+/* ---------- footer ---------- */
+footer.site{margin-top:44px;border-top:1px solid var(--rule);padding-top:14px;font:.84rem var(--mono);color:var(--ink-2);display:flex;flex-wrap:wrap;gap:6px 20px}
+footer.site a{color:var(--ink-2)}
+footer.site a:hover{color:var(--ink)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* ---------- block diagram & full adder widget ---------- */
+svg.blockdiag{width:100%;max-width:420px;height:auto;display:block;margin:6px 0 14px}
+.fawrap{display:grid;grid-template-columns:minmax(240px,370px) minmax(0,1fr);gap:14px 26px;align-items:start;margin:10px 0 16px}
+@media (max-width:640px){.fawrap{grid-template-columns:minmax(0,1fr)}}
+.fa{background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:8px 6px}
+.fa svg{display:block;width:100%;height:auto}
+.jdot{fill:var(--wire-off)}
+.jdot.on{fill:var(--wire-on)}
+.jdot.carry.on{fill:var(--carry)}
+.faeq{font:.9rem/1.5 var(--mono);margin:0 0 10px}
+table.truth{border-collapse:collapse;font:.86rem var(--mono);font-variant-numeric:tabular-nums;margin:0 0 8px}
+table.truth th,table.truth td{border:1px solid var(--rule);padding:3px 11px;text-align:center}
+table.truth th{background:var(--paper-2);font-weight:600}
+table.truth tr.cur td{background:var(--bit-on);color:var(--bit-on-ink);font-weight:600}
+.clk{fill:none;stroke:var(--gate-stroke);stroke-width:1.5}
+
+/* ---------- 4-bit chain widget ---------- */
+.chainwrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:640px){.chainwrap{grid-template-columns:minmax(0,1fr)}}
+#chainTable{overflow-x:auto}
+table.add th,table.add td{padding:3px 8px}
+.gate.sel{stroke:var(--focus);stroke-width:2.6}
+.fabox{cursor:pointer}
+.bit.wait rect{fill:transparent;stroke:var(--na);stroke-dasharray:3 2}
+.bit.wait text{fill:var(--na)}
+table.add td.k{text-align:left;color:var(--ink-2);font-size:.8rem;white-space:nowrap}
+table.add td.cin{color:var(--carry);font-weight:600}
+table.add tr.sum td{border-top:2px solid var(--ink-2);font-weight:600}
+table.add td.q{color:var(--na)}
+
+/* ---------- CMP and the branches ---------- */
+.asmwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 24px;margin:4px 0 10px}
+@media (max-width:760px){.asmwrap{grid-template-columns:minmax(0,1fr)}}
+.asmwrap h3{margin:8px 0 4px}
+table.asm{width:100%}
+table.asm td{text-align:left;padding:3px 8px}
+table.asm td.mn{font-weight:600}
+table.asm td.k{color:var(--ink-2)}
+table.asm tr.take td{background:var(--bit-on);color:var(--bit-on-ink)}
+table.asm tr.take td.k{color:var(--bit-on-ink)}
+
+/* ---------- the same thing as a program ---------- */
+.asmprog{margin:0 0 6px;white-space:pre}
+.asmprog .ln{display:block;opacity:.5;padding:0 6px;margin:0 -6px;border-radius:4px}
+.asmprog .ln.run{opacity:1;background:var(--bit-on);color:var(--bit-on-ink)}
+.asmprog .cm{color:var(--ink-2)}
+.asmprog .ln.run .cm{color:var(--bit-on-ink);opacity:.8}
+ol.trace{margin:4px 0 14px;padding-left:22px}
+ol.trace li{margin:0 0 4px}
+
+/* ---------- under the hood ---------- */
+.hood{background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:8px 14px 4px;overflow-x:auto;margin:8px 0 14px;font:.8rem var(--mono);font-variant-numeric:tabular-nums}
+.hood h4{margin:8px 0 6px;font:600 .86rem var(--sans)}
+.hood h4+ .hrow .hb.c{color:var(--ink-2);font-size:9px}
+.hrow{display:flex;align-items:center;white-space:nowrap;margin:2px 0}
+.hrow .hl{width:132px;flex:none;color:var(--ink-2)}
+.hrow .hv{margin-left:12px;color:var(--ink-2);white-space:normal;flex:1 1 auto;min-width:22ch;line-height:1.35}
+.hrow{align-items:flex-start}
+.hrow .hl,.hrow .hb{margin-top:1px}
+.hb{display:inline-flex;width:15px;height:17px;flex:none;align-items:center;justify-content:center;border:1px solid var(--rule);background:var(--bit-off);font-weight:600;font-size:10.5px;margin-right:1px;border-radius:2px;color:var(--ink)}
+.hb.on{background:var(--bit-on);border-color:var(--bit-on);color:var(--bit-on-ink)}
+.hb.fill{border:1px dashed var(--ink-2)}
+.hb.fill.on{border-color:var(--bit-on-ink)}
+.hb.gap{margin-right:7px}
+.hb.blank{visibility:hidden}
+.hb.c{background:transparent;border-color:transparent;color:var(--ink-2);font-weight:500}
+.hb.c.on{color:var(--carry);font-weight:700}
+.hb.c.v{border-color:var(--carry);border-style:dashed}
+.hb.top{box-shadow:0 0 0 2px var(--carry) inset}
+.hflags{display:flex;flex-wrap:wrap;gap:4px 18px;margin:8px 0 2px;color:var(--ink-2)}
+.hflags b{color:var(--ink)}
+.hnote{color:var(--ink-2);font:.82rem/1.5 var(--sans);margin:6px 0 10px;white-space:normal}
+.hnote code{background:var(--paper);padding:1px 5px;border-radius:4px}
+
+
+.crumbs{font:.84rem var(--mono);color:var(--ink-2);margin:0 0 14px}
+.crumbs a{color:var(--ink-2)}
+.crumbs a:hover{color:var(--ink)}
+.tut.first{margin-top:26px;border-top:0;padding-top:0}
+nav.toc + .tut.first{margin-top:0}
+nav.pager{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin:34px 0 0;padding:14px 0;border-top:1px solid var(--rule);font:.9rem var(--sans)}
+nav.pager a{color:var(--ink);text-decoration:none;border:1px solid var(--rule);border-radius:8px;padding:8px 12px}
+nav.pager a:hover{border-color:var(--ink-2)}
+nav.pager .next{text-align:right}
+nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
+@media (max-width:640px){nav.pager{grid-template-columns:1fr}nav.pager .next{text-align:left}}
+
+ol.parts{padding-left:22px}
+ol.parts li{margin:0 0 12px}
+</style>
+</head>
+<body>
+<nav aria-label="Bit Lab navigation" style="padding:12px 16px;font:16px system-ui;display:flex;gap:24px;flex-wrap:wrap"><a href="../../#/">← Bit Lab lessons</a><a href="../../#/practice">Practice</a></nav>
+<main>
+  <div class="top">
+    <div>
+      <p class="crumbs"><a href="../">Programmer Calculator</a> · <a href="https://snowch.github.io/">snowch.github.io</a></p>
+      <h1>From gates to a compiled if</h1>
+      <p class="lede">Nine short pages that start with logic gates you can tap and end with an <code>if</code> statement compiled to ARM, traced flag by flag. Each page answers the question the one before it raises.</p>
+    </div>
+    <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
+  </div>
+
+  <section class="tut first" id="about">
+    <h2>What this is</h2>
+    <p>These pages grew out of one person's notes while learning how a processor handles signed and unsigned numbers. They are kept short, every claim is drawn as bits or gates you can change, and nothing is simulated behind the scenes: the pages compute their values in the open and light the drawing to match.</p>
+    <p>They are about real machines. The assembly is ARM, the types are C's, and where x86 differs it says so. If you would rather build a machine of your own from gates to a running program, the <a href="https://snowch.github.io/digital-design/">Digital Design course</a> does that, with a simulator and graded projects. These notes are the companion that reads the machines you will actually meet.</p>
+    <p>In <a href="https://snowch.github.io/assembly-lab/">Assembly Lab</a>, you drive a real processor's instruction set one instruction at a time, with the C each instruction came from beside it.</p>
+    <p><strong>You need:</strong> binary and hex, and the truth tables of NOT, AND, OR and XOR. Nothing else is assumed; each page introduces what it uses.</p>
+  </section>
+
+  <section class="tut" id="order">
+    <h2>Reading order</h2>
+    <ol class="parts"><li><a href="gates-to-alu.html"><strong>From gates to an ALU</strong></a><br>One full adder from five gates, four of them chained, and why the carry ripples. Tap the inputs and watch the gates work.</li><li><a href="adding-to-subtracting.html"><strong>From adding to subtracting</strong></a><br>Why 3 − 5 comes out as 0xFE and why that is right: the wheel of 256 patterns, negation as NOT then add 1, the borrow read off the carry, and the method on paper.</li><li><a href="readings-drills.html"><strong>Two readings: drills</strong></a><br>Six short exercises on the idea everything else assumes: one pattern is two numbers. Read, write, find, step, negate and judge, at 4 bits first.</li><li><a href="c-meets-the-wheel.html"><strong>Where C meets the wheel</strong></a><br>Ten small C programs that go wrong at the edge of the range, stepped through in ARM with the registers and flags drawn before and after.</li><li><a href="bit-lab.html"><strong>Bit Lab: the ALU and its flags</strong></a><br>A miniature ALU drawn as gates, thirteen operations, and the N Z C V flags built from the result. Exercises, a quiz, and a breadboard build.</li><li><a href="gates-to-register.html"><strong>From gates to a register</strong></a><br>The other half of a CPU: how the same kinds of gates are made to remember. A latch, a clock, and the 4-bit register the lab's flags live in.</li><li><a href="who-decides.html"><strong>Signed or unsigned: who decides?</strong></a><br>The hardware stores no sign. Every ARM branch on one compare, then a real if in C beside the assembly a compiler emits, traced for any pair.</li><li><a href="bytes-to-registers.html"><strong>From bytes to registers</strong></a><br>Why a byte has to be widened to fill a 32-bit register, what LDRB and LDRSB write into the spare bits, and the widened compare cell by cell.</li><li><a href="flag-drills.html"><strong>Flag drills</strong></a><br>Randomised predict-then-check exercises: the flags of a CMP, which branches fire, recovering a type from compiled code, widening by hand.</li></ol>
+    <p>Part 6 is the one you can read out of order: nothing after it depends on it, and part 5 only needs its first paragraph, which it repeats.</p>
+  </section>
+
+  <section class="tut" id="tools">
+    <h2>Tools alongside</h2>
+    <ul>
+      <li>The <a href="../">Programmer Calculator</a>: hex, decimal, octal and binary, bitwise operations, shifts, and the C V Z N flags, with 110 exercises whose primers link back here.</li>
+      <li>The <a href="twos-complement.pdf">two's complement tutorial</a> (PDF): seven pages on reading and writing negative numbers, with practice problems and a cheat sheet.</li>
+      <li><a href="https://godbolt.org/">Compiler Explorer</a>, for seeing what a compiler emits for your own C with an ARM GCC at <code>-O1</code>.</li>
+    </ul>
+  </section>
+</main>
+<script>
+(function(){
+'use strict';
+/* ---------- theme ---------- */
+(function(){
+  const btn=document.getElementById('themeBtn'); if(!btn) return;
+  const THEMES=['auto','light','dark'];
+  let theme='auto'; try{ theme=localStorage.getItem('bit-lab:legacy:bitlab-theme')||'auto'; }catch(e){}
+  if(!THEMES.includes(theme)) theme='auto';
+  const apply=()=>{
+    if(theme==='auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme',theme);
+    btn.textContent='theme: '+theme; btn.setAttribute('aria-label','Theme: '+theme+'. Activate to change');
+  };
+  apply();
+  btn.addEventListener('click',()=>{ theme=THEMES[(THEMES.indexOf(theme)+1)%THEMES.length]; try{localStorage.setItem('bit-lab:legacy:bitlab-theme',theme);}catch(e){} apply(); });
+})();
+
+
+})();
+</script>
+</body>
+</html>

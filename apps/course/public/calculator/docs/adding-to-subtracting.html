@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+// Import old work once without writing to the original app's keys.
+try {
+  if (!localStorage.getItem("bit-lab:legacy:imported:v1")) {
+  for (const key of ["pc-done", "pc-done-layout", "pc-exercises-hidden", "pc-show-done", "pc-theme", "bitlab-state", "bitlab-theme", "drills-score", "readings-score"]) {
+    const target = 'bit-lab:legacy:' + key;
+    if (localStorage.getItem(target) === null) {
+      const old = localStorage.getItem(key);
+      if (old !== null) localStorage.setItem(target, old);
+    }
+  }
+  localStorage.setItem("bit-lab:legacy:imported:v1", "1");
+  }
+} catch (_) {}
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>From adding to subtracting</title>
+<meta name="description" content="How a CPU subtracts with nothing but an adder: wrap-around, negation as NOT plus one, and the carry out as the borrow signal, with bits you can tap.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem("bit-lab:legacy:bitlab-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#EDF0EA;
+  --paper-2:#E2E7DF;
+  --paper-3:#F6F8F4;
+  --ink:#1B2620;
+  --ink-2:#4F5E57;
+  --rule:#C3CBC0;
+  --wire-off:#B4BDB2;
+  --wire-on:#E09B1A;
+  --wire-on-2:#F6C860;
+  --carry:#B23A2C;
+  --gate-fill:#F8FAF6;
+  --gate-stroke:#2D3B35;
+  --bit-off:#D7DDD3;
+  --bit-on:#F1B23A;
+  --bit-on-ink:#2B1E05;
+  --led-on:#D9471F;
+  --led-off:#C9D0C5;
+  --na:#98A39C;
+  --focus:#2F6FD1;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#131A16;
+    --paper-2:#1B241F;
+    --paper-3:#232E28;
+    --ink:#E6ECE4;
+    --ink-2:#9AA89F;
+    --rule:#2E3B34;
+    --wire-off:#3A4740;
+    --wire-on:#F0B23C;
+    --wire-on-2:#FFD98A;
+    --carry:#E86A55;
+    --gate-fill:#1F2A24;
+    --gate-stroke:#C9D4CC;
+    --bit-off:#26312B;
+    --bit-on:#F0B23C;
+    --bit-on-ink:#2B1E05;
+    --led-on:#FF6A3D;
+    --led-off:#2A3630;
+    --na:#5C6A62;
+    --focus:#7FA9F0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131A16; --paper-2:#1B241F; --paper-3:#232E28; --ink:#E6ECE4; --ink-2:#9AA89F; --rule:#2E3B34;
+  --wire-off:#3A4740; --wire-on:#F0B23C; --wire-on-2:#FFD98A; --carry:#E86A55;
+  --gate-fill:#1F2A24; --gate-stroke:#C9D4CC; --bit-off:#26312B; --bit-on:#F0B23C;
+  --bit-on-ink:#2B1E05; --led-on:#FF6A3D; --led-off:#2A3630; --na:#5C6A62; --focus:#7FA9F0;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:16px;line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+main{max-width:980px;margin:0 auto;padding:20px 16px 56px}
+code,kbd,.mono{font-family:var(--mono)}
+button{font:inherit;color:inherit}
+a{color:var(--ink)}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+h1{font-size:clamp(1.55rem,1.1rem + 1.6vw,2.1rem);font-weight:600;margin:0 0 6px;letter-spacing:-.015em;line-height:1.15}
+.lede{color:var(--ink-2);margin:0 0 12px;max-width:62ch;font-size:1.05rem}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.meta span{font:500 .78rem/1.6 var(--mono);border:1px solid var(--rule);border-radius:999px;padding:1px 10px;color:var(--ink-2)}
+.themebtn{flex:none;margin-top:4px}
+nav.toc{display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 26px;padding:8px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+nav.toc a{font:500 .84rem var(--mono);color:var(--ink-2);text-decoration:none;padding:3px 9px;border-radius:6px}
+nav.toc a:hover{color:var(--ink);background:var(--paper-2)}
+
+/* ---------- prose sections ---------- */
+.tut{margin-top:36px;border-top:1px solid var(--rule);padding-top:22px}
+.tut h2{font-size:1.4rem;font-weight:600;margin:0 0 12px;letter-spacing:-.01em;line-height:1.2}
+.tut h3{font-size:1.02rem;font-weight:600;margin:20px 0 6px}
+.tut p,.tut li{max-width:70ch}
+.tut p{margin:0 0 12px}
+.tut ul,.tut ol{padding-left:22px;margin:0 0 12px}
+.tut li{margin-bottom:5px}
+.tut strong{font-weight:600}
+.tut code{background:var(--paper-2);padding:1px 5px;border-radius:4px;font-size:.88em}
+.tut table{border-collapse:collapse;font-size:.9rem;margin:8px 0 14px;font-variant-numeric:tabular-nums}
+.tut td,.tut th{border:1px solid var(--rule);padding:5px 11px;text-align:left;vertical-align:top}
+.tut th{background:var(--paper-2);font-weight:600}
+.tut td.mono{font-family:var(--mono);font-size:.86rem}
+pre.work{font:.86rem/1.55 var(--mono);background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:10px 14px;overflow-x:auto;margin:8px 0 14px}
+.check{border-left:3px solid var(--wire-on);padding:2px 0 2px 14px;margin:14px 0}
+.check ol{margin-bottom:6px}
+.steps{list-style:none;padding:0;counter-reset:step}
+.steps>li{position:relative;padding-left:36px;margin-bottom:14px;max-width:72ch}
+.steps>li::before{
+  counter-increment:step;content:counter(step);position:absolute;left:0;top:2px;
+  width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--paper);
+  font:600 .8rem/24px var(--mono);text-align:center;
+}
+
+/* ---------- schematic ---------- */
+figure.schem{margin:10px 0 18px;background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:10px 8px 8px;overflow-x:auto}
+figure.schem svg{display:block;width:100%;min-width:680px;max-width:800px;height:auto;margin:0 auto}
+figure.schem figcaption{font-size:.84rem;color:var(--ink-2);margin:8px 6px 0;text-align:center;line-height:1.4}
+.schem .box{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.5}
+.schem .opt{stroke-dasharray:5 4}
+.schem .bus{stroke:var(--wire-on);stroke-width:3;fill:none;stroke-linejoin:round}
+.schem .sig{stroke:var(--ink-2);stroke-width:1.6;fill:none}
+.schem .ctl{stroke:var(--ink-2);stroke-width:1.6;fill:none;stroke-dasharray:4 3;stroke-linejoin:round}
+.schem .cy{stroke:var(--carry);stroke-width:2.2;fill:none}
+.schem .fb{stroke:var(--focus);stroke-width:2;fill:none;stroke-dasharray:6 4;stroke-linejoin:round}
+.schem .dot{fill:var(--wire-on)}
+.schem .dotf{fill:var(--focus)}
+.schem .tick{stroke:var(--ink-2);stroke-width:1.4}
+.schem text{font-family:var(--mono);font-size:11px;fill:var(--ink)}
+.schem .t2{fill:var(--ink-2);font-size:10px}
+.schem .tc{fill:var(--carry);font-weight:600}
+.schem .tf{fill:var(--focus)}
+.schem .badge circle{fill:var(--ink);stroke:var(--paper);stroke-width:1.5}
+.schem .badge text{fill:var(--paper);font-weight:600;font-size:10px}
+.schem .led{fill:var(--led-off);stroke:var(--rule);stroke-width:1}
+.schem .led.lit{fill:var(--led-on);stroke:var(--led-on)}
+
+/* ---------- the lab ---------- */
+.labwrap{margin-top:16px}
+.ops{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px}
+.opgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.opcap{font:500 .7rem var(--mono);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-2);margin-right:2px}
+.op{
+  font:500 .9rem var(--mono);border:1px solid var(--rule);background:var(--paper-2);border-radius:8px;
+  padding:6px 11px;cursor:pointer;
+}
+.op:hover{border-color:var(--ink-2)}
+.op[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.op:focus-visible,.small:focus-visible,.preset:focus-visible,.load:focus-visible,.themebtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;color:var(--ink-2);margin-bottom:12px;font:.84rem var(--mono)}
+.small{border:1px solid var(--rule);background:transparent;border-radius:6px;padding:3px 9px;cursor:pointer;font:500 .84rem var(--mono);color:var(--ink)}
+.small:hover{border-color:var(--ink-2)}
+.small[aria-pressed="true"]{background:var(--ink-2);color:var(--paper);border-color:var(--ink-2)}
+.circuit{
+  background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;
+  padding:10px 8px 6px;overflow-x:auto;
+}
+.circuit svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
+svg text{font-family:var(--mono);fill:var(--ink)}
+.wire{stroke:var(--wire-off);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.wire.on{stroke:var(--wire-on)}
+.wire.carry.on{stroke:var(--carry)}
+.gate{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.8}
+.bit{cursor:pointer}
+.bit rect{fill:var(--bit-off);stroke:var(--rule);stroke-width:1;transition:fill .12s}
+.bit.on rect{fill:var(--bit-on);stroke:var(--bit-on)}
+.bit text{font-weight:600;font-size:15px;pointer-events:none}
+.bit.on text{fill:var(--bit-on-ink)}
+.bit:focus{outline:none}
+.bit:focus-visible rect{stroke:var(--focus);stroke-width:2.5}
+.bit.ro{cursor:default}
+.bit.ro rect{stroke-dasharray:3 2}
+.lab{font-size:11px;fill:var(--ink-2)}
+.lab.sm{font-size:10px}
+.idx{font-size:9.5px;fill:var(--ink-2)}
+.cv{font-size:10.5px;font-weight:600}
+.cv.on{fill:var(--carry)}
+.cv.off{fill:var(--ink-2)}
+.fv{font-size:10.5px;font-weight:600}
+.fv.on{fill:var(--wire-on)}
+.fv.off{fill:var(--ink-2)}
+.cnst{font-size:11px;fill:var(--ink-2)}
+.tip{color:var(--ink-2);font-size:.82rem;margin:8px 0 0}
+
+.values{margin:16px 0 4px;overflow-x:auto}
+.values table{border-collapse:collapse;font:.9rem var(--mono);font-variant-numeric:tabular-nums;width:100%;max-width:600px}
+.values th{text-align:left;color:var(--ink-2);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;padding:4px 14px 4px 0}
+.values th.num,.values td.num{text-align:right}
+.values td{padding:5px 14px 5px 0;border-top:1px solid var(--rule);white-space:nowrap}
+.values th.rowk{color:var(--ink);font-weight:600;font-size:.9rem;text-transform:none;letter-spacing:0;border-top:1px solid var(--rule)}
+.values td.bin{font-weight:600;letter-spacing:.04em}
+.values tr.r td,.values tr.r th{background:var(--paper-3)}
+
+.flags{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin-top:14px}
+.flag{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;background:var(--paper-2)}
+.flag header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.led{width:14px;height:14px;border-radius:50%;background:var(--led-off);border:1px solid var(--rule);flex:none;transition:background .15s,box-shadow .15s}
+.led.on{background:var(--led-on);border-color:var(--led-on);box-shadow:0 0 0 3px color-mix(in srgb,var(--led-on) 25%,transparent)}
+.led.na{background:transparent;border-style:dashed;border-color:var(--na)}
+.flag h3{margin:0;font:600 1rem var(--mono)}
+.flag h3 span{color:var(--ink-2);font-weight:400;font-size:.85rem;margin-left:6px}
+.flag svg{width:100%;max-width:240px;height:auto;display:block;margin:2px 0 8px;overflow:visible}
+.flag p{margin:0;font-size:.88rem;color:var(--ink-2);line-height:1.45}
+.flag p strong{color:var(--ink);font-weight:600}
+.flag.na{opacity:.72}
+.why{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px}
+.why h2{font:600 1rem var(--mono);margin:0 0 6px}
+.why p{margin:0 0 8px;max-width:70ch;font-size:.95rem}
+.presets{margin-top:22px}
+.presets h2{font-size:1rem;margin:0 0 8px;font-weight:600}
+#presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
+.preset{
+  display:block;text-align:left;border:1px solid var(--rule);background:transparent;
+  border-radius:8px;padding:8px 10px;cursor:pointer;font:500 .86rem var(--mono);
+}
+.preset:hover{background:var(--paper-2);border-color:var(--ink-2)}
+.preset span{display:block;color:var(--ink-2);font:.84rem var(--sans);margin-top:2px}
+
+/* ---------- exercises & quiz ---------- */
+.ex{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--paper-2)}
+.ex h3{font-size:1rem;margin:0 0 8px;font-weight:600}
+.ex p{margin:0 0 8px}
+.ex .load{font:500 .84rem var(--mono);border:1px solid var(--ink);background:transparent;border-radius:6px;padding:4px 10px;cursor:pointer;margin-bottom:10px}
+.ex .load:hover{background:var(--ink);color:var(--paper)}
+details{margin-top:6px}
+summary{cursor:pointer;color:var(--ink-2);font:500 .84rem var(--mono);display:inline-block;padding:2px 9px;border:1px solid var(--rule);border-radius:6px;list-style:none;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"\25B8  "}
+details[open] summary::before{content:"\25BE  "}
+summary:hover{color:var(--ink);border-color:var(--ink-2)}
+details p{margin:8px 0 0;color:var(--ink);font-size:.93rem}
+.lab-anchor{scroll-margin-top:12px}
+
+/* ---------- footer ---------- */
+footer.site{margin-top:44px;border-top:1px solid var(--rule);padding-top:14px;font:.84rem var(--mono);color:var(--ink-2);display:flex;flex-wrap:wrap;gap:6px 20px}
+footer.site a{color:var(--ink-2)}
+footer.site a:hover{color:var(--ink)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* ---------- block diagram & full adder widget ---------- */
+svg.blockdiag{width:100%;max-width:420px;height:auto;display:block;margin:6px 0 14px}
+.fawrap{display:grid;grid-template-columns:minmax(240px,370px) minmax(0,1fr);gap:14px 26px;align-items:start;margin:10px 0 16px}
+@media (max-width:640px){.fawrap{grid-template-columns:minmax(0,1fr)}}
+.fa{background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:8px 6px}
+.fa svg{display:block;width:100%;height:auto}
+.jdot{fill:var(--wire-off)}
+.jdot.on{fill:var(--wire-on)}
+.jdot.carry.on{fill:var(--carry)}
+.faeq{font:.9rem/1.5 var(--mono);margin:0 0 10px}
+table.truth{border-collapse:collapse;font:.86rem var(--mono);font-variant-numeric:tabular-nums;margin:0 0 8px}
+table.truth th,table.truth td{border:1px solid var(--rule);padding:3px 11px;text-align:center}
+table.truth th{background:var(--paper-2);font-weight:600}
+table.truth tr.cur td{background:var(--bit-on);color:var(--bit-on-ink);font-weight:600}
+.clk{fill:none;stroke:var(--gate-stroke);stroke-width:1.5}
+
+/* ---------- 4-bit chain widget ---------- */
+.chainwrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:640px){.chainwrap{grid-template-columns:minmax(0,1fr)}}
+#chainTable{overflow-x:auto}
+table.add th,table.add td{padding:3px 8px}
+.gate.sel{stroke:var(--focus);stroke-width:2.6}
+.fabox{cursor:pointer}
+.bit.wait rect{fill:transparent;stroke:var(--na);stroke-dasharray:3 2}
+.bit.wait text{fill:var(--na)}
+table.add td.k{text-align:left;color:var(--ink-2);font-size:.8rem;white-space:nowrap}
+table.add td.cin{color:var(--carry);font-weight:600}
+table.add tr.sum td{border-top:2px solid var(--ink-2);font-weight:600}
+table.add td.q{color:var(--na)}
+
+/* ---------- CMP and the branches ---------- */
+.asmwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 24px;margin:4px 0 10px}
+@media (max-width:760px){.asmwrap{grid-template-columns:minmax(0,1fr)}}
+.asmwrap h3{margin:8px 0 4px}
+table.asm{width:100%}
+table.asm td{text-align:left;padding:3px 8px}
+table.asm td.mn{font-weight:600}
+table.asm td.k{color:var(--ink-2)}
+table.asm tr.take td{background:var(--bit-on);color:var(--bit-on-ink)}
+table.asm tr.take td.k{color:var(--bit-on-ink)}
+
+/* ---------- the same thing as a program ---------- */
+.asmprog{margin:0 0 6px;white-space:pre}
+.asmprog .ln{display:block;opacity:.5;padding:0 6px;margin:0 -6px;border-radius:4px}
+.asmprog .ln.run{opacity:1;background:var(--bit-on);color:var(--bit-on-ink)}
+.asmprog .cm{color:var(--ink-2)}
+.asmprog .ln.run .cm{color:var(--bit-on-ink);opacity:.8}
+ol.trace{margin:4px 0 14px;padding-left:22px}
+ol.trace li{margin:0 0 4px}
+
+/* ---------- under the hood ---------- */
+.hood{background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:8px 14px 4px;overflow-x:auto;margin:8px 0 14px;font:.8rem var(--mono);font-variant-numeric:tabular-nums}
+.hood h4{margin:8px 0 6px;font:600 .86rem var(--sans)}
+.hood h4+ .hrow .hb.c{color:var(--ink-2);font-size:9px}
+.hrow{display:flex;align-items:center;white-space:nowrap;margin:2px 0}
+.hrow .hl{width:132px;flex:none;color:var(--ink-2)}
+.hrow .hv{margin-left:12px;color:var(--ink-2);white-space:normal;flex:1 1 auto;min-width:22ch;line-height:1.35}
+.hrow{align-items:flex-start}
+.hrow .hl,.hrow .hb{margin-top:1px}
+.hb{display:inline-flex;width:15px;height:17px;flex:none;align-items:center;justify-content:center;border:1px solid var(--rule);background:var(--bit-off);font-weight:600;font-size:10.5px;margin-right:1px;border-radius:2px;color:var(--ink)}
+.hb.on{background:var(--bit-on);border-color:var(--bit-on);color:var(--bit-on-ink)}
+.hb.fill{border:1px dashed var(--ink-2)}
+.hb.fill.on{border-color:var(--bit-on-ink)}
+.hb.gap{margin-right:7px}
+.hb.blank{visibility:hidden}
+.hb.c{background:transparent;border-color:transparent;color:var(--ink-2);font-weight:500}
+.hb.c.on{color:var(--carry);font-weight:700}
+.hb.c.v{border-color:var(--carry);border-style:dashed}
+.hb.top{box-shadow:0 0 0 2px var(--carry) inset}
+.hflags{display:flex;flex-wrap:wrap;gap:4px 18px;margin:8px 0 2px;color:var(--ink-2)}
+.hflags b{color:var(--ink)}
+.hnote{color:var(--ink-2);font:.82rem/1.5 var(--sans);margin:6px 0 10px;white-space:normal}
+.hnote code{background:var(--paper);padding:1px 5px;border-radius:4px}
+
+
+.crumbs{font:.84rem var(--mono);color:var(--ink-2);margin:0 0 14px}
+.crumbs a{color:var(--ink-2)}
+.crumbs a:hover{color:var(--ink)}
+.tut.first{margin-top:26px;border-top:0;padding-top:0}
+nav.toc + .tut.first{margin-top:0}
+nav.pager{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin:34px 0 0;padding:14px 0;border-top:1px solid var(--rule);font:.9rem var(--sans)}
+nav.pager a{color:var(--ink);text-decoration:none;border:1px solid var(--rule);border-radius:8px;padding:8px 12px}
+nav.pager a:hover{border-color:var(--ink-2)}
+nav.pager .next{text-align:right}
+nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
+@media (max-width:640px){nav.pager{grid-template-columns:1fr}nav.pager .next{text-align:left}}
+
+.wheelwrap{display:grid;grid-template-columns:344px minmax(0,1fr);gap:8px 24px;align-items:center;margin:8px 0 12px}
+@media (max-width:640px){.wheelwrap{grid-template-columns:minmax(0,1fr)}}
+.wheelsvg{width:100%;max-width:344px;height:auto;display:block}
+.wheelsvg .lab.bits{font-size:9px;fill:var(--ink-2);font-family:var(--mono)}
+.wheelsvg .lab.bits.hi{fill:var(--ink);font-weight:600}
+.wheelsvg .lab.bits.hi.r{fill:var(--carry)}
+.wheelsvg .ring{fill:none;stroke:var(--rule);stroke-width:1.5}
+.wheelsvg .tick{stroke:var(--ink-2);stroke-width:1.2}
+.wheelsvg .lab{font-size:11px;fill:var(--ink)}
+.wheelsvg .lab.s{fill:var(--ink-2)}
+.wheelsvg .mid{font-size:14px;font-weight:600;fill:var(--ink)}
+.wheelsvg .arc{fill:none;stroke:var(--carry);stroke-width:4;stroke-linecap:round}
+.wheelsvg .arrow{fill:var(--carry)}
+.wheelsvg .dot.start{fill:var(--bit-on)}
+.wheelsvg .dot.end{fill:var(--carry)}
+.hb.tap{cursor:pointer}
+.hb.tap:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.hood#brow{margin-bottom:-6px}
+details.inc{margin:10px 0 14px;border:1px solid var(--rule);border-radius:8px;padding:6px 12px;background:var(--paper-2)}
+details.inc summary{cursor:pointer;font:600 .9rem var(--sans);color:var(--ink)}
+details.inc ul{margin:6px 0 4px;padding-left:20px;font-size:.92rem}
+details.inc li{margin:0 0 6px}
+.fixedwrap{display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;margin:6px 0 14px}
+@media (max-width:700px){.fixedwrap{grid-template-columns:1fr}}
+.case h4{margin:4px 0 2px;font:600 .95rem var(--sans)}
+ol.mini{margin:4px 0 0;padding-left:20px;font-size:.92rem}
+ol.mini li{margin:0 0 3px}
+.steps .step{margin:10px 0 4px}
+.steps h4{margin:6px 0 4px;font:600 .95rem var(--sans)}
+.steps .hood .hl{width:60px}
+svg.nl{width:100%;max-width:640px;height:auto;display:block;margin:4px 0}
+svg.nl .axis{stroke:var(--ink-2);stroke-width:1.5}
+svg.nl .tick{stroke:var(--ink-2);stroke-width:1}
+svg.nl .tk{font:10px var(--mono);fill:var(--ink-2)}
+svg.nl .band.s{fill:var(--rule)}
+svg.nl .band.u{fill:var(--bit-on);opacity:.55}
+svg.nl .dot.t{fill:var(--ink)}
+svg.nl .dot.s{fill:var(--ink-2)}
+svg.nl .dot.u{fill:var(--bit-on);stroke:var(--bit-on-ink);stroke-width:1}
+svg.nl .dl{font:600 11px var(--mono);fill:var(--ink)}
+svg.nl .shift{fill:none;stroke-width:2}
+svg.nl .shift.s{stroke:var(--ink-2)}
+svg.nl .shift.u{stroke:var(--carry)}
+svg.nl .sh{font:600 10px var(--mono)}
+svg.nl .sh.s{fill:var(--ink-2)}
+svg.nl .sh.u{fill:var(--carry)}
+
+
+</style>
+</head>
+<body>
+<nav aria-label="Bit Lab navigation" style="padding:12px 16px;font:16px system-ui;display:flex;gap:24px;flex-wrap:wrap"><a href="../../#/">← Bit Lab lessons</a><a href="../../#/practice">Practice</a></nav>
+<main>
+  <div class="top">
+    <div>
+      <p class="crumbs"><a href="notes.html" title="From gates to a compiled if: contents">Home</a> · part 2 of 9</p>
+      <h1>From adding to subtracting</h1>
+      <p class="lede">How 3 − 5 comes out as 0xFE, why that is the right answer, and how an adder subtracts without a subtractor: invert B, add 1, and read the borrow off the carry.</p>
+    </div>
+    <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
+  </div>
+  <nav class="toc" aria-label="Sections">
+    <a href="#wrap">1 A byte wraps around</a><a href="#negate">2 Negating: NOT, then add 1</a><a href="#subtract">3 The adder does it</a><a href="#paper">4 On paper</a><a href="#next">Where this leads</a>
+  </nav>
+  <div class="row"><span>Width</span><button class="small" type="button" data-w="4" aria-pressed="true">4 bits</button><button class="small" type="button" data-w="8" aria-pressed="false">8 bits</button>
+    <span>Load</span><button class="small" type="button" data-preset="4,5,3">5 − 3</button><button class="small" type="button" data-preset="4,3,5">3 − 5</button><button class="small" type="button" data-preset="4,0,1">0 − 1</button><button class="small" type="button" data-preset="4,7,7">7 − 7</button><button class="small" type="button" data-preset="4,8,1">8 − 1</button><button class="small" type="button" data-preset="4,5,10">5 − (−6)</button><button class="small" type="button" data-preset="4,7,15">7 − (−1)</button><button class="small" type="button" data-preset="8,3,5">3 − 5 at 8 bits</button><button class="small" type="button" data-preset="8,128,1">0x80 − 1</button></div>
+  <p class="tip">Every section on this page shows the same A − B. Change it here, or tap bits in section 3.</p>
+
+  <section class="tut first" id="wrap">
+    <h2>1. A byte wraps around</h2>
+    <p>A register has a fixed number of bits, so it can hold only so many patterns: 16 at 4 bits, 256 at 8. Count up past the last one and you are back at zero. Count down past zero and you are back at the last one. The patterns sit on a wheel, not a line.</p>
+    <p>Subtracting B means stepping back B places around that wheel. If the steps never pass zero, the answer is the ordinary one. If they do, the register lands on a pattern near the top of the range, and that pattern is the result. Nothing has gone wrong: the hardware did the only thing it can do.</p>
+    <div class="wheelwrap"><div><div id="wheel"></div><p class="tip" style="text-align:center">Outermost: the four bits of each pattern. Then its unsigned reading, then its signed reading. Amber dot: A. Red dot: A − B.</p></div><p id="wrapTxt"></p></div>
+    <p>The wheel also explains why the same pattern has two readings. Going round the outside, the numbers run 0 up to 15. Going round the inside, the top half has been relabelled as negatives, so 15 is −1, 14 is −2, and so on. Stepping back from 3 by 5 lands on the pattern that is 14 to one reading and −2 to the other. The circuit does not know which label you are using, and does not need to.</p>
+    <details class="inc"><summary>In C</summary>
+      <ul>
+        <li>For <code>unsigned</code> types the wheel is the law: the standard defines arithmetic as modulo 2<sup>n</sup>, so <code>0u − 1</code> is <code>UINT_MAX</code> by definition. That is why a loop written <code>for (unsigned i = n − 1; i &gt;= 0; i−−)</code> never ends: <code>i</code> steps back past 0 to 4294967295 and the test stays true.</li>
+        <li>For <code>signed</code> types the standard refuses to say. Signed overflow is undefined behaviour, and compilers use that: given <code>x + 1 &gt; x</code> with <code>int x</code>, GCC and Clang may fold it to <code>true</code> because the only case where it is false is one they are allowed to ignore. The hardware still wraps; the compiler just does not promise to let you see it.</li>
+        <li>Converting an out-of-range value to a narrower signed type, as in <code>int8_t x = 200;</code>, is implementation-defined, and every mainstream compiler does what the wheel does: <code>x</code> becomes −56.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="tut" id="negate">
+    <h2>2. Negating: NOT, then add 1</h2>
+    <div class="row"><span>Width</span><button class="small" type="button" data-w="4" aria-pressed="true">4 bits</button><button class="small" type="button" data-w="8" aria-pressed="false">8 bits</button><span>Negate, as signed</span><button class="small" type="button" data-b="3">3</button><button class="small" type="button" data-b="5">5</button><button class="small" type="button" data-b="1">1</button><button class="small" type="button" data-b="7">7</button><button class="small" type="button" data-b="13" data-bw="4">−3</button><button class="small" type="button" data-b="15" data-bw="4">−1</button><button class="small" type="button" data-b="0">0</button><button class="small" type="button" data-b="8" data-bw="4">−8, the one that cannot be</button><button class="small" type="button" data-b="128" data-bw="8">−128 at 8 bits</button></div>
+    <p>Stepping back B places is the same as stepping forward by the wheel's size minus B. At 4 bits, subtracting 5 is adding 11. At 8 bits, subtracting 5 is adding 251. So if the circuit can make 16 − B, or 256 − B, from B, it can subtract with nothing but an adder.</p>
+    <p>Inverting every bit of B gives 15 − B at 4 bits (255 − B at 8), because each column that held a 1 now holds a 0 and vice versa, and all-ones is 15. Adding 1 more makes it 16 − B, exactly the number to add. That is the whole trick: <strong>−B = NOT B + 1</strong>.</p>
+    <div class="hood" id="neg"></div>
+    <p class="tip">Negation is a signed idea: NOT B + 1 is −B under the signed reading. Under the unsigned reading the same pattern is simply 16 − B (or 256 − B), the number you add to subtract B. Tap a bit of B to try any value. This section uses only B; A comes back in section 3.</p>
+    <details class="inc"><summary>In C: where −8 bites</summary>
+      <ul>
+        <li>At full width this pattern is <code>INT_MIN</code>, −2<sup>31</sup> for a 32-bit <code>int</code>. <code>-x</code> when <code>x == INT_MIN</code> is undefined behaviour, and on real hardware the same pattern comes back, so the "made positive" value is still negative.</li>
+        <li><code>abs(INT_MIN)</code> is undefined for the same reason and in practice returns <code>INT_MIN</code>. Code that uses <code>abs(a − b)</code> as a distance can get a negative distance, which then indexes an array or passes a bounds check.</li>
+        <li><code>INT_MIN / −1</code> has to produce +2<sup>31</sup>, which does not fit; on x86 the divide instruction raises an exception and the process dies. Dividing by a value read from input is where this surfaces.</li>
+        <li>A parser that reads digits as a positive number and then negates cannot parse "−2147483648", because +2147483648 never fitted. Correct parsers accumulate negatively.</li>
+        <li>The flag the hardware raises, V, is invisible from C. To see the case, use <code>__builtin_sub_overflow</code> and friends, or compile with <code>-fsanitize=signed-integer-overflow</code>.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="tut" id="subtract">
+    <h2>3. The adder does it</h2>
+    <div class="row"><span>Width</span><button class="small" type="button" data-w="4" aria-pressed="true">4 bits</button><button class="small" type="button" data-w="8" aria-pressed="false">8 bits</button>
+    <span>Load</span><button class="small" type="button" data-preset="4,5,3">5 − 3</button><button class="small" type="button" data-preset="4,3,5">3 − 5</button><button class="small" type="button" data-preset="4,0,1">0 − 1</button><button class="small" type="button" data-preset="4,7,7">7 − 7</button><button class="small" type="button" data-preset="4,8,1">8 − 1</button><button class="small" type="button" data-preset="4,5,10">5 − (−6)</button><button class="small" type="button" data-preset="4,7,15">7 − (−1)</button><button class="small" type="button" data-preset="8,3,5">3 − 5 at 8 bits</button><button class="small" type="button" data-preset="8,128,1">0x80 − 1</button></div>
+    <p>An adder already has a carry-in on bit 0. Feed NOT B into its B inputs and set that carry-in to 1, and it computes A + NOT B + 1, which is A − B. In hardware the inversion is one XOR gate per bit with a SUB wire on its other input: SUB low passes B through, SUB high inverts it and also drives the carry-in. The same adder adds and subtracts, which is why no CPU has a separate subtractor.</p>
+    <p>Tap bits in A or B to change the sum. The carries row shows the 1 entering bit 0 and the carry out leaving the top bit.</p>
+    <div class="hood" id="brow"></div>
+    <div class="hood" id="adder"></div>
+    <p id="addTxt"></p>
+    <p>That last point is where the carry flag comes from. If a carry comes out of the top bit, the adder reached 16 (or 256) and dropped it, which cancels the 16 we added with NOT B + 1, so the result is the plain difference and no borrow happened. If no carry comes out, the 16 is still in there: the result wrapped, because B was bigger than A. ARM and most other designs store this carry out as C, so after a subtraction <strong>C = 1 means no borrow, C = 0 means a borrow</strong>. x86 stores the opposite and calls it the borrow flag, but the circuit is the same.</p>
+    <details class="inc"><summary>In C</summary>
+      <ul>
+        <li>C has no way to read the carry flag. The idiom for "did this unsigned subtraction borrow" is to compare afterwards: <code>if (a − b &gt; a)</code> is true exactly when the subtraction wrapped, because an answer larger than what you started from can only come from going round the wheel.</li>
+        <li>The same trick for addition is <code>if (a + b &lt; a)</code>. Both are only valid for unsigned operands, where the wrap is defined; for signed operands the comparison itself may be optimised away.</li>
+        <li>Modern compilers expose the flags indirectly: <code>__builtin_add_overflow(a, b, &amp;r)</code> returns whether the result fitted, and compiles to the add plus a test of C or V depending on the types.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="tut" id="paper">
+    <h2>4. Doing it on paper</h2>
+    <p>You do not have to think in bits to get the right pattern. Work in decimal, then fit the answer into the width, then convert with the top bit worth minus its place value. The adder above and this method always agree, because both are arithmetic on a wheel of 2<sup>n</sup> patterns; the method just does the wrap as one explicit step. Two cases at 4 bits, one that fits and one that does not:</p>
+    <div class="fixedwrap" id="paperFixed"></div>
+    <p>And the same three steps for whichever A − B is loaded, read as signed. Load <code>7 − (−1)</code> or <code>0x80 − 1</code> for more wraps.</p>
+    <div class="row"><span>Width</span><button class="small" type="button" data-w="4" aria-pressed="true">4 bits</button><button class="small" type="button" data-w="8" aria-pressed="false">8 bits</button>
+    <span>Load</span><button class="small" type="button" data-preset="4,5,3">5 − 3</button><button class="small" type="button" data-preset="4,3,5">3 − 5</button><button class="small" type="button" data-preset="4,0,1">0 − 1</button><button class="small" type="button" data-preset="4,7,7">7 − 7</button><button class="small" type="button" data-preset="4,8,1">8 − 1</button><button class="small" type="button" data-preset="4,5,10">5 − (−6)</button><button class="small" type="button" data-preset="4,7,15">7 − (−1)</button><button class="small" type="button" data-preset="8,3,5">3 − 5 at 8 bits</button><button class="small" type="button" data-preset="8,128,1">0x80 − 1</button></div>
+    <div class="steps" id="method"></div>
+    <p class="tip">On the number line, the grey band above the axis is the signed range and the amber band below it the unsigned range; the ticks mark their ends. The black dot is the true decimal answer; an arrow shows the shift of one wheel size when the answer has to be fitted. Both landings are the same bits.</p>
+    <details class="inc"><summary>In C</summary>
+      <ul>
+        <li>Step 2 is exactly what C promises for unsigned arithmetic: the result is reduced modulo 2<sup>n</sup>, every time, portably.</li>
+        <li>For signed arithmetic C promises nothing when step 2 would have to act. The hardware does the reduction anyway, so you will usually observe it, but the compiler may have assumed it cannot happen and rearranged your code first. <code>-fwrapv</code> tells GCC and Clang to make the wrap a promise.</li>
+        <li>Step 3, reading the pattern with the top bit worth minus its place value, is what every C compiler and debugger does when it prints a signed value. Printing the same variable with <code>%u</code> instead of <code>%d</code> is choosing the other reading of the same bits.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="tut" id="next">
+    <h2>Where this leads</h2>
+    <ul>
+      <li>The <a href="bit-lab.html">Bit Lab</a>'s SUB and CMP operations are this circuit at 8 bits, with all four flags drawn from gates. Its <a href="who-decides.html">Signed or unsigned: who decides?</a> section shows a <code>CMP</code> whose working you can now read.</li>
+      <li><a href="bytes-to-registers.html">From bytes to registers</a> is the other thing a compare needs on a 32-bit machine: how a byte is widened to fill a register, and what the two loads write into the spare bits.</li>
+      <li>The <a href="flag-drills.html">flag drills</a> start with exactly this: predict the flags of a <code>CMP</code>, then see the rows above drawn for the pair.</li>
+      <li>The <a href="twos-complement.pdf">two's complement tutorial</a> (PDF) covers the arithmetic in more depth: why the negative labels are placed where they are, overflow, and sign extension.</li>
+      <li>The <a href="gates-to-alu.html">From gates to an ALU</a> page builds the adder used here from XOR, AND and OR gates.</li>
+    </ul>
+  </section>
+
+  <nav class="pager" aria-label="Series navigation"><a class="prev" href="gates-to-alu.html">Previous: From gates to an ALU</a><a class="up" href="notes.html">Contents</a><a class="next" href="readings-drills.html">Next: Two readings: drills</a></nav>
+  <footer class="site">
+    <a href="notes.html">From gates to a compiled if: contents</a>
+    <a href="../">Programmer Calculator app</a>
+    <a href="twos-complement.pdf">Two's complement tutorial (PDF)</a>
+  </footer>
+</main>
+<script>
+(function(){
+'use strict';
+/* ---------- theme ---------- */
+(function(){
+  const btn=document.getElementById('themeBtn'); if(!btn) return;
+  const THEMES=['auto','light','dark'];
+  let theme='auto'; try{ theme=localStorage.getItem('bit-lab:legacy:bitlab-theme')||'auto'; }catch(e){}
+  if(!THEMES.includes(theme)) theme='auto';
+  const apply=()=>{
+    if(theme==='auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme',theme);
+    btn.textContent='theme: '+theme; btn.setAttribute('aria-label','Theme: '+theme+'. Activate to change');
+  };
+  apply();
+  btn.addEventListener('click',()=>{ theme=THEMES[(THEMES.indexOf(theme)+1)%THEMES.length]; try{localStorage.setItem('bit-lab:legacy:bitlab-theme',theme);}catch(e){} apply(); });
+})();
+
+
+/* ---------- from adding to subtracting ---------- */
+const hex=(x,w)=>'0x'+(x>>>0).toString(16).toUpperCase().padStart(w/4,'0');
+const bit=(x,i)=>(x>>>i)&1;
+const mask=w=>(1<<w)-1;
+const signed=(x,w)=>bit(x,w-1)?x-(1<<w):x;
+const state={w:4,a:3,b:5};
+function sub(a,b,w){ const M=mask(w), nb=(~b)&M; const cin=[1]; let res=0; for(let i=0;i<w;i++){ const x=bit(a,i), y=bit(nb,i), c=cin[i]; res|=(x^y^c)<<i; cin[i+1]=(x&y)|(c&(x^y)); } return {res,nb,cin,n:bit(res,w-1),z:res===0?1:0,c:cin[w],v:cin[w]^cin[w-1]}; }
+const cell=(t,cls,attrs)=>`<span class="hb${cls?' '+cls:''}"${attrs||''}>${t}</span>`;
+const gap=i=>(i%8===0&&i!==0)?' gap':'';
+function bitRow(label,x,w,opts={}){
+  let h=`<div class="hrow"><span class="hl">${label}</span>`+(opts.lead!==false?cell('','blank'):'');
+  for(let i=w-1;i>=0;i--){ const v=bit(x,i); let cls=(v?'on':'')+gap(i); if(opts.top&&i===w-1) cls+=' top'; const attrs=opts.tap?` role="button" tabindex="0" data-reg="${opts.tap}" data-i="${i}" aria-label="${opts.tap} bit ${i}: ${v}"`:''; h+=cell(v,(cls+(opts.tap?' tap':'')).trim(),attrs); }
+  return h+`<span class="hv">${opts.val||''}</span></div>`;
+}
+function idxRow(w){ let h=`<div class="hrow"><span class="hl">bit</span>`+cell('','blank'); for(let i=w-1;i>=0;i--) h+=cell((i%8===7||i%8===0||i===w-1)?i:'','c'+gap(i)); return h+'<span class="hv"></span></div>'; }
+function carryRow(cin,w,label){ let h=`<div class="hrow"><span class="hl">${label||'carries'}</span>`+cell(cin[w],'c'+(cin[w]?' on':'')+' v'); for(let i=w-1;i>=0;i--) h+=cell(cin[i],('c'+(cin[i]?' on':'')+(i===w-1?' v':'')+gap(i)).trim()); return h+`<span class="hv">${w===4?'bit 0 gets the + 1':'bit 0 gets the + 1'}</span></div>`; }
+/* wheel: 16 positions, only drawn at 4 bits */
+const sumText=(x,w,S)=>{ const parts=[]; for(let i=w-1;i>=0;i--) if(bit(x,i)) parts.push(String((S&&i===w-1)?-(1<<i):(1<<i))); return parts.length?parts.join(' + ').replace('+ -','− '):'0'; };
+const weightsRow=(w,S)=>{ let h=`<div class="hrow"><span class="hl">worth</span>`+cell('','blank'); for(let i=w-1;i>=0;i--){ const wt=(S&&i===w-1)?-(1<<i):(1<<i); h+=cell(wt,'c'+gap(i)); } return h+'<span class="hv"></span></div>'; };
+function numberLine(w,t,sr,ur){
+  const n=1<<w, lo=-n, hi=2*n-1, W=640, H=132, pad=26, x=v=>pad+(v-lo)/(hi-lo)*(W-2*pad);
+  let s=`<svg viewBox="0 0 ${W} ${H}" class="nl" role="img" aria-label="number line showing ${t} fitted into ${w} bits"><line x1="${x(lo)}" y1="70" x2="${x(hi)}" y2="70" class="axis"/>`;
+  s+=`<rect x="${x(-(n>>1))}" y="58" width="${x((n>>1)-1)-x(-(n>>1))}" height="12" class="band s"/><rect x="${x(0)}" y="70" width="${x(n-1)-x(0)}" height="12" class="band u"/>`;
+  for(const v of [lo,-(n>>1),0,(n>>1)-1,n-1,hi]) s+=`<line x1="${x(v)}" y1="66" x2="${x(v)}" y2="86" class="tick"/><text x="${x(v)}" y="124" text-anchor="middle" class="tk">${v}</text>`;
+  const arrow=(from,to,cls,y,below)=>{ if(from===to) return ''; const mid=(x(from)+x(to))/2, d=below?1:-1; return `<path d="M ${x(from)} ${y} Q ${mid} ${y+d*34} ${x(to)} ${y}" class="shift ${cls}"/><text x="${mid}" y="${y+d*22+(below?4:0)}" text-anchor="middle" class="sh ${cls}">${to>from?'+':'−'}${n}</text>`; };
+  s+=arrow(t,sr,'s',62,false)+arrow(t,ur,'u',80,true);
+  s+=`<circle cx="${x(t)}" cy="70" r="6" class="dot t"/><text x="${x(t)}" y="${t!==sr?16:40}" text-anchor="middle" class="dl">true ${t}</text><circle cx="${x(sr)}" cy="64" r="5" class="dot s"/><circle cx="${x(ur)}" cy="76" r="5" class="dot u"/>`;
+  return s+'</svg>';
+}
+function paper(a,b,w){
+  const host=document.getElementById('method'); if(!host) return;
+  const n=1<<w, half=n>>1, sa=signed(a,w), sb=signed(b,w), t=sa-sb, pat=(a-b)&mask(w), sr=signed(pat,w), ur=pat, fitS=sr===t;
+  host.innerHTML=
+    `<div class="step"><h4>1. Compute in decimal</h4><p>Read as signed, A − B is ${sa} − ${sb<0?'('+sb+')':sb} = <strong>${t}</strong>. Read as unsigned it is ${a} − ${b} = ${a-b}; the two answers ${a-b===t?'agree':'differ by '+Math.abs((a-b)-t)+', a multiple of '+n+', which the next step removes anyway'}.</p></div>`+
+    `<div class="step"><h4>2. Fit it into ${w} bits</h4>${numberLine(w,t,sr,ur)}<p>${fitS?`${t} is already inside the signed range −${half} to ${half-1}, so it stays ${t}.`:`${t} is outside the signed range −${half} to ${half-1}, so ${t>0?'subtract':'add'} ${n}: ${t} ${t>0?'−':'+'} ${n} = <strong>${sr}</strong>. That is the wrap. The register cannot tell ${t} from ${sr}, and an ALU reports it with V = 1: in the adder above, the carry into the top bit and the carry out of it disagree, because exactly one of "the top column needed a carry" and "a ${n} fell off the end" happened.`} Under the unsigned reading the same pattern must land in 0 to ${n-1}, which is <strong>${ur}</strong>${ur===a-b?'':`, from ${a-b} by adding ${n}: a borrow, C = 0`}. The two landings, ${sr} and ${ur}, are ${sr===ur?'the same number':'the same pattern'}.</p></div>`+
+    `<div class="step"><h4>3. Convert with the top bit</h4><div class="hood">`+weightsRow(w,true)+bitRow(`${sr}`,pat,w,{top:true,val:`${sumText(pat,w,true)} = ${sr}`})+weightsRow(w,false)+bitRow(`${ur}`,pat,w,{val:`${sumText(pat,w,false)} = ${ur}`})+`</div><p>${sr<0?`${sr} needs the top bit, worth −${half}, and then ${sr+half} more from the other bits.`:`${sr} is not negative, so the top bit is 0 and the rest make ${sr}.`} The register holds <strong>${pat.toString(2).padStart(w,'0')}</strong>, ${hex(pat,w)}, the same pattern the adder produced above.</p></div>`;
+}
+(function fixedCases(){
+  const host=document.getElementById('paperFixed'); if(!host) return;
+  const one=(title,a,b)=>{ const w=4,n=16,half=8, sa=signed(a,w), sb=signed(b,w), t=sa-sb, pat=(a-b)&15, sr=signed(pat,w), fits=sr===t;
+    return `<div class="case"><h4>${title}</h4>${numberLine(w,t,sr,pat)}<ol class="mini"><li>${sa} − ${sb<0?'('+sb+')':sb} = <strong>${t}</strong>.</li><li>${fits?`${t} is inside −8 to 7: nothing to do.`:`${t} is outside −8 to 7: ${t>0?'subtract':'add'} 16, ${t} ${t>0?'−':'+'} 16 = <strong>${sr}</strong>. The register cannot hold ${t}; an ALU would set V = 1, which it detects as the two carries at the top bit disagreeing.`}</li><li>${sr} is ${sumText(pat,w,true)}, so <strong>${pat.toString(2).padStart(4,'0')}</strong>.</li></ol></div>`; };
+  host.innerHTML=one('Fits: 3 − 5',3,5)+one('Wraps: 5 − (−6)',5,10);
+})();
+function wheel(a,b,w){
+  const host=document.getElementById('wheel'); if(!host) return;
+  if(w!==4){ host.innerHTML='<p class="tip">The wheel is drawn at 4 bits; at 8 bits it would need 256 positions. Switch the width to 4 to see it.</p>'; return; }
+  const N=16, R=100, cx=172, cy=172, r=sub(a,b,w).res;
+  const ang=k=>(-90+k*360/N)*Math.PI/180, px=(k,rr)=>cx+rr*Math.cos(ang(k)), py=(k,rr)=>cy+rr*Math.sin(ang(k));
+  let s=`<svg viewBox="0 0 344 344" class="wheelsvg" role="img" aria-label="A wheel of 16 positions showing ${a} minus ${b} landing on ${r}">`;
+  s+=`<circle cx="${cx}" cy="${cy}" r="${R}" class="ring"/>`;
+  for(let k=0;k<N;k++){ s+=`<line x1="${px(k,R-6)}" y1="${py(k,R-6)}" x2="${px(k,R+6)}" y2="${py(k,R+6)}" class="tick"/>`;
+    s+=`<text x="${px(k,R+22)}" y="${py(k,R+22)+4}" text-anchor="middle" class="lab u">${k}</text>`;
+    s+=`<text x="${px(k,R+50)}" y="${py(k,R+50)+3}" text-anchor="middle" class="lab bits${k===a?' hi':''}${k===r?' hi r':''}">${k.toString(2).padStart(4,'0')}</text>`;
+    s+=`<text x="${px(k,R-24)}" y="${py(k,R-24)+4}" text-anchor="middle" class="lab s">${signed(k,4)}</text>`; }
+  // arc from a backwards b steps
+  if(b>0){ const steps=b, from=a, to=((a-b)%N+N)%N; const large=steps>8?1:0; const rr=R;
+    const x1=px(from,rr), y1=py(from,rr), x2=px(to,rr), y2=py(to,rr);
+    if(steps===N) s+=`<circle cx="${cx}" cy="${cy}" r="${rr}" class="arc"/>`; else s+=`<path d="M ${x1} ${y1} A ${rr} ${rr} 0 ${large} 0 ${x2} ${y2}" class="arc"/>`;
+    // arrowhead at 'to'
+    const t=ang(to), dx=Math.sin(t), dy=-Math.cos(t); const hx=px(to,rr), hy=py(to,rr);
+    s+=`<polygon points="${hx},${hy} ${hx+dx*9-dy*4},${hy+dy*9+dx*4} ${hx+dx*9+dy*4},${hy+dy*9-dx*4}" class="arrow"/>`; }
+  s+=`<circle cx="${px(a,R)}" cy="${py(a,R)}" r="7" class="dot start"/><circle cx="${px(r,R)}" cy="${py(r,R)}" r="7" class="dot end"/>`;
+  const b4=x=>x.toString(2).padStart(4,'0');
+  s+=`<text x="${cx}" y="${cy-18}" text-anchor="middle" class="mid">${a} − ${b}</text><text x="${cx}" y="${cy+4}" text-anchor="middle" class="mid">= ${r} = ${signed(r,4)}</text><text x="${cx}" y="${cy+26}" text-anchor="middle" class="lab bits">${b4(a)} − ${b4(b)} = ${b4(r)}</text>`;
+  host.innerHTML=s+'</svg>';
+}
+function render(){
+  const {w}=state, M=mask(w); state.a&=M; state.b&=M; const a=state.a, b=state.b, f=sub(a,b,w), n=1<<w;
+  document.querySelectorAll('button[data-w]').forEach(x=>x.setAttribute('aria-pressed',Number(x.dataset.w)===w?'true':'false'));
+  document.querySelectorAll('button[data-preset]').forEach(x=>{ const [pw,pa,pb]=x.dataset.preset.split(',').map(Number); x.setAttribute('aria-pressed',(pw===w&&pa===a&&pb===b)?'true':'false'); });
+  document.querySelectorAll('button[data-b]').forEach(x=>{ const bw=x.dataset.bw?Number(x.dataset.bw):w; x.setAttribute('aria-pressed',(bw===w&&(Number(x.dataset.b)&M)===b)?'true':'false'); });
+  wheel(a,b,w);
+  const wrapTxt=document.getElementById('wrapTxt'); if(wrapTxt){ const t=a-b; wrapTxt.innerHTML = t<0
+    ? `${a} − ${b} would be ${t}, which is below zero. ${w} bits cannot hold it, so counting back past 0 wraps round to ${n-1} and lands on the pattern <strong>${f.res.toString(2).padStart(w,'0')}</strong>, ${hex(f.res,w)}. Read as unsigned that pattern is <strong>${f.res}</strong>, which is ${t} + ${n}. Read as signed it is <strong>${signed(f.res,w)}</strong>, the answer you expected. Same bits, both readings.`
+    : `${a} − ${b} = ${t}, which stays at or above zero, so nothing wraps: the result is ${hex(f.res,w)}, ${f.res} unsigned and ${signed(f.res,w)} signed.`; }
+  // negation rows
+  const neg=document.getElementById('neg'); if(neg){ const nb1=(f.nb+1)&M; neg.innerHTML=idxRow(w)+bitRow('B',b,w,{tap:'b',val:`${hex(b,w)} = ${b} unsigned, ${signed(b,w)} signed`})+bitRow('NOT B',f.nb,w,{val:`${hex(f.nb,w)} = ${f.nb} = ${n-1} − ${b}`})+bitRow('NOT B + 1',nb1,w,{val:`${hex(nb1,w)} = ${nb1} = ${n} − ${b}${b?`, which reads as ${signed(nb1,w)} signed`:''}${b===(n>>1)?`. The same pattern came back: −${n>>1} has no positive partner in ${w} bits, which is the V = 1 case of negation`:b===0?`. The 1 that fell off the top is the ${n} that NOT B + 1 always adds; both carries at the top bit were 1, so this is a wrap with no overflow, V = 0`:''}`}); }
+  // the adder doing it
+  const add=document.getElementById('adder'); if(add){ add.innerHTML=idxRow(w)+carryRow(f.cin,w)+bitRow('A',a,w,{tap:'a',val:`${hex(a,w)} = ${a}`})+bitRow('NOT B',f.nb,w,{val:`${hex(f.nb,w)}, every bit of B flipped`}).replace('<span class="hl">NOT B</span>','<span class="hl">NOT B</span>')+bitRow('= A − B',f.res,w,{top:true,val:`${hex(f.res,w)} = ${f.res} unsigned, ${signed(f.res,w)} signed`})+
+    `<div class="hflags"><span><b>C</b> = carry out of bit ${w-1} = <b>${f.c}</b>: ${f.c?'no borrow was needed':'a borrow was needed'}</span><span><b>N</b> = top bit = <b>${f.n}</b></span><span><b>Z</b> = all zero? <b>${f.z}</b></span><span><b>V</b> = carry into bit ${w-1} ≠ carry out = <b>${f.v}</b></span></div>`; }
+  const bRow=document.getElementById('brow'); if(bRow) bRow.innerHTML=bitRow('B',b,w,{tap:'b',val:`${hex(b,w)} = ${b}; tap to change. The adder below sees NOT B`});
+  paper(a,b,w);
+  const summary=document.getElementById('addTxt'); if(summary){ summary.innerHTML=`In words: ${a} + ${f.nb} + 1 = ${a+f.nb+1}. ${a+f.nb+1>=n?`That is ${n} or more, so the adder's carry out of bit ${w-1} is 1 and the ${n} is dropped, leaving ${f.res}. Dropping the ${n} undid the ${n} we added with NOT B + 1, so what remains is exactly ${a} − ${b}. C = 1: no borrow.`:`That is less than ${n}, so no carry comes out of bit ${w-1} and nothing is dropped: the result ${f.res} still contains the ${n} that NOT B + 1 added, which is the wrap-around from the wheel. C = 0: a borrow was needed, because ${a} is smaller than ${b}.`}`; }
+}
+document.querySelectorAll('button[data-w]').forEach(x=>x.addEventListener('click',()=>{ state.w=Number(x.dataset.w); render(); }));
+document.querySelectorAll('button[data-b]').forEach(x=>x.addEventListener('click',()=>{ if(x.dataset.bw) state.w=Number(x.dataset.bw); state.b=Number(x.dataset.b)&mask(state.w); render(); }));
+document.querySelectorAll('button[data-preset]').forEach(x=>x.addEventListener('click',()=>{ const [w,a,b]=x.dataset.preset.split(',').map(Number); state.w=w; state.a=a; state.b=b; render(); }));
+document.addEventListener('click',e=>{ const t=e.target.closest('.hb.tap'); if(!t) return; state[t.dataset.reg]^=1<<Number(t.dataset.i); render(); });
+document.addEventListener('keydown',e=>{ if(e.key!=='Enter'&&e.key!==' ') return; const t=e.target.closest&&e.target.closest('.hb.tap'); if(!t) return; e.preventDefault(); state[t.dataset.reg]^=1<<Number(t.dataset.i); render(); });
+render();
+
+})();
+</script>
+</body>
+</html>

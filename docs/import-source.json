@@ -1,0 +1,29 @@
+{
+  "repository": "snowch/programmer-calculator",
+  "commit": "efa1584bd6deb69b2e287aae579739c4a73bf052",
+  "originalFiles": {
+    "docs/adding-to-subtracting.html": "97771f85375cb8bfa0302c5292ba9627e8ec3f7bd18af6ef505dc585cab86a2a",
+    "docs/bit-lab.html": "25ce0d64725a198e7011d4a4bb6b32346751082d56462d3f025892598c085a64",
+    "docs/bytes-to-registers.html": "b7866c458df3e3424c903acca98a8ba51012840f304e254b947dcd852b968a81",
+    "docs/c-meets-the-wheel.html": "ab5f575bd45b719f67826cab65eedbc7f32ddf517bc6dd2a2f6ab69a024277a2",
+    "docs/flag-drills.html": "a334e7315c994a7fa3ec35064f23aab0b7e169f003cf983af14f654a8e61a8c6",
+    "docs/gates-to-alu.html": "1d58d0699e802c39f7e4c25e09f02c778900c0dd42b9715bb44ea72a8e9afb53",
+    "docs/gates-to-register.html": "8fec5d80f309f3ad02dae7a39111d513bc696dd5179a05289f57d44bf593523a",
+    "docs/notes.html": "612c259688cf64bca01d0204fca5e2a7294cfc9ada19a6bb2730c9e677787923",
+    "docs/readings-drills.html": "dd065c5484f20a31e1e3aa644967b19a3d66d56a5a2ba33f1f926c75a5b02661",
+    "docs/twos-complement.html": "d9c42ca1fc90880797e65950da9663d335026f0b8650439a41f70210e0306c21",
+    "docs/twos-complement.pdf": "700bc0a0a7c9e6b6a3744af58aebc7634698954e911e9b3974a34de4dadba1a9",
+    "docs/who-decides.html": "f35c05d380a6308c373dcbf731213247e7df1713c2b21a79c67f92970286fd8a",
+    "icon-192-maskable.png": "322b23025400e8fb2fd4711e769737ca936567a33aaa400431748b2e46767afb",
+    "icon-192.png": "66bcad1e004571f4190526dbf1615cad887e2b2120d9caefebb4f42a55484793",
+    "icon-512-maskable.png": "c8ccd804cabaecc8b359f61d181d4c6fac271475c2a8a3333892ba3fca233be2",
+    "icon-512.png": "16b6b045ce1a10abcd0caef33ea2437eb0bcc52319e7d4edf9f0fa9dd1967f73",
+    "index.html": "8c9217ec6b37dde8e9e7a45a94a8cc1a03cf0d217666415462123aaf8fb7d207",
+    "manifest.webmanifest": "d7686a14467aa9e72cd5bbeba9868a74cdfa810628d760e1988f39428c53cc34",
+    "screenshots/desktop-light.png": "acbee5eaddbe372eac5126b489d4fa0d31f4589da902e020978df9f596707cbb",
+    "screenshots/phone-dark.png": "b0857b5774485d4c0bf88ed00c4b7f3221acf19e1008f2c4c69d1a22c27bd503",
+    "screenshots/phone-keypad.png": "251a9880455582ec1d443ab379b6a1933d2c6a22e518edbfd49da627a0482cdb",
+    "screenshots/phone-light.png": "04baedf44341c7967bcfab5a17db2bda70e6ff299dfcb02c5db9b96f0d05a858",
+    "sw.js": "56b59351609b00137517f6253cd44dcfd2775bf2d042fcddb1fe6fbd0d82c744"
+  }
+}

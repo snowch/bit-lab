@@ -1,0 +1,486 @@
+/* Copyright © 2026 Christopher Snow */
+
+/* The lesson page: the markup the platform's runtime draws (platform/lesson-runtime), styled with
+   the course's tokens. Phone first. The prose keeps its measure and the figures take the page's
+   width. The classes are the runtime's, which digital-design styles the same way; the look is this
+   course's tokens'. */
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The way back, above the lesson. */
+.lesson-back {
+  max-width: 20rem;
+  margin: 0 0 var(--space-3);
+}
+
+/* Controls */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-raised);
+  color: var(--fg);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  line-height: 1.2;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition:
+    background var(--motion),
+    border-color var(--motion),
+    box-shadow var(--motion);
+}
+.button:hover:not(:disabled) {
+  background: var(--bg-sunken);
+  border-color: var(--fg-muted);
+}
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+}
+.button.primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+.button.primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--accent-fg);
+}
+.button.danger {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2em 0.55em;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  margin-right: var(--space-2);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.badge.ok {
+  color: var(--ok);
+  border-color: var(--ok);
+  background: var(--ok-bg);
+  margin-left: var(--space-2);
+}
+
+/* A radio button or a check box is a 44-pixel target with a smaller mark drawn in it. */
+input[type="radio"],
+input[type="checkbox"] {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0;
+  background: none;
+  cursor: pointer;
+}
+input[type="radio"]::before,
+input[type="checkbox"]::before {
+  content: "";
+  width: 1.25rem;
+  height: 1.25rem;
+  box-sizing: border-box;
+  border: 2px solid var(--border-strong);
+  background: var(--bg-raised);
+  transition: background var(--motion);
+}
+input[type="radio"]::before {
+  border-radius: 50%;
+}
+input[type="checkbox"]::before {
+  border-radius: var(--radius-sm);
+}
+input[type="radio"]:checked::before,
+input[type="checkbox"]:checked::before {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 3px var(--bg-raised);
+}
+input[type="radio"]:focus-visible::before,
+input[type="checkbox"]:focus-visible::before {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+input[type="radio"]:focus-visible,
+input[type="checkbox"]:focus-visible {
+  outline: none;
+}
+
+/* Lesson */
+.lesson-header {
+  margin-bottom: var(--space-7);
+}
+.lesson-objectives ul {
+  max-width: var(--measure);
+  padding-left: 1.25rem;
+}
+.lesson-objectives li::marker,
+.lesson-prerequisites li::marker {
+  color: var(--accent);
+}
+.lesson-model-note {
+  background: var(--note-bg);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  max-width: var(--measure);
+  margin-top: var(--space-6);
+}
+.lesson-model-note h2,
+.lesson-model-vs-reality h2 {
+  font-size: var(--text-lg);
+  margin-top: 0;
+}
+.lesson-model-vs-reality {
+  margin-top: var(--space-7);
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-5);
+  max-width: var(--measure);
+}
+.lesson-section {
+  margin-top: var(--space-8);
+}
+.lesson-section > h2 {
+  margin-top: 0;
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+/* Teaching-stage names belong to the authoring outline. The descriptive heading is
+   the learner's navigation label. */
+.section-kind {
+  display: none;
+}
+
+.prose {
+  max-width: var(--measure);
+}
+.prose > *:last-child {
+  margin-bottom: 0;
+}
+@media (max-width: 600px) {
+  .prose a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    max-width: 100%;
+  }
+}
+.figure-lead {
+  margin-bottom: var(--space-4);
+}
+.figure-after {
+  margin-top: var(--space-4);
+}
+
+/* A part of a section the reader opens if they want it. */
+.lesson-details {
+  max-width: var(--measure);
+  margin: var(--space-4) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+.lesson-details summary {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  font-weight: 600;
+  cursor: pointer;
+}
+/* Its summary says it opens: an information mark before the words, and a chevron after them that
+   turns when the note is open. Both are Material Icons (Apache License 2.0; docs/sources.md),
+   drawn as masks so they take the text's colour in either theme. */
+.lesson-details summary {
+  gap: var(--space-2);
+  list-style: none;
+}
+.lesson-details summary::-webkit-details-marker {
+  display: none;
+}
+.lesson-details summary::before,
+.lesson-details summary::after {
+  content: "";
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: var(--accent);
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+.lesson-details summary::before {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'/%3E%3C/svg%3E");
+}
+.lesson-details summary::after {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z'/%3E%3C/svg%3E");
+  margin-left: auto;
+  background: var(--fg-muted);
+  transition: transform var(--motion, 0.15s) ease;
+}
+.lesson-details[open] summary::after {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lesson-details summary::after {
+    transition: none;
+  }
+}
+.lesson-details > .prose {
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+/* Figures: a caption above, a card below. */
+figure.interactive {
+  margin: var(--space-5) 0;
+}
+figure.interactive > figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  margin: 0 0 var(--space-2);
+  max-width: var(--measure);
+}
+figure.interactive > figcaption .badge {
+  margin-right: 0;
+}
+/* The time-model badge is a button: it opens its model's note under the caption. */
+.time-model-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.time-model-toggle .badge {
+  gap: 0.45em;
+}
+.time-model-toggle:hover .badge {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+.badge-mark {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+  transition: transform var(--motion);
+}
+.time-model-toggle[aria-expanded="true"] .badge-mark {
+  transform: rotate(180deg);
+}
+.time-model-note {
+  flex-basis: 100%;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--note-bg);
+  color: var(--fg);
+  font-size: var(--text-sm);
+}
+.time-model-note[hidden] {
+  display: none;
+}
+.time-model-note .prose p {
+  margin: 0;
+}
+figure.interactive > :not(figcaption):not(.figure-lead):not(.figure-after) {
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-sm);
+}
+.interactive-problem,
+.interactive-missing {
+  color: var(--warn);
+  background: var(--warn-bg);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+}
+/* A line outside the prose keeps a line a reader can follow, at every width. */
+figure.interactive p {
+  max-width: 36rem;
+}
+/* The words above and below a figure are the lesson's prose, and keep the reading column's width. */
+figure.interactive > .figure-lead p,
+figure.interactive > .figure-after p {
+  max-width: none;
+}
+
+/* Challenge */
+.challenge-title {
+  margin-top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.challenge-task {
+  margin-bottom: var(--space-4);
+}
+.challenge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin: var(--space-4) 0 var(--space-3);
+}
+.challenge-reset-confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.challenge-status {
+  font-weight: 600;
+  margin: 0 0 var(--space-3);
+}
+.verdict.failures {
+  list-style: none;
+  padding: 0;
+}
+.verdict-failure {
+  overflow-wrap: anywhere;
+  border-left: 4px solid var(--bad);
+  background: var(--bad-bg);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-3);
+}
+.verdict-failure h4 {
+  margin: 0 0 var(--space-2);
+}
+.verdict-detail {
+  margin: var(--space-2) 0;
+}
+.verdict-values {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  margin: 0 0 var(--space-2);
+}
+.verdict-values dt {
+  color: var(--fg-muted);
+}
+.verdict-values dd {
+  margin: 0;
+}
+.values .value {
+  margin-right: var(--space-2);
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.verdict.blocked {
+  border-left: 4px solid var(--warn);
+  background: var(--warn-bg);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+}
+.verdict-blocked p {
+  margin: 0 0 var(--space-1);
+}
+.hints {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--border);
+}
+.hints-list {
+  padding-left: var(--space-5);
+  max-width: var(--measure);
+}
+.hints-list li {
+  margin-bottom: var(--space-3);
+}
+.hints-rung {
+  display: block;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.hints-text p {
+  margin: 0;
+}
+.hints-none {
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+/* A prediction: the options, one to a line, each a full-size target. */
+.prediction-options {
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-2) 0;
+  margin: var(--space-3) 0;
+}
+.prediction-option {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+@media (max-width: 40rem) {
+  .verdict-values {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  figure.interactive > :not(figcaption):not(.figure-lead):not(.figure-after) {
+    padding: var(--space-3);
+  }
+}
+
+/* The reading column is centred in the page, and the figures span the page: the space the prose
+   does not use falls evenly either side of it rather than all to its right. Every block of words
+   keeps the reading measure and is centred; a figure keeps the page's width, and the words inside
+   a figure (its caption, its lead and the words after it) line up with the column. */
+.lesson-back,
+.lesson-header,
+.lesson-section > :not(figure.interactive),
+.lesson-model-note,
+.lesson-model-vs-reality,
+figure.interactive > figcaption,
+figure.interactive > .figure-lead,
+figure.interactive > .figure-after {
+  max-width: var(--measure);
+  margin-inline: auto;
+}

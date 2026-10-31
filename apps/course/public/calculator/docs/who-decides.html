@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+// Import old work once without writing to the original app's keys.
+try {
+  if (!localStorage.getItem("bit-lab:legacy:imported:v1")) {
+  for (const key of ["pc-done", "pc-done-layout", "pc-exercises-hidden", "pc-show-done", "pc-theme", "bitlab-state", "bitlab-theme", "drills-score", "readings-score"]) {
+    const target = 'bit-lab:legacy:' + key;
+    if (localStorage.getItem(target) === null) {
+      const old = localStorage.getItem(key);
+      if (old !== null) localStorage.setItem(target, old);
+    }
+  }
+  localStorage.setItem("bit-lab:legacy:imported:v1", "1");
+  }
+} catch (_) {}
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Signed or unsigned: who decides?</title>
+<meta name="description" content="How a processor compares signed and unsigned numbers with the same CMP: the ARM branch pairs, a compiled if in C and assembly with its trace, and what the two loads do.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem("bit-lab:legacy:bitlab-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#EDF0EA;
+  --paper-2:#E2E7DF;
+  --paper-3:#F6F8F4;
+  --ink:#1B2620;
+  --ink-2:#4F5E57;
+  --rule:#C3CBC0;
+  --wire-off:#B4BDB2;
+  --wire-on:#E09B1A;
+  --wire-on-2:#F6C860;
+  --carry:#B23A2C;
+  --gate-fill:#F8FAF6;
+  --gate-stroke:#2D3B35;
+  --bit-off:#D7DDD3;
+  --bit-on:#F1B23A;
+  --bit-on-ink:#2B1E05;
+  --led-on:#D9471F;
+  --led-off:#C9D0C5;
+  --na:#98A39C;
+  --focus:#2F6FD1;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#131A16;
+    --paper-2:#1B241F;
+    --paper-3:#232E28;
+    --ink:#E6ECE4;
+    --ink-2:#9AA89F;
+    --rule:#2E3B34;
+    --wire-off:#3A4740;
+    --wire-on:#F0B23C;
+    --wire-on-2:#FFD98A;
+    --carry:#E86A55;
+    --gate-fill:#1F2A24;
+    --gate-stroke:#C9D4CC;
+    --bit-off:#26312B;
+    --bit-on:#F0B23C;
+    --bit-on-ink:#2B1E05;
+    --led-on:#FF6A3D;
+    --led-off:#2A3630;
+    --na:#5C6A62;
+    --focus:#7FA9F0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131A16; --paper-2:#1B241F; --paper-3:#232E28; --ink:#E6ECE4; --ink-2:#9AA89F; --rule:#2E3B34;
+  --wire-off:#3A4740; --wire-on:#F0B23C; --wire-on-2:#FFD98A; --carry:#E86A55;
+  --gate-fill:#1F2A24; --gate-stroke:#C9D4CC; --bit-off:#26312B; --bit-on:#F0B23C;
+  --bit-on-ink:#2B1E05; --led-on:#FF6A3D; --led-off:#2A3630; --na:#5C6A62; --focus:#7FA9F0;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:16px;line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+main{max-width:980px;margin:0 auto;padding:20px 16px 56px}
+code,kbd,.mono{font-family:var(--mono)}
+button{font:inherit;color:inherit}
+a{color:var(--ink)}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+h1{font-size:clamp(1.55rem,1.1rem + 1.6vw,2.1rem);font-weight:600;margin:0 0 6px;letter-spacing:-.015em;line-height:1.15}
+.lede{color:var(--ink-2);margin:0 0 12px;max-width:62ch;font-size:1.05rem}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.meta span{font:500 .78rem/1.6 var(--mono);border:1px solid var(--rule);border-radius:999px;padding:1px 10px;color:var(--ink-2)}
+.themebtn{flex:none;margin-top:4px}
+nav.toc{display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 26px;padding:8px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+nav.toc a{font:500 .84rem var(--mono);color:var(--ink-2);text-decoration:none;padding:3px 9px;border-radius:6px}
+nav.toc a:hover{color:var(--ink);background:var(--paper-2)}
+
+/* ---------- prose sections ---------- */
+.tut{margin-top:36px;border-top:1px solid var(--rule);padding-top:22px}
+.tut h2{font-size:1.4rem;font-weight:600;margin:0 0 12px;letter-spacing:-.01em;line-height:1.2}
+.tut h3{font-size:1.02rem;font-weight:600;margin:20px 0 6px}
+.tut p,.tut li{max-width:70ch}
+.tut p{margin:0 0 12px}
+.tut ul,.tut ol{padding-left:22px;margin:0 0 12px}
+.tut li{margin-bottom:5px}
+.tut strong{font-weight:600}
+.tut code{background:var(--paper-2);padding:1px 5px;border-radius:4px;font-size:.88em}
+.tut table{border-collapse:collapse;font-size:.9rem;margin:8px 0 14px;font-variant-numeric:tabular-nums}
+.tut td,.tut th{border:1px solid var(--rule);padding:5px 11px;text-align:left;vertical-align:top}
+.tut th{background:var(--paper-2);font-weight:600}
+.tut td.mono{font-family:var(--mono);font-size:.86rem}
+pre.work{font:.86rem/1.55 var(--mono);background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:10px 14px;overflow-x:auto;margin:8px 0 14px}
+.check{border-left:3px solid var(--wire-on);padding:2px 0 2px 14px;margin:14px 0}
+.check ol{margin-bottom:6px}
+.steps{list-style:none;padding:0;counter-reset:step}
+.steps>li{position:relative;padding-left:36px;margin-bottom:14px;max-width:72ch}
+.steps>li::before{
+  counter-increment:step;content:counter(step);position:absolute;left:0;top:2px;
+  width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--paper);
+  font:600 .8rem/24px var(--mono);text-align:center;
+}
+
+/* ---------- schematic ---------- */
+figure.schem{margin:10px 0 18px;background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:10px 8px 8px;overflow-x:auto}
+figure.schem svg{display:block;width:100%;min-width:680px;max-width:800px;height:auto;margin:0 auto}
+figure.schem figcaption{font-size:.84rem;color:var(--ink-2);margin:8px 6px 0;text-align:center;line-height:1.4}
+.schem .box{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.5}
+.schem .opt{stroke-dasharray:5 4}
+.schem .bus{stroke:var(--wire-on);stroke-width:3;fill:none;stroke-linejoin:round}
+.schem .sig{stroke:var(--ink-2);stroke-width:1.6;fill:none}
+.schem .ctl{stroke:var(--ink-2);stroke-width:1.6;fill:none;stroke-dasharray:4 3;stroke-linejoin:round}
+.schem .cy{stroke:var(--carry);stroke-width:2.2;fill:none}
+.schem .fb{stroke:var(--focus);stroke-width:2;fill:none;stroke-dasharray:6 4;stroke-linejoin:round}
+.schem .dot{fill:var(--wire-on)}
+.schem .dotf{fill:var(--focus)}
+.schem .tick{stroke:var(--ink-2);stroke-width:1.4}
+.schem text{font-family:var(--mono);font-size:11px;fill:var(--ink)}
+.schem .t2{fill:var(--ink-2);font-size:10px}
+.schem .tc{fill:var(--carry);font-weight:600}
+.schem .tf{fill:var(--focus)}
+.schem .badge circle{fill:var(--ink);stroke:var(--paper);stroke-width:1.5}
+.schem .badge text{fill:var(--paper);font-weight:600;font-size:10px}
+.schem .led{fill:var(--led-off);stroke:var(--rule);stroke-width:1}
+.schem .led.lit{fill:var(--led-on);stroke:var(--led-on)}
+
+/* ---------- the lab ---------- */
+.labwrap{margin-top:16px}
+.ops{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px}
+.opgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.opcap{font:500 .7rem var(--mono);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-2);margin-right:2px}
+.op{
+  font:500 .9rem var(--mono);border:1px solid var(--rule);background:var(--paper-2);border-radius:8px;
+  padding:6px 11px;cursor:pointer;
+}
+.op:hover{border-color:var(--ink-2)}
+.op[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.op:focus-visible,.small:focus-visible,.preset:focus-visible,.load:focus-visible,.themebtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;color:var(--ink-2);margin-bottom:12px;font:.84rem var(--mono)}
+.small{border:1px solid var(--rule);background:transparent;border-radius:6px;padding:3px 9px;cursor:pointer;font:500 .84rem var(--mono);color:var(--ink)}
+.small:hover{border-color:var(--ink-2)}
+.small[aria-pressed="true"]{background:var(--ink-2);color:var(--paper);border-color:var(--ink-2)}
+.circuit{
+  background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;
+  padding:10px 8px 6px;overflow-x:auto;
+}
+.circuit svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
+svg text{font-family:var(--mono);fill:var(--ink)}
+.wire{stroke:var(--wire-off);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.wire.on{stroke:var(--wire-on)}
+.wire.carry.on{stroke:var(--carry)}
+.gate{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.8}
+.bit{cursor:pointer}
+.bit rect{fill:var(--bit-off);stroke:var(--rule);stroke-width:1;transition:fill .12s}
+.bit.on rect{fill:var(--bit-on);stroke:var(--bit-on)}
+.bit text{font-weight:600;font-size:15px;pointer-events:none}
+.bit.on text{fill:var(--bit-on-ink)}
+.bit:focus{outline:none}
+.bit:focus-visible rect{stroke:var(--focus);stroke-width:2.5}
+.bit.ro{cursor:default}
+.bit.ro rect{stroke-dasharray:3 2}
+.lab{font-size:11px;fill:var(--ink-2)}
+.lab.sm{font-size:10px}
+.idx{font-size:9.5px;fill:var(--ink-2)}
+.cv{font-size:10.5px;font-weight:600}
+.cv.on{fill:var(--carry)}
+.cv.off{fill:var(--ink-2)}
+.fv{font-size:10.5px;font-weight:600}
+.fv.on{fill:var(--wire-on)}
+.fv.off{fill:var(--ink-2)}
+.cnst{font-size:11px;fill:var(--ink-2)}
+.tip{color:var(--ink-2);font-size:.82rem;margin:8px 0 0}
+
+.values{margin:16px 0 4px;overflow-x:auto}
+.values table{border-collapse:collapse;font:.9rem var(--mono);font-variant-numeric:tabular-nums;width:100%;max-width:600px}
+.values th{text-align:left;color:var(--ink-2);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;padding:4px 14px 4px 0}
+.values th.num,.values td.num{text-align:right}
+.values td{padding:5px 14px 5px 0;border-top:1px solid var(--rule);white-space:nowrap}
+.values th.rowk{color:var(--ink);font-weight:600;font-size:.9rem;text-transform:none;letter-spacing:0;border-top:1px solid var(--rule)}
+.values td.bin{font-weight:600;letter-spacing:.04em}
+.values tr.r td,.values tr.r th{background:var(--paper-3)}
+
+.flags{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin-top:14px}
+.flag{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;background:var(--paper-2)}
+.flag header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.led{width:14px;height:14px;border-radius:50%;background:var(--led-off);border:1px solid var(--rule);flex:none;transition:background .15s,box-shadow .15s}
+.led.on{background:var(--led-on);border-color:var(--led-on);box-shadow:0 0 0 3px color-mix(in srgb,var(--led-on) 25%,transparent)}
+.led.na{background:transparent;border-style:dashed;border-color:var(--na)}
+.flag h3{margin:0;font:600 1rem var(--mono)}
+.flag h3 span{color:var(--ink-2);font-weight:400;font-size:.85rem;margin-left:6px}
+.flag svg{width:100%;max-width:240px;height:auto;display:block;margin:2px 0 8px;overflow:visible}
+.flag p{margin:0;font-size:.88rem;color:var(--ink-2);line-height:1.45}
+.flag p strong{color:var(--ink);font-weight:600}
+.flag.na{opacity:.72}
+.why{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px}
+.why h2{font:600 1rem var(--mono);margin:0 0 6px}
+.why p{margin:0 0 8px;max-width:70ch;font-size:.95rem}
+.presets{margin-top:22px}
+.presets h2{font-size:1rem;margin:0 0 8px;font-weight:600}
+#presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
+.preset{
+  display:block;text-align:left;border:1px solid var(--rule);background:transparent;
+  border-radius:8px;padding:8px 10px;cursor:pointer;font:500 .86rem var(--mono);
+}
+.preset:hover{background:var(--paper-2);border-color:var(--ink-2)}
+.preset span{display:block;color:var(--ink-2);font:.84rem var(--sans);margin-top:2px}
+
+/* ---------- exercises & quiz ---------- */
+.ex{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--paper-2)}
+.ex h3{font-size:1rem;margin:0 0 8px;font-weight:600}
+.ex p{margin:0 0 8px}
+.ex .load{font:500 .84rem var(--mono);border:1px solid var(--ink);background:transparent;border-radius:6px;padding:4px 10px;cursor:pointer;margin-bottom:10px}
+.ex .load:hover{background:var(--ink);color:var(--paper)}
+details{margin-top:6px}
+summary{cursor:pointer;color:var(--ink-2);font:500 .84rem var(--mono);display:inline-block;padding:2px 9px;border:1px solid var(--rule);border-radius:6px;list-style:none;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"\25B8  "}
+details[open] summary::before{content:"\25BE  "}
+summary:hover{color:var(--ink);border-color:var(--ink-2)}
+details p{margin:8px 0 0;color:var(--ink);font-size:.93rem}
+.lab-anchor{scroll-margin-top:12px}
+
+/* ---------- footer ---------- */
+footer.site{margin-top:44px;border-top:1px solid var(--rule);padding-top:14px;font:.84rem var(--mono);color:var(--ink-2);display:flex;flex-wrap:wrap;gap:6px 20px}
+footer.site a{color:var(--ink-2)}
+footer.site a:hover{color:var(--ink)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* ---------- block diagram & full adder widget ---------- */
+svg.blockdiag{width:100%;max-width:420px;height:auto;display:block;margin:6px 0 14px}
+.fawrap{display:grid;grid-template-columns:minmax(240px,370px) minmax(0,1fr);gap:14px 26px;align-items:start;margin:10px 0 16px}
+@media (max-width:640px){.fawrap{grid-template-columns:minmax(0,1fr)}}
+.fa{background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:8px 6px}
+.fa svg{display:block;width:100%;height:auto}
+.jdot{fill:var(--wire-off)}
+.jdot.on{fill:var(--wire-on)}
+.jdot.carry.on{fill:var(--carry)}
+.faeq{font:.9rem/1.5 var(--mono);margin:0 0 10px}
+table.truth{border-collapse:collapse;font:.86rem var(--mono);font-variant-numeric:tabular-nums;margin:0 0 8px}
+table.truth th,table.truth td{border:1px solid var(--rule);padding:3px 11px;text-align:center}
+table.truth th{background:var(--paper-2);font-weight:600}
+table.truth tr.cur td{background:var(--bit-on);color:var(--bit-on-ink);font-weight:600}
+.clk{fill:none;stroke:var(--gate-stroke);stroke-width:1.5}
+
+/* ---------- 4-bit chain widget ---------- */
+.chainwrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:640px){.chainwrap{grid-template-columns:minmax(0,1fr)}}
+#chainTable{overflow-x:auto}
+table.add th,table.add td{padding:3px 8px}
+.gate.sel{stroke:var(--focus);stroke-width:2.6}
+.fabox{cursor:pointer}
+.bit.wait rect{fill:transparent;stroke:var(--na);stroke-dasharray:3 2}
+.bit.wait text{fill:var(--na)}
+table.add td.k{text-align:left;color:var(--ink-2);font-size:.8rem;white-space:nowrap}
+table.add td.cin{color:var(--carry);font-weight:600}
+table.add tr.sum td{border-top:2px solid var(--ink-2);font-weight:600}
+table.add td.q{color:var(--na)}
+
+/* ---------- CMP and the branches ---------- */
+.asmwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 24px;margin:4px 0 10px}
+@media (max-width:760px){.asmwrap{grid-template-columns:minmax(0,1fr)}}
+.asmwrap h3{margin:8px 0 4px}
+table.asm{width:100%}
+table.asm td{text-align:left;padding:3px 8px}
+table.asm td.mn{font-weight:600}
+table.asm td.k{color:var(--ink-2)}
+table.asm tr.take td{background:var(--bit-on);color:var(--bit-on-ink)}
+table.asm tr.take td.k{color:var(--bit-on-ink)}
+
+/* ---------- the same thing as a program ---------- */
+.asmprog{margin:0 0 6px;white-space:pre}
+.asmprog .ln{display:block;opacity:.5;padding:0 6px;margin:0 -6px;border-radius:4px}
+.asmprog .ln.run{opacity:1;background:var(--bit-on);color:var(--bit-on-ink)}
+.asmprog .cm{color:var(--ink-2)}
+.asmprog .ln.run .cm{color:var(--bit-on-ink);opacity:.8}
+ol.trace{margin:4px 0 14px;padding-left:22px}
+ol.trace li{margin:0 0 4px}
+
+/* ---------- under the hood ---------- */
+.hood{background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:8px 14px 4px;overflow-x:auto;margin:8px 0 14px;font:.8rem var(--mono);font-variant-numeric:tabular-nums}
+.hood h4{margin:8px 0 6px;font:600 .86rem var(--sans)}
+.hood h4+ .hrow .hb.c{color:var(--ink-2);font-size:9px}
+.hrow{display:flex;align-items:center;white-space:nowrap;margin:2px 0}
+.hrow .hl{width:132px;flex:none;color:var(--ink-2)}
+.hrow .hv{margin-left:12px;color:var(--ink-2);white-space:normal;flex:1 1 auto;min-width:22ch;line-height:1.35}
+.hrow{align-items:flex-start}
+.hrow .hl,.hrow .hb{margin-top:1px}
+.hb{display:inline-flex;width:15px;height:17px;flex:none;align-items:center;justify-content:center;border:1px solid var(--rule);background:var(--bit-off);font-weight:600;font-size:10.5px;margin-right:1px;border-radius:2px;color:var(--ink)}
+.hb.on{background:var(--bit-on);border-color:var(--bit-on);color:var(--bit-on-ink)}
+.hb.fill{border:1px dashed var(--ink-2)}
+.hb.fill.on{border-color:var(--bit-on-ink)}
+.hb.gap{margin-right:7px}
+.hb.blank{visibility:hidden}
+.hb.c{background:transparent;border-color:transparent;color:var(--ink-2);font-weight:500}
+.hb.c.on{color:var(--carry);font-weight:700}
+.hb.c.v{border-color:var(--carry);border-style:dashed}
+.hb.top{box-shadow:0 0 0 2px var(--carry) inset}
+.hflags{display:flex;flex-wrap:wrap;gap:4px 18px;margin:8px 0 2px;color:var(--ink-2)}
+.hflags b{color:var(--ink)}
+.hnote{color:var(--ink-2);font:.82rem/1.5 var(--sans);margin:6px 0 10px;white-space:normal}
+.hnote code{background:var(--paper);padding:1px 5px;border-radius:4px}
+
+
+.crumbs{font:.84rem var(--mono);color:var(--ink-2);margin:0 0 14px}
+.crumbs a{color:var(--ink-2)}
+.crumbs a:hover{color:var(--ink)}
+.tut.first{margin-top:26px;border-top:0;padding-top:0}
+nav.toc + .tut.first{margin-top:0}
+nav.pager{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin:34px 0 0;padding:14px 0;border-top:1px solid var(--rule);font:.9rem var(--sans)}
+nav.pager a{color:var(--ink);text-decoration:none;border:1px solid var(--rule);border-radius:8px;padding:8px 12px}
+nav.pager a:hover{border-color:var(--ink-2)}
+nav.pager .next{text-align:right}
+nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
+@media (max-width:640px){nav.pager{grid-template-columns:1fr}nav.pager .next{text-align:left}}
+
+.hb.tap{cursor:pointer}
+.hb.tap:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+#pair .hrow .hl{width:40px}
+#pair{margin-bottom:10px}
+</style>
+</head>
+<body>
+<nav aria-label="Bit Lab navigation" style="padding:12px 16px;font:16px system-ui;display:flex;gap:24px;flex-wrap:wrap"><a href="../../#/">← Bit Lab lessons</a><a href="../../#/practice">Practice</a></nav>
+<main>
+  <div class="top">
+    <div>
+      <p class="crumbs"><a href="notes.html" title="From gates to a compiled if: contents">Home</a> · part 7 of 9</p>
+      <h1>Signed or unsigned: who decides?</h1>
+      <p class="lede">The hardware stores no sign. One compare sets four flags, and the next instruction chooses which of them to read. Here that choice is made visible: every ARM branch on one compare, then the C and assembly of a real <code>if</code>, traced for any pair of bytes.</p>
+    </div>
+    <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
+  </div>
+  <nav class="toc" aria-label="Sections">
+    <a href="#who">1 Who decides</a><a href="#compare">2 One compare, every branch</a><a href="#program">3 The same thing as a program</a><a href="#loads">4 What the loads do to the bits</a>
+  </nav>
+  <section class="tut first" id="who">
+    <h2>1. Who decides</h2>
+    <p>Nothing in the Bit Lab's circuit knows whether A is 128 or −128. The register holds eight bits and the adder adds them. Neither has anywhere to store which reading you meant.</p>
+    <p>It does not need to. The ALU produces one result and all four flags on every operation. C and Z answer the unsigned questions and N and V the signed ones, so both readings are available at the same time.</p>
+    <p>The decision is made afterwards, by the next instruction. A compare instruction, <code>CMP</code>, is a subtraction that keeps the flags and throws the result away. After it comes a branch instruction, which tests some of the flags and jumps if the test passes. The instruction set has two branches for every question: one tests the unsigned flags and one tests the signed flags. Whoever writes the program, or the compiler working for them, picks which one to use. That is who decides.</p>
+    <p>Try it below. Pick two bytes, or tap their bits, and they are fed through <code>CMP A, B</code>; the snippet ends with <code>BEQ</code>, the one branch both readings share. The tables underneath list the other branches: what each one means, which flags it tests, whether it would be taken right now, and whether that matches the arithmetic under its reading. Change A or B here at any time.</p>
+  </section>
+  <section class="tut" id="compare">
+    <h2>2. One compare, every branch</h2>
+    <div class="row asmPresets" id="asmPresets"></div>
+    <div class="row"><span>Width</span><button class="small" type="button" data-w="8" aria-pressed="true">8-bit</button><button class="small" type="button" data-w="4" aria-pressed="false">4-bit</button><span></span><button class="small" type="button" id="randA">random A</button><button class="small" type="button" id="randB">random B</button></div>
+    <div class="hood" id="pair"></div>
+    <pre class="work" id="asmCode"></pre>
+    <div class="row"><button class="small" type="button" id="asmWorkBtn" aria-pressed="false">show the working</button><span>how A − B was computed, bit by bit (explained on <a href="adding-to-subtracting.html">From adding to subtracting</a>)</span></div>
+    <div class="hood" id="asmWork" hidden></div>
+    <div class="asmwrap">
+      <div><h3>Unsigned reading</h3><div id="asmU"></div></div>
+      <div><h3>Signed reading</h3><div id="asmS"></div></div>
+    </div>
+    <p class="tip">ARM mnemonics. x86 has the same pairs under other names: <code>jb</code>/<code>jae</code>/<code>ja</code>/<code>jbe</code> for unsigned and <code>jl</code>/<code>jge</code>/<code>jg</code>/<code>jle</code> for signed, except that x86 sets its carry flag to 1 when a borrow was needed, the opposite of ARM.</p>
+  </section>
+  <section class="tut" id="program">
+    <h2>3. The same thing as a program</h2>
+    <p>Here is the same comparison as code: one <code>if</code> in C, and the ARM assembly a compiler turns it into. Pick which type <code>a</code> and <code>b</code> are declared as. The only C line that changes is the declaration, yet the compiler emits a different load and a different branch, because the type tells it which member of each pair to use. The lines that actually run for the current A and B are highlighted, and the trace underneath walks through them.</p>
+    <div class="row asmPresets"></div>
+    <div class="row"><span>Declared as</span><button class="small asmType" type="button" id="asmTypeU" data-s="0" aria-pressed="true">uint8_t (unsigned)</button><button class="small asmType" type="button" id="asmTypeS" data-s="1" aria-pressed="false">int8_t (signed)</button></div>
+    <div class="asmwrap">
+      <div><h3>C</h3><pre class="work asmprog" id="asmC"></pre></div>
+      <div><h3>ARM assembly</h3><pre class="work asmprog" id="asmArm"></pre></div>
+    </div>
+    <ol class="trace" id="asmTrace"></ol>
+  </section>
+  <section class="tut" id="loads">
+    <h2>4. What the loads do to the bits</h2>
+    <p>The two loads differ only in the 24 bits that were never in memory. On ARM every register is 32 bits wide and <code>CMP</code> compares whole registers, so a byte has to be widened on its way in: <code>LDRB</code> fills the spare bits with 0 and <code>LDRSB</code> fills them with copies of the byte's top bit, which is why the same byte 0x80 becomes 128 under one and −128 under the other, and why the two loads agree whenever the top bit is 0. The companion page <a href="bytes-to-registers.html"><em>From bytes to registers</em></a> draws both loads and the widened compare cell by cell, for any pair you choose, and explains why the 32-bit flags can differ from the 8-bit ones while the branch lands the same way.</p>
+    <p>There are likewise two right shifts, two widening loads and two divides, because those are the operations where the top bit's meaning changes the answer. (A load is widening whenever the register is wider than the value in memory, which is every byte load on a 32-bit machine: the spare bits have to be filled with something, and the two loads fill them differently, as the program above shows.) A typed language records the decision once: in C, <code>unsigned</code> or <code>int</code> tells the compiler which member of each pair to emit, so you state the reading at the declaration and the compiler applies it at every operation.</p>
+    <p>That is why the Bit Lab's values table always shows both readings, and why its flag cards say "as unsigned" and "as signed": C answers whether the unsigned reading of the result fits, V whether the signed one does, and the same pattern can be right under one and wrong under the other. Load <code>0x80 vs 0x7F</code> and watch the two readings order the same bits oppositely.</p>
+    <p>To make this automatic, the <a href="flag-drills.html">flag drills</a> page gives randomised predict-then-check exercises on exactly these four things: the flags of a <code>CMP</code>, which branches fire, recovering the type from a compiled <code>if</code>, and widening a byte by hand.</p>
+  </section>
+
+  <nav class="pager" aria-label="Series navigation"><a class="prev" href="gates-to-register.html">Previous: From gates to a register</a><a class="up" href="notes.html">Contents</a><a class="next" href="bytes-to-registers.html">Next: From bytes to registers</a></nav>
+  <footer class="site">
+    <a href="notes.html">From gates to a compiled if: contents</a>
+    <a href="../">Programmer Calculator app</a>
+    <a href="twos-complement.pdf">Two's complement tutorial (PDF)</a>
+  </footer>
+</main>
+<script>
+(function(){
+'use strict';
+/* ---------- theme ---------- */
+(function(){
+  const btn=document.getElementById('themeBtn'); if(!btn) return;
+  const THEMES=['auto','light','dark'];
+  let theme='auto'; try{ theme=localStorage.getItem('bit-lab:legacy:bitlab-theme')||'auto'; }catch(e){}
+  if(!THEMES.includes(theme)) theme='auto';
+  const apply=()=>{
+    if(theme==='auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme',theme);
+    btn.textContent='theme: '+theme; btn.setAttribute('aria-label','Theme: '+theme+'. Activate to change');
+  };
+  apply();
+  btn.addEventListener('click',()=>{ theme=THEMES[(THEMES.indexOf(theme)+1)%THEMES.length]; try{localStorage.setItem('bit-lab:legacy:bitlab-theme',theme);}catch(e){} apply(); });
+})();
+
+
+
+const hex=(x,w)=>'0x'+(x>>>0).toString(16).toUpperCase().padStart(w/4,'0');
+const bit=(x,i)=>(x>>>i)&1;
+const mask=w=>(1<<w)-1;
+const signed=(x,w)=>bit(x,w-1)?x-(1<<w):x;
+const state={op:'SUB',w:8,a:0x80,b:0x7F};
+const cell=(t,cls,attrs)=>`<span class="hb${cls?' '+cls:''}"${attrs||''}>${t}</span>`;
+function byteRow(label,reg,x,w){ let h=`<div class="hrow"><span class="hl">${label}</span>`; for(let i=w-1;i>=0;i--){ const v=bit(x,i); h+=cell(v,((v?'on':'')+' tap'+(i===w-1?' top':'')+(i%8===0&&i!==0?' gap':'')).trim(),` role="button" tabindex="0" data-reg="${reg}" data-i="${i}" aria-label="${reg} bit ${i}: ${v}"`); } return h+`<span class="hv">${hex(x,w)} = ${x} unsigned, ${signed(x,w)} signed. Tap a bit to flip it.</span></div>`; }
+/* ---------- CMP and the branches ---------- */
+function cmpFlags(a,b,w){
+  const M=mask(w), xb=(~b)&M; let c=1, res=0;
+  for(let i=0;i<w;i++){ const x=bit(a,i), y=bit(xb,i), s=x^y^c; res|=s<<i; const cn=(x&y)|(c&(x^y)); if(i===w-1){ const vin=c; c=cn; return {res, n:bit(res,w-1), z:res===0?1:0, c, v:c^vin}; } c=cn; }
+}
+const ASM_PRESETS=[
+  ['5 vs 3', 5, 3], ['3 vs 5', 3, 5], ['0x80 vs 0x7F', 0x80, 0x7F], ['0xFF vs 0x01', 0xFF, 0x01], ['0x7F vs 0x7F', 0x7F, 0x7F],
+];
+(function(){
+  document.querySelectorAll('.asmPresets').forEach(host=>{
+  const cap=document.createElement('span'); cap.textContent='Load a pair'; host.appendChild(cap);
+  for(const [t,a,b] of ASM_PRESETS){
+    const btn=document.createElement('button'); btn.className='small'; btn.type='button'; btn.textContent=t; btn.dataset.pair=a+','+b; btn.setAttribute('aria-pressed','false');
+    btn.addEventListener('click',()=>{ state.op='SUB'; state.w=8; state.a=a; state.b=b; update(); });
+    host.appendChild(btn);
+  }
+  });
+})();
+function renderAsm(r){
+  const code=document.getElementById('asmCode'); if(!code) return;
+  const w=state.w, M=mask(w), a=state.a&M, b=state.b&M, f=cmpFlags(a,b,w);
+  const ua=a, ub=b, sa=signed(a,w), sb=signed(b,w);
+  const yn=x=>x?'1':'0';
+  code.textContent=
+`    CMP  A, B        ; flags <- A - B, result discarded
+    ; A = ${hex(a,w)} = ${ua} unsigned, ${sa} signed
+    ; B = ${hex(b,w)} = ${ub} unsigned, ${sb} signed
+    ; A - B = ${hex(f.res,w)}   N=${yn(f.n)} Z=${yn(f.z)} C=${yn(f.c)} V=${yn(f.v)}
+    BEQ  same        ; jump to "same" if Z = 1. Z = ${yn(f.z)}: ${f.z?"taken":"not taken"}
+    ...              ; ${f.z?"skipped: execution continues at the label":"runs next, because the branch fell through"}`;
+  const rows=(list,host)=>{
+    let h='<table class="truth asm"><tr><th>branch</th><th>means</th><th>tests</th><th>taken?</th><th>arithmetic</th></tr>';
+    for(const [mn,meaning,test,taken,truth] of list){
+      h+=`<tr class="${taken?'take':''}"><td class="mn">${mn}</td><td class="k">${meaning}</td><td class="k">${test}</td><td>${taken?'taken':'not taken'}</td><td class="k">${truth?'true':'false'} ${taken===truth?'✓':'✗'}</td></tr>`;
+    }
+    document.getElementById(host).innerHTML=h+'</table>';
+  };
+  const N=f.n,Z=f.z,C=f.c,V=f.v;
+  rows([
+    ['BLO','A &lt; B','C = 0', C===0, ua<ub],
+    ['BHS','A ≥ B','C = 1', C===1, ua>=ub],
+    ['BHI','A &gt; B','C = 1 and Z = 0', C===1&&Z===0, ua>ub],
+    ['BLS','A ≤ B','C = 0 or Z = 1', C===0||Z===1, ua<=ub],
+    ['BEQ','A = B','Z = 1', Z===1, ua===ub],
+    ['BNE','A ≠ B','Z = 0', Z===0, ua!==ub],
+  ],'asmU');
+  rows([
+    ['BLT','A &lt; B','N ≠ V', N!==V, sa<sb],
+    ['BGE','A ≥ B','N = V', N===V, sa>=sb],
+    ['BGT','A &gt; B','Z = 0 and N = V', Z===0&&N===V, sa>sb],
+    ['BLE','A ≤ B','Z = 1 or N ≠ V', Z===1||N!==V, sa<=sb],
+    ['BEQ','A = B','Z = 1', Z===1, sa===sb],
+    ['BNE','A ≠ B','Z = 0', Z===0, sa!==sb],
+  ],'asmS');
+  renderAsmProg(f,a,b,w);
+}
+
+/* ---------- the same thing as a program ---------- */
+let asmSigned=false;
+function renderAsmProg(f,a,b,w){
+  const cH=document.getElementById('asmC'), aH=document.getElementById('asmArm'), tH=document.getElementById('asmTrace');
+  if(!cH||!aH||!tH) return;
+  const S=asmSigned, va=S?signed(a,w):a, vb=S?signed(b,w):b, less=va<vb;
+  const N=f.n,Z=f.z,C=f.c,V=f.v, yn=x=>x?'1':'0';
+  let taken;
+  const esc=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const ln=(run,code,cm)=>`<span class="ln${run?' run':''}">${esc(code.padEnd(21))}${cm?'<span class="cm">'+esc(cm)+'</span>':''}</span>`;
+  const ty=S?'int8_t ':'uint8_t';
+  const note=w!==8?[ln(false,'',`// lab is ${w} bits wide; C's smallest types are 8, so read these as ${w}-bit`)]:[];
+  cH.innerHTML=[...note,
+    ln(true, `${ty} a = ${hex(a,w)};`, `// ${va}`),
+    ln(true, `${ty} b = ${hex(b,w)};`, `// ${vb}`),
+    ln(true, `int r;`),
+    ln(true, `if (a < b)`, `// ${va} < ${vb} is ${less}`),
+    ln(less, `    r = 1;`, less?`// r = 1`:''),
+    ln(!less,`else`),
+    ln(!less,`    r = 0;`, !less?`// r = 0`:''),
+  ].join('');
+  const ldr=S?'LDRSB':'LDRB ', br=S?'BLT  ':'BLO  ';
+  const ext=x=>S?((bit(x,w-1)?(x|((~0)<<w)):x)>>>0):x, a32=ext(a), b32=ext(b), r32=(a32-b32)>>>0;
+  const ext8=x=>((bit(x,w-1)?(x|((~0)<<w)):x)>>>0);
+  const h32=x=>'0x'+x.toString(16).toUpperCase().padStart(8,'0');
+  const N32=r32>>>31, Z32=r32===0?1:0, C32=a32>=b32?1:0, V32=((a32^b32)&(a32^r32))>>>31;
+  const taken32=S?(N32!==V32):(C32===0);
+  const same=N32===N&&Z32===Z&&C32===C&&V32===V;
+  const sv=x=>x>>>31?x-4294967296:x;
+  const test=S?`N ≠ V`:`C = 0`; taken=taken32;
+  const now=S?`${yn(N32)} ${N32!==V32?'≠':'='} ${yn(V32)}`:`C=${yn(C32)}`;
+  aH.innerHTML=[
+    ln(true, `      ${ldr} R1, [a]`, `; R1 = ${h32(a32)}, ${S?'sign':'zero'}-extended`),
+    ln(true, `      ${ldr} R2, [b]`, `; R2 = ${h32(b32)}`),
+    ln(true, `      CMP   R1, R2`, `; 32-bit: N=${yn(N32)} Z=${yn(Z32)} C=${yn(C32)} V=${yn(V32)}`),
+    ln(true, `      ${br} less`, `; taken if ${test} (${now}: ${taken?'yes':'no'})`),
+    ln(!taken,`      MOV   R0, #0`, !taken?`; r = 0`:''),
+    ln(!taken,`      B     done`),
+    ln(taken, `less: MOV   R0, #1`, taken?`; r = 1`:''),
+    ln(true, `done:`, `; r = ${taken?1:0}`),
+  ].join('');
+  const ok=taken===less;
+  tH.innerHTML=[
+    `<li><code>${ldr.trim()}</code> copies the ${w}-bit value ${hex(a,w)} into R1, a 32-bit register. Only the bottom ${w} bits come from memory, so the load has to fill in the other ${32-w}, and that is why there are two load instructions (drawn bit by bit on <a href="bytes-to-registers.html">From bytes to registers</a>). `+
+      (S?`<code>LDRSB</code> copies the top bit into them (sign extension), giving ${h32(a32)}, which is ${sv(a32)} in 32 bits. <code>LDRB</code> would have filled them with zeros, giving ${h32(a)}, which is ${a}.`
+        :`<code>LDRB</code> fills them with zeros (zero extension), giving ${h32(a32)}, which is ${a32}. <code>LDRSB</code> would have copied the top bit into them, giving ${h32(ext8(a))}, which is ${sv(ext8(a))}.`)+
+      ` The <code>${ty.trim()}</code> declaration told the compiler which to use, so the reading is settled before <code>CMP</code> runs.`+
+      ((!bit(a,w-1)&&!bit(b,w-1))?` <strong>Switching the declaration changes nothing for this pair</strong>: both top bits are 0, and copying a 0 is the same as filling with 0. The two loads only differ when a top bit is 1. Load <code>0x80 vs 0x7F</code> or <code>0xFF vs 0x01</code> above and switch again.`:'')+`</li>`,
+    `<li><code>CMP R1, R2</code> subtracts the widened values, ${h32(a32)} − ${h32(b32)} = ${h32(r32)}, and stores N=${yn(N32)} Z=${yn(Z32)} C=${yn(C32)} V=${yn(V32)}. The result itself is thrown away. `+
+      (same?`These are the lab\'s ${w}-bit flags too.`:`These are not the lab\'s ${w}-bit flags (N=${yn(N)} Z=${yn(Z)} C=${yn(C)} V=${yn(V)}): N and V describe the result at the width of the subtraction, which is now 32 bits. The branch still gets the same answer, because widening kept the values in the same order.`)+`</li>`,
+    `<li><code>${br.trim()} less</code> tests ${test}. ${S?`N is ${yn(N32)} and V is ${yn(V32)}`:`C is ${yn(C32)}`}, so the branch is <strong>${taken?'taken: execution jumps to <code>less</code>':'not taken: execution falls through to the next line'}</strong>.</li>`,
+    `<li><code>MOV R0, #${taken?1:0}</code> sets r = ${taken?1:0}. In C, ${va} &lt; ${vb} is ${less}, so the program ${ok?'agrees ✓':'disagrees ✗'}.</li>`,
+  ].join('');
+  renderCmpWork(a,b,w);
+  document.querySelectorAll('button.asmType').forEach(b=>b.setAttribute('aria-pressed', (b.dataset.s==='1')===S?'true':'false'));
+}
+document.querySelectorAll('button.asmType').forEach(b=>b.addEventListener('click',()=>{ asmSigned=b.dataset.s==='1'; update(); }));
+
+/* ---------- CMP snippet: show the working ---------- */
+function renderCmpWork(a,b,w){
+  const host=document.getElementById('asmWork'); if(!host||host.hidden) return;
+  const M=mask(w), nb=(~b)&M; const cin=[1]; let res=0;
+  for(let i=0;i<w;i++){ const x=bit(a,i), y=bit(nb,i), c=cin[i]; res|=(x^y^c)<<i; cin[i+1]=(x&y)|(c&(x^y)); }
+  const cell=(t,cls)=>`<span class="hb${cls?' '+cls:''}">${t}</span>`, gap=i=>(i%8===0&&i!==0)?' gap':'';
+  const row=(label,x,opts={})=>{ let h=`<div class="hrow"><span class="hl">${label}</span>`+cell('','blank'); for(let i=w-1;i>=0;i--){ const v=bit(x,i); h+=cell(v,((v?'on':'')+gap(i)+(opts.top&&i===w-1?' top':'')).trim()); } return h+`<span class="hv">${opts.val||''}</span></div>`; };
+  let idx=`<div class="hrow"><span class="hl">bit</span>`+cell('','blank'); for(let i=w-1;i>=0;i--) idx+=cell((i%8===7||i%8===0||i===w-1)?i:'','c'+gap(i)); idx+='<span class="hv"></span></div>';
+  let car=`<div class="hrow"><span class="hl">carries</span>`+cell(cin[w],'c'+(cin[w]?' on':'')+' v'); for(let i=w-1;i>=0;i--) car+=cell(cin[i],('c'+(cin[i]?' on':'')+(i===w-1?' v':'')+gap(i)).trim()); car+='<span class="hv">bit 0 gets the + 1</span></div>';
+  const N=bit(res,w-1), Z=res===0?1:0, C=cin[w], V=cin[w]^cin[w-1];
+  host.innerHTML=`<p class="hnote" style="margin-top:4px">The ALU has no subtractor. It adds A to NOT B (every bit of B flipped) with a 1 fed into the first carry-in, which is A + (${M} − B) + 1 = A − B + ${M+1}; the +${M+1} is the carry that falls off the top, if there is one.</p>`+
+    idx+car+row('A',a,{val:`${hex(a,w)} = ${a}`})+row('NOT B',nb,{val:`${hex(nb,w)}  (B = ${hex(b,w)})`})+row('= A − B',res,{top:true,val:`${hex(res,w)} = ${res} unsigned, ${signed(res,w)} signed`})+
+    `<div class="hflags"><span><b>N</b> = top bit = <b>${N}</b></span><span><b>Z</b> = all zero? <b>${Z}</b></span><span><b>C</b> = carry out = <b>${C}</b>${C?', no borrow':', a borrow'}</span><span><b>V</b> = carry in ≠ carry out at bit ${w-1} = <b>${V}</b></span></div>`;
+}
+(function(){ const btn=document.getElementById('asmWorkBtn'), box=document.getElementById('asmWork'); if(!btn||!box) return;
+  btn.addEventListener('click',()=>{ box.hidden=!box.hidden; btn.setAttribute('aria-pressed',box.hidden?'false':'true'); btn.textContent=box.hidden?'show the working':'hide the working'; update(); }); })();
+
+window.addEventListener('resize',()=>{ clearTimeout(window.__bitlabResize); window.__bitlabResize=setTimeout(update,120); });
+
+function update(){
+  const w=state.w, M=mask(w); state.a&=M; state.b&=M;
+  document.querySelectorAll('button[data-w]').forEach(x=>x.setAttribute('aria-pressed',Number(x.dataset.w)===w?'true':'false'));
+  document.querySelectorAll('button[data-pair]').forEach(x=>{ const [pa,pb]=x.dataset.pair.split(',').map(Number); x.setAttribute('aria-pressed',(w===8&&pa===state.a&&pb===state.b)?'true':'false'); });
+  const pair=document.getElementById('pair'); if(pair) pair.innerHTML=byteRow('A','a',state.a,w)+byteRow('B','b',state.b,w);
+  renderAsm(null);
+}
+document.querySelectorAll('button[data-w]').forEach(x=>x.addEventListener('click',()=>{ state.w=Number(x.dataset.w); update(); }));
+const rnd=()=>Math.floor(Math.random()*(1<<state.w));
+document.getElementById('randA').addEventListener('click',()=>{ state.a=rnd(); update(); });
+document.getElementById('randB').addEventListener('click',()=>{ state.b=rnd(); update(); });
+const flip=t=>{ state[t.dataset.reg]^=1<<Number(t.dataset.i); update(); };
+document.addEventListener('click',e=>{ const t=e.target.closest('.hb.tap'); if(t) flip(t); });
+document.addEventListener('keydown',e=>{ if(e.key!=='Enter'&&e.key!==' ') return; const t=e.target.closest&&e.target.closest('.hb.tap'); if(!t) return; e.preventDefault(); flip(t); });
+update();
+
+})();
+</script>
+</body>
+</html>

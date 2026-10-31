@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+// Import old work once without writing to the original app's keys.
+try {
+  if (!localStorage.getItem("bit-lab:legacy:imported:v1")) {
+  for (const key of ["pc-done", "pc-done-layout", "pc-exercises-hidden", "pc-show-done", "pc-theme", "bitlab-state", "bitlab-theme", "drills-score", "readings-score"]) {
+    const target = 'bit-lab:legacy:' + key;
+    if (localStorage.getItem(target) === null) {
+      const old = localStorage.getItem(key);
+      if (old !== null) localStorage.setItem(target, old);
+    }
+  }
+  localStorage.setItem("bit-lab:legacy:imported:v1", "1");
+  }
+} catch (_) {}
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Where C meets the wheel</title>
+<meta name="description" content="Ten C integer traps, each stepped through in ARM assembly with 8-bit registers and the N Z C V flags drawn before and after: the unsigned countdown, 127 + 1, narrowing, negating INT_MIN, parsing it, detecting a wrap, and %d versus %u.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem("bit-lab:legacy:bitlab-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#EDF0EA;
+  --paper-2:#E2E7DF;
+  --paper-3:#F6F8F4;
+  --ink:#1B2620;
+  --ink-2:#4F5E57;
+  --rule:#C3CBC0;
+  --wire-off:#B4BDB2;
+  --wire-on:#E09B1A;
+  --wire-on-2:#F6C860;
+  --carry:#B23A2C;
+  --gate-fill:#F8FAF6;
+  --gate-stroke:#2D3B35;
+  --bit-off:#D7DDD3;
+  --bit-on:#F1B23A;
+  --bit-on-ink:#2B1E05;
+  --led-on:#D9471F;
+  --led-off:#C9D0C5;
+  --na:#98A39C;
+  --focus:#2F6FD1;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#131A16;
+    --paper-2:#1B241F;
+    --paper-3:#232E28;
+    --ink:#E6ECE4;
+    --ink-2:#9AA89F;
+    --rule:#2E3B34;
+    --wire-off:#3A4740;
+    --wire-on:#F0B23C;
+    --wire-on-2:#FFD98A;
+    --carry:#E86A55;
+    --gate-fill:#1F2A24;
+    --gate-stroke:#C9D4CC;
+    --bit-off:#26312B;
+    --bit-on:#F0B23C;
+    --bit-on-ink:#2B1E05;
+    --led-on:#FF6A3D;
+    --led-off:#2A3630;
+    --na:#5C6A62;
+    --focus:#7FA9F0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131A16; --paper-2:#1B241F; --paper-3:#232E28; --ink:#E6ECE4; --ink-2:#9AA89F; --rule:#2E3B34;
+  --wire-off:#3A4740; --wire-on:#F0B23C; --wire-on-2:#FFD98A; --carry:#E86A55;
+  --gate-fill:#1F2A24; --gate-stroke:#C9D4CC; --bit-off:#26312B; --bit-on:#F0B23C;
+  --bit-on-ink:#2B1E05; --led-on:#FF6A3D; --led-off:#2A3630; --na:#5C6A62; --focus:#7FA9F0;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:16px;line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+main{max-width:980px;margin:0 auto;padding:20px 16px 56px}
+code,kbd,.mono{font-family:var(--mono)}
+button{font:inherit;color:inherit}
+a{color:var(--ink)}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+h1{font-size:clamp(1.55rem,1.1rem + 1.6vw,2.1rem);font-weight:600;margin:0 0 6px;letter-spacing:-.015em;line-height:1.15}
+.lede{color:var(--ink-2);margin:0 0 12px;max-width:62ch;font-size:1.05rem}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.meta span{font:500 .78rem/1.6 var(--mono);border:1px solid var(--rule);border-radius:999px;padding:1px 10px;color:var(--ink-2)}
+.themebtn{flex:none;margin-top:4px}
+nav.toc{display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 26px;padding:8px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+nav.toc a{font:500 .84rem var(--mono);color:var(--ink-2);text-decoration:none;padding:3px 9px;border-radius:6px}
+nav.toc a:hover{color:var(--ink);background:var(--paper-2)}
+
+/* ---------- prose sections ---------- */
+.tut{margin-top:36px;border-top:1px solid var(--rule);padding-top:22px}
+.tut h2{font-size:1.4rem;font-weight:600;margin:0 0 12px;letter-spacing:-.01em;line-height:1.2}
+.tut h3{font-size:1.02rem;font-weight:600;margin:20px 0 6px}
+.tut p,.tut li{max-width:70ch}
+.tut p{margin:0 0 12px}
+.tut ul,.tut ol{padding-left:22px;margin:0 0 12px}
+.tut li{margin-bottom:5px}
+.tut strong{font-weight:600}
+.tut code{background:var(--paper-2);padding:1px 5px;border-radius:4px;font-size:.88em}
+.tut table{border-collapse:collapse;font-size:.9rem;margin:8px 0 14px;font-variant-numeric:tabular-nums}
+.tut td,.tut th{border:1px solid var(--rule);padding:5px 11px;text-align:left;vertical-align:top}
+.tut th{background:var(--paper-2);font-weight:600}
+.tut td.mono{font-family:var(--mono);font-size:.86rem}
+pre.work{font:.86rem/1.55 var(--mono);background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:10px 14px;overflow-x:auto;margin:8px 0 14px}
+.check{border-left:3px solid var(--wire-on);padding:2px 0 2px 14px;margin:14px 0}
+.check ol{margin-bottom:6px}
+.steps{list-style:none;padding:0;counter-reset:step}
+.steps>li{position:relative;padding-left:36px;margin-bottom:14px;max-width:72ch}
+.steps>li::before{
+  counter-increment:step;content:counter(step);position:absolute;left:0;top:2px;
+  width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--paper);
+  font:600 .8rem/24px var(--mono);text-align:center;
+}
+
+/* ---------- schematic ---------- */
+figure.schem{margin:10px 0 18px;background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:10px 8px 8px;overflow-x:auto}
+figure.schem svg{display:block;width:100%;min-width:680px;max-width:800px;height:auto;margin:0 auto}
+figure.schem figcaption{font-size:.84rem;color:var(--ink-2);margin:8px 6px 0;text-align:center;line-height:1.4}
+.schem .box{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.5}
+.schem .opt{stroke-dasharray:5 4}
+.schem .bus{stroke:var(--wire-on);stroke-width:3;fill:none;stroke-linejoin:round}
+.schem .sig{stroke:var(--ink-2);stroke-width:1.6;fill:none}
+.schem .ctl{stroke:var(--ink-2);stroke-width:1.6;fill:none;stroke-dasharray:4 3;stroke-linejoin:round}
+.schem .cy{stroke:var(--carry);stroke-width:2.2;fill:none}
+.schem .fb{stroke:var(--focus);stroke-width:2;fill:none;stroke-dasharray:6 4;stroke-linejoin:round}
+.schem .dot{fill:var(--wire-on)}
+.schem .dotf{fill:var(--focus)}
+.schem .tick{stroke:var(--ink-2);stroke-width:1.4}
+.schem text{font-family:var(--mono);font-size:11px;fill:var(--ink)}
+.schem .t2{fill:var(--ink-2);font-size:10px}
+.schem .tc{fill:var(--carry);font-weight:600}
+.schem .tf{fill:var(--focus)}
+.schem .badge circle{fill:var(--ink);stroke:var(--paper);stroke-width:1.5}
+.schem .badge text{fill:var(--paper);font-weight:600;font-size:10px}
+.schem .led{fill:var(--led-off);stroke:var(--rule);stroke-width:1}
+.schem .led.lit{fill:var(--led-on);stroke:var(--led-on)}
+
+/* ---------- the lab ---------- */
+.labwrap{margin-top:16px}
+.ops{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px}
+.opgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.opcap{font:500 .7rem var(--mono);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-2);margin-right:2px}
+.op{
+  font:500 .9rem var(--mono);border:1px solid var(--rule);background:var(--paper-2);border-radius:8px;
+  padding:6px 11px;cursor:pointer;
+}
+.op:hover{border-color:var(--ink-2)}
+.op[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.op:focus-visible,.small:focus-visible,.preset:focus-visible,.load:focus-visible,.themebtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;color:var(--ink-2);margin-bottom:12px;font:.84rem var(--mono)}
+.small{border:1px solid var(--rule);background:transparent;border-radius:6px;padding:3px 9px;cursor:pointer;font:500 .84rem var(--mono);color:var(--ink)}
+.small:hover{border-color:var(--ink-2)}
+.small[aria-pressed="true"]{background:var(--ink-2);color:var(--paper);border-color:var(--ink-2)}
+.circuit{
+  background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;
+  padding:10px 8px 6px;overflow-x:auto;
+}
+.circuit svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
+svg text{font-family:var(--mono);fill:var(--ink)}
+.wire{stroke:var(--wire-off);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.wire.on{stroke:var(--wire-on)}
+.wire.carry.on{stroke:var(--carry)}
+.gate{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.8}
+.bit{cursor:pointer}
+.bit rect{fill:var(--bit-off);stroke:var(--rule);stroke-width:1;transition:fill .12s}
+.bit.on rect{fill:var(--bit-on);stroke:var(--bit-on)}
+.bit text{font-weight:600;font-size:15px;pointer-events:none}
+.bit.on text{fill:var(--bit-on-ink)}
+.bit:focus{outline:none}
+.bit:focus-visible rect{stroke:var(--focus);stroke-width:2.5}
+.bit.ro{cursor:default}
+.bit.ro rect{stroke-dasharray:3 2}
+.lab{font-size:11px;fill:var(--ink-2)}
+.lab.sm{font-size:10px}
+.idx{font-size:9.5px;fill:var(--ink-2)}
+.cv{font-size:10.5px;font-weight:600}
+.cv.on{fill:var(--carry)}
+.cv.off{fill:var(--ink-2)}
+.fv{font-size:10.5px;font-weight:600}
+.fv.on{fill:var(--wire-on)}
+.fv.off{fill:var(--ink-2)}
+.cnst{font-size:11px;fill:var(--ink-2)}
+.tip{color:var(--ink-2);font-size:.82rem;margin:8px 0 0}
+
+.values{margin:16px 0 4px;overflow-x:auto}
+.values table{border-collapse:collapse;font:.9rem var(--mono);font-variant-numeric:tabular-nums;width:100%;max-width:600px}
+.values th{text-align:left;color:var(--ink-2);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;padding:4px 14px 4px 0}
+.values th.num,.values td.num{text-align:right}
+.values td{padding:5px 14px 5px 0;border-top:1px solid var(--rule);white-space:nowrap}
+.values th.rowk{color:var(--ink);font-weight:600;font-size:.9rem;text-transform:none;letter-spacing:0;border-top:1px solid var(--rule)}
+.values td.bin{font-weight:600;letter-spacing:.04em}
+.values tr.r td,.values tr.r th{background:var(--paper-3)}
+
+.flags{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin-top:14px}
+.flag{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;background:var(--paper-2)}
+.flag header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.led{width:14px;height:14px;border-radius:50%;background:var(--led-off);border:1px solid var(--rule);flex:none;transition:background .15s,box-shadow .15s}
+.led.on{background:var(--led-on);border-color:var(--led-on);box-shadow:0 0 0 3px color-mix(in srgb,var(--led-on) 25%,transparent)}
+.led.na{background:transparent;border-style:dashed;border-color:var(--na)}
+.flag h3{margin:0;font:600 1rem var(--mono)}
+.flag h3 span{color:var(--ink-2);font-weight:400;font-size:.85rem;margin-left:6px}
+.flag svg{width:100%;max-width:240px;height:auto;display:block;margin:2px 0 8px;overflow:visible}
+.flag p{margin:0;font-size:.88rem;color:var(--ink-2);line-height:1.45}
+.flag p strong{color:var(--ink);font-weight:600}
+.flag.na{opacity:.72}
+.why{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px}
+.why h2{font:600 1rem var(--mono);margin:0 0 6px}
+.why p{margin:0 0 8px;max-width:70ch;font-size:.95rem}
+.presets{margin-top:22px}
+.presets h2{font-size:1rem;margin:0 0 8px;font-weight:600}
+#presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
+.preset{
+  display:block;text-align:left;border:1px solid var(--rule);background:transparent;
+  border-radius:8px;padding:8px 10px;cursor:pointer;font:500 .86rem var(--mono);
+}
+.preset:hover{background:var(--paper-2);border-color:var(--ink-2)}
+.preset span{display:block;color:var(--ink-2);font:.84rem var(--sans);margin-top:2px}
+
+/* ---------- exercises & quiz ---------- */
+.ex{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--paper-2)}
+.ex h3{font-size:1rem;margin:0 0 8px;font-weight:600}
+.ex p{margin:0 0 8px}
+.ex .load{font:500 .84rem var(--mono);border:1px solid var(--ink);background:transparent;border-radius:6px;padding:4px 10px;cursor:pointer;margin-bottom:10px}
+.ex .load:hover{background:var(--ink);color:var(--paper)}
+details{margin-top:6px}
+summary{cursor:pointer;color:var(--ink-2);font:500 .84rem var(--mono);display:inline-block;padding:2px 9px;border:1px solid var(--rule);border-radius:6px;list-style:none;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"\25B8  "}
+details[open] summary::before{content:"\25BE  "}
+summary:hover{color:var(--ink);border-color:var(--ink-2)}
+details p{margin:8px 0 0;color:var(--ink);font-size:.93rem}
+.lab-anchor{scroll-margin-top:12px}
+
+/* ---------- footer ---------- */
+footer.site{margin-top:44px;border-top:1px solid var(--rule);padding-top:14px;font:.84rem var(--mono);color:var(--ink-2);display:flex;flex-wrap:wrap;gap:6px 20px}
+footer.site a{color:var(--ink-2)}
+footer.site a:hover{color:var(--ink)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* ---------- block diagram & full adder widget ---------- */
+svg.blockdiag{width:100%;max-width:420px;height:auto;display:block;margin:6px 0 14px}
+.fawrap{display:grid;grid-template-columns:minmax(240px,370px) minmax(0,1fr);gap:14px 26px;align-items:start;margin:10px 0 16px}
+@media (max-width:640px){.fawrap{grid-template-columns:minmax(0,1fr)}}
+.fa{background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:8px 6px}
+.fa svg{display:block;width:100%;height:auto}
+.jdot{fill:var(--wire-off)}
+.jdot.on{fill:var(--wire-on)}
+.jdot.carry.on{fill:var(--carry)}
+.faeq{font:.9rem/1.5 var(--mono);margin:0 0 10px}
+table.truth{border-collapse:collapse;font:.86rem var(--mono);font-variant-numeric:tabular-nums;margin:0 0 8px}
+table.truth th,table.truth td{border:1px solid var(--rule);padding:3px 11px;text-align:center}
+table.truth th{background:var(--paper-2);font-weight:600}
+table.truth tr.cur td{background:var(--bit-on);color:var(--bit-on-ink);font-weight:600}
+.clk{fill:none;stroke:var(--gate-stroke);stroke-width:1.5}
+
+/* ---------- 4-bit chain widget ---------- */
+.chainwrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:640px){.chainwrap{grid-template-columns:minmax(0,1fr)}}
+#chainTable{overflow-x:auto}
+table.add th,table.add td{padding:3px 8px}
+.gate.sel{stroke:var(--focus);stroke-width:2.6}
+.fabox{cursor:pointer}
+.bit.wait rect{fill:transparent;stroke:var(--na);stroke-dasharray:3 2}
+.bit.wait text{fill:var(--na)}
+table.add td.k{text-align:left;color:var(--ink-2);font-size:.8rem;white-space:nowrap}
+table.add td.cin{color:var(--carry);font-weight:600}
+table.add tr.sum td{border-top:2px solid var(--ink-2);font-weight:600}
+table.add td.q{color:var(--na)}
+
+/* ---------- CMP and the branches ---------- */
+.asmwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 24px;margin:4px 0 10px}
+@media (max-width:760px){.asmwrap{grid-template-columns:minmax(0,1fr)}}
+.asmwrap h3{margin:8px 0 4px}
+table.asm{width:100%}
+table.asm td{text-align:left;padding:3px 8px}
+table.asm td.mn{font-weight:600}
+table.asm td.k{color:var(--ink-2)}
+table.asm tr.take td{background:var(--bit-on);color:var(--bit-on-ink)}
+table.asm tr.take td.k{color:var(--bit-on-ink)}
+
+/* ---------- the same thing as a program ---------- */
+.asmprog{margin:0 0 6px;white-space:pre}
+.asmprog .ln{display:block;opacity:.5;padding:0 6px;margin:0 -6px;border-radius:4px}
+.asmprog .ln.run{opacity:1;background:var(--bit-on);color:var(--bit-on-ink)}
+.asmprog .cm{color:var(--ink-2)}
+.asmprog .ln.run .cm{color:var(--bit-on-ink);opacity:.8}
+ol.trace{margin:4px 0 14px;padding-left:22px}
+ol.trace li{margin:0 0 4px}
+
+/* ---------- under the hood ---------- */
+.hood{background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:8px 14px 4px;overflow-x:auto;margin:8px 0 14px;font:.8rem var(--mono);font-variant-numeric:tabular-nums}
+.hood h4{margin:8px 0 6px;font:600 .86rem var(--sans)}
+.hood h4+ .hrow .hb.c{color:var(--ink-2);font-size:9px}
+.hrow{display:flex;align-items:center;white-space:nowrap;margin:2px 0}
+.hrow .hl{width:132px;flex:none;color:var(--ink-2)}
+.hrow .hv{margin-left:12px;color:var(--ink-2);white-space:normal;flex:1 1 auto;min-width:22ch;line-height:1.35}
+.hrow{align-items:flex-start}
+.hrow .hl,.hrow .hb{margin-top:1px}
+.hb{display:inline-flex;width:15px;height:17px;flex:none;align-items:center;justify-content:center;border:1px solid var(--rule);background:var(--bit-off);font-weight:600;font-size:10.5px;margin-right:1px;border-radius:2px;color:var(--ink)}
+.hb.on{background:var(--bit-on);border-color:var(--bit-on);color:var(--bit-on-ink)}
+.hb.fill{border:1px dashed var(--ink-2)}
+.hb.fill.on{border-color:var(--bit-on-ink)}
+.hb.gap{margin-right:7px}
+.hb.blank{visibility:hidden}
+.hb.c{background:transparent;border-color:transparent;color:var(--ink-2);font-weight:500}
+.hb.c.on{color:var(--carry);font-weight:700}
+.hb.c.v{border-color:var(--carry);border-style:dashed}
+.hb.top{box-shadow:0 0 0 2px var(--carry) inset}
+.hflags{display:flex;flex-wrap:wrap;gap:4px 18px;margin:8px 0 2px;color:var(--ink-2)}
+.hflags b{color:var(--ink)}
+.hnote{color:var(--ink-2);font:.82rem/1.5 var(--sans);margin:6px 0 10px;white-space:normal}
+.hnote code{background:var(--paper);padding:1px 5px;border-radius:4px}
+
+
+.crumbs{font:.84rem var(--mono);color:var(--ink-2);margin:0 0 14px}
+.crumbs a{color:var(--ink-2)}
+.crumbs a:hover{color:var(--ink)}
+.tut.first{margin-top:26px;border-top:0;padding-top:0}
+nav.toc + .tut.first{margin-top:0}
+nav.pager{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin:34px 0 0;padding:14px 0;border-top:1px solid var(--rule);font:.9rem var(--sans)}
+nav.pager a{color:var(--ink);text-decoration:none;border:1px solid var(--rule);border-radius:8px;padding:8px 12px}
+nav.pager a:hover{border-color:var(--ink-2)}
+nav.pager .next{text-align:right}
+nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
+@media (max-width:640px){nav.pager{grid-template-columns:1fr}nav.pager .next{text-align:left}}
+
+.csrc{font-size:.9rem}
+.csrc .ln{display:block;padding:0 6px;margin:0 -6px;border-radius:4px}
+.csrc.live .ln{opacity:.55}
+.csrc .ln.run{opacity:1;background:var(--bit-on);color:var(--bit-on-ink)}
+.csrc .cf{font-weight:700;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.trace .ctl{margin:6px 0}
+.trace .pos{color:var(--ink-2)}
+.asmprog .ln.done{opacity:.8}
+.hflags.chg{background:var(--bit-on);color:var(--bit-on-ink);border-radius:6px;padding:4px 8px}
+.hflags.chg b{color:var(--bit-on-ink)}
+.trace .note{min-height:2.4em}
+.trace .regs .hl{width:68px}
+.trace .carries{margin-bottom:2px}
+
+</style>
+</head>
+<body>
+<nav aria-label="Bit Lab navigation" style="padding:12px 16px;font:16px system-ui;display:flex;gap:24px;flex-wrap:wrap"><a href="../../#/">← Bit Lab lessons</a><a href="../../#/practice">Practice</a></nav>
+<main>
+  <div class="top">
+    <div>
+      <p class="crumbs"><a href="notes.html" title="From gates to a compiled if: contents">Home</a> · part 4 of 9</p>
+      <h1>Where C meets the wheel</h1>
+      <p class="lede">Ten small C programs that go wrong at the edge of the range, stepped through one instruction at a time with the registers drawn as bits before and after, so you can see the wrap the language calls undefined.</p>
+    </div>
+    <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
+  </div>
+  <nav class="toc" aria-label="Scenarios">
+    <a href="#s1">1 The loop that never ends</a><a href="#s2">2 127 + 1</a><a href="#s3">3 200 into an int8_t</a><a href="#s4">4 −(−128)</a><a href="#s5">5 Parsing −128</a><a href="#s6">6 Detecting a wrap in C</a><a href="#s7">7 %d and %u</a><a href="#s8">8 INT_MIN / −1</a><a href="#s9">9 The check that vanished</a><a href="#s10">10 255 + 1</a><a href="#catch">Catching these</a><a href="#how">Reading these</a>
+  </nav>
+  <p class="tip">Every scenario is at 8 bits with <code>int8_t</code> and <code>uint8_t</code>, so every bit is on screen. The same things happen at 32 bits with <code>int</code> and <code>unsigned</code>; the 32-bit numbers are named where they differ. The assembly is ARM. Step through each one and watch the registers and flags; changed bits are outlined, and the C line each instruction came from is highlighted above the listing.</p>
+  <section class="tut first scen" id="s1">
+    <h2>1. The loop that never ends</h2>
+    <pre class="work csrc"><span class="ln">uint8_t a[2];        // an array of n = 2 elements</span><span class="ln">uint8_t n = 2;</span><span class="ln">uint8_t i;</span><span class="ln">for (i = n - 1; i &gt;= 0; i--)   // clear a[1], then a[0], then stop</span><span class="ln">    a[i] = 0;</span></pre>
+    <p>Counting down over an array with an unsigned index, from the last element a[n − 1] to the first a[0]. The programmer means "stop after 0", but 0 − 1 under the unsigned reading is 255, and 255 ≥ 0. The listing is a real loop: the branch at the bottom sends the highlight back to the top. (Lowercase n is the array length; it has nothing to do with the N flag.)</p>
+    <div class="trace">
+      <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
+      <pre class="work asmprog asm"></pre>
+      <div class="hood regs"></div>
+      <p class="note"></p>
+      <p class="tip labLink"></p>
+    </div>
+  </section>
+  <section class="tut scen" id="s2">
+    <h2>2. 127 + 1</h2>
+    <pre class="work csrc"><span class="ln">int8_t x = 127;</span><span class="ln">x = x + 1;</span></pre>
+    <p>The largest signed value plus one. Under the unsigned reading 128 fits; under the signed reading it does not, and the register ends up reading as −128.</p>
+    <div class="trace">
+      <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
+      <pre class="work asmprog asm"></pre>
+      <div class="hood regs"></div>
+      <p class="note"></p>
+      <p class="tip labLink"></p>
+    </div>
+  </section>
+  <section class="tut scen" id="s3">
+    <h2>3. 200 into an int8_t</h2>
+    <pre class="work csrc"><span class="ln">int v = 200;</span><span class="ln">int8_t x = v;</span></pre>
+    <p>No arithmetic at all. A wider value is stored into a narrower variable, and the bits that remain are read with the top one worth −128.</p>
+    <div class="trace">
+      <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
+      <pre class="work asmprog asm"></pre>
+      <div class="hood regs"></div>
+      <p class="note"></p>
+      <p class="tip labLink"></p>
+    </div>
+  </section>
+  <section class="tut scen" id="s4">
+    <h2>4. −(−128)</h2>
+    <pre class="work csrc"><span class="ln">int8_t x = -128;</span><span class="ln">int8_t y = -x;   // or abs(x)</span></pre>
+    <p>The one pattern that cannot be negated, from section 2 of the subtraction page, as it happens in a program that expects a positive result.</p>
+    <div class="trace">
+      <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
+      <pre class="work asmprog asm"></pre>
+      <div class="hood regs"></div>
+      <p class="note"></p>
+      <p class="tip labLink"></p>
+    </div>
+  </section>
+  <section class="tut scen" id="s5">
+    <h2>5. Parsing −128</h2>
+    <pre class="work csrc"><span class="ln">// read digits as positive, negate at the end</span><span class="ln">int8_t acc = 0;</span><span class="ln">for each digit d: acc = acc * 10 + d;</span><span class="ln">return negative ? -acc : acc;</span></pre>
+    <p>The natural way to write a number parser, and the value that breaks it: the positive form of the most negative number never fits.</p>
+    <div class="trace">
+      <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
+      <pre class="work asmprog asm"></pre>
+      <div class="hood regs"></div>
+      <p class="note"></p>
+      <p class="tip labLink"></p>
+    </div>
+  </section>
+  <section class="tut scen" id="s6">
+    <h2>6. Detecting a wrap in C</h2>
+    <pre class="work csrc"><span class="ln">uint8_t a = 3, b = 5;</span><span class="ln">uint8_t d = a - b;</span><span class="ln">if (d &gt; a) /* wrapped */</span></pre>
+    <p>C cannot read the carry flag, so the idiom asks a question whose answer can only be yes if the wheel was crossed.</p>
+    <div class="trace">
+      <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
+      <pre class="work asmprog asm"></pre>
+      <div class="hood regs"></div>
+      <p class="note"></p>
+      <p class="tip labLink"></p>
+    </div>
+  </section>
+  <section class="tut scen" id="s7">
+    <h2>7. %d and %u</h2>
+    <pre class="work csrc"><span class="ln">int8_t x = -2;</span><span class="ln">printf(&quot;%d&quot;, x);   // -2</span><span class="ln">printf(&quot;%u&quot;, x);   // 254</span></pre>
+    <p>The same register printed under both readings. Nothing is computed; the format string chooses what the top bit is worth.</p>
+    <div class="trace">
+      <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
+      <pre class="work asmprog asm"></pre>
+      <div class="hood regs"></div>
+      <p class="note"></p>
+      <p class="tip labLink"></p>
+    </div>
+  </section>
+  <section class="tut scen" id="s8">
+    <h2>8. INT_MIN / −1</h2>
+    <pre class="work csrc"><span class="ln">int8_t x = -128, d = -1;</span><span class="ln">int8_t q = x / d;   // +128 does not fit</span></pre>
+    <p>The one division that overflows. ARM and x86 do different things, and C permits both because it calls the case undefined.</p>
+    <div class="trace">
+      <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
+      <pre class="work asmprog asm"></pre>
+      <div class="hood regs"></div>
+      <p class="note"></p>
+      <p class="tip labLink"></p>
+    </div>
+  </section>
+  <section class="tut scen" id="s9">
+    <h2>9. The check that vanished</h2>
+    <pre class="work csrc"><span class="ln">int8_t x = 127;</span><span class="ln">if (x + 1 &gt; x)</span><span class="ln">    puts(&quot;no overflow&quot;);</span></pre>
+    <p>An overflow check written in C, compiled with optimisation. The listing shows what the compiler emitted; what is missing is the point.</p>
+    <div class="trace">
+      <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
+      <pre class="work asmprog asm"></pre>
+      <div class="hood regs"></div>
+      <p class="note"></p>
+      <p class="tip labLink"></p>
+    </div>
+  </section>
+  <section class="tut scen" id="s10">
+    <h2>10. 255 + 1, and detecting it</h2>
+    <pre class="work csrc"><span class="ln">uint8_t a = 255, b = 1;</span><span class="ln">uint8_t s = a + b;</span><span class="ln">if (s &lt; a) /* carried */</span></pre>
+    <p>The addition twin of scenario 6: the carry out of the top bit, and the comparison that reveals it from C.</p>
+    <div class="trace">
+      <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
+      <pre class="work asmprog asm"></pre>
+      <div class="hood regs"></div>
+      <p class="note"></p>
+      <p class="tip labLink"></p>
+    </div>
+  </section>
+
+  <section class="tut" id="catch">
+    <h2>Catching these</h2>
+    <p>At the machine level the answer is already in the flags row: V = 1 or C = 1 is the hardware saying so, and in assembly the next instruction would be <code>BVS overflow</code> or <code>BCS carried</code>. C has no spelling for that branch, so protection comes from the choices below, cheapest first. The table at the end says which one catches each scenario.</p>
+    <h3>Choose types with headroom</h3>
+    <p>Compute in a type wide enough that the edge is far away, and narrow only at the end if you must. Sizes and counts belong in <code>size_t</code>, not <code>int</code>. An <code>int8_t</code> should hold a value, not be the type you compute in; C promotes it to <code>int</code> for arithmetic anyway, so <code>x + 1</code> on an <code>int8_t</code> is computed at 32 bits and only overflows at the store, which is scenario 3 rather than scenario 2.</p>
+    <h3>Check before, not after</h3>
+    <p>Checking after the operation is scenario 9: the compiler may assume the overflow never happened and delete the check. Write the test in terms that cannot overflow themselves:</p>
+    <pre class="work">if (b &gt; 0 &amp;&amp; a &gt; INT_MAX - b)  /* a + b would overflow   */
+if (b &lt; 0 &amp;&amp; a &lt; INT_MIN - b)  /* a + b would underflow  */
+if (x == INT_MIN)               /* -x and abs(x) are unsafe */
+if (d == -1 &amp;&amp; x == INT_MIN)     /* x / d is unsafe        */</pre>
+    <h3>Ask the compiler to read the flag for you</h3>
+    <p>GCC and Clang provide <code>__builtin_add_overflow(a, b, &amp;r)</code>, <code>__builtin_sub_overflow</code> and <code>__builtin_mul_overflow</code>, which store the wrapped result in <code>r</code> and return true when it did not fit. They compile to the add plus a test of V or C, whichever the operand types call for. C23 standardises them as <code>ckd_add</code>, <code>ckd_sub</code> and <code>ckd_mul</code> in <code>&lt;stdckdint.h&gt;</code>. This is the tool for the cases where overflow is a real possibility rather than a bug, such as sizes computed from input.</p>
+    <h3>Let the compiler warn</h3>
+    <p><code>-Wall -Wextra</code> plus <code>-Wconversion -Wsign-conversion -Wsign-compare -Wtype-limits</code> catch most of this page at compile time. <code>-Wtype-limits</code> flags the <code>i &gt;= 0</code> on an unsigned in scenario 1 as always true; <code>-Wconversion</code> flags the narrowing store in scenario 3; <code>-Wsign-compare</code> flags a signed value compared with an unsigned one, the usual way scenario 7's two readings collide inside a program; <code>-Wformat</code> flags the <code>%u</code> given a signed argument.</p>
+    <h3>Make the hardware's verdict fatal in test builds</h3>
+    <p><code>-fsanitize=signed-integer-overflow</code>, or all of <code>-fsanitize=undefined</code>, inserts the <code>BVS</code> that C lacks and aborts with a message naming the source line. Run the tests and any fuzzer with it on. <code>-fsanitize=unsigned-integer-overflow</code> does the same for unsigned wrap, which is not an error in C but is usually a bug in the program. <code>-ftrapv</code> is the older, blunter form.</p>
+    <h3>Decide what wrap means</h3>
+    <p>If you want modular arithmetic, do it in <code>unsigned</code>, where the wrap is defined and no flag is needed, and say so in a comment. If you want signed wrap to be a promise rather than undefined behaviour, <code>-fwrapv</code> makes it one, and scenario 9's check comes back; it costs some optimisations and is specific to GCC and Clang.</p>
+    <h3>Test the edges on purpose</h3>
+    <p><code>INT_MAX</code>, <code>INT_MIN</code>, 0, −1, <code>UINT_MAX</code>, and one short of and one past every size limit in the program. Part 3's "does it fit" drill is this habit in miniature.</p>
+    <h3>Which catches which</h3>
+    <table class="truth" style="font-family:var(--sans);text-align:left">
+      <tr><th>Scenario</th><th>Compile time</th><th>Test time</th><th>In the code</th></tr>
+      <tr><td>1 unsigned countdown</td><td><code>-Wtype-limits</code></td><td>address sanitizer, when the stray index is used</td><td>loop <code>for (i = n; i-- &gt; 0;)</code>, or a signed index</td></tr>
+      <tr><td>2 127 + 1</td><td>no</td><td><code>-fsanitize=signed-integer-overflow</code></td><td>wider type, or <code>ckd_add</code></td></tr>
+      <tr><td>3 200 into int8_t</td><td><code>-Wconversion</code></td><td><code>-fsanitize=implicit-conversion</code> (Clang)</td><td>range check before narrowing</td></tr>
+      <tr><td>4 −(−128)</td><td>no</td><td><code>-fsanitize=signed-integer-overflow</code></td><td>test for <code>INT_MIN</code> first; compute <code>abs</code> in a wider type</td></tr>
+      <tr><td>5 parsing −128</td><td>no</td><td>sanitizer, with the edge value in the tests</td><td>accumulate negatively, or use <code>strtol</code> and check <code>errno</code></td></tr>
+      <tr><td>6 detecting a wrap</td><td>not a bug: the idiom is the protection</td><td></td><td><code>ckd_sub</code> says it directly</td></tr>
+      <tr><td>7 %d and %u</td><td><code>-Wformat</code></td><td></td><td>match the format to the type</td></tr>
+      <tr><td>8 INT_MIN / −1</td><td>no</td><td>sanitizer; a crash on x86 in any case</td><td>test both operands before dividing</td></tr>
+      <tr><td>9 the vanished check</td><td>sometimes: <code>-Wstrict-overflow</code></td><td>the sanitizer fires at the add the check was meant to guard</td><td>check before, or <code>ckd_add</code>, or <code>-fwrapv</code></td></tr>
+      <tr><td>10 255 + 1</td><td>no</td><td><code>-fsanitize=unsigned-integer-overflow</code> (Clang)</td><td>the <code>s &lt; a</code> idiom, or <code>ckd_add</code></td></tr>
+    </table>
+    <p>Other languages, for comparison: Rust panics on overflow in debug builds and spells the intent in the code with <code>checked_add</code>, <code>wrapping_add</code> and <code>saturating_add</code>; Swift traps always; Java wraps silently, like C with <code>-fwrapv</code>; Python has no fixed width, so none of this exists there, which is why people arriving from Python meet it as a surprise.</p>
+  </section>
+
+  <section class="tut" id="how">
+    <h2>Reading these</h2>
+    <ul>
+      <li>Each trace runs on a machine with four 8-bit registers and the N Z C V flags, computed the way the <a href="bit-lab.html">Bit Lab</a> does it: subtraction is A + NOT B + 1, C is the carry out of the top bit, V is the carry into the top bit XOR the carry out.</li>
+      <li>The highlighted C line is the one the current instruction came from. Where one line compiles to several instructions, the part of the line being executed is underlined. Scenario 9 is the exception: its second instruction is what the compiler left of the whole <code>if</code>.</li>
+      <li>Outlined cells changed in the last step. The flags row is highlighted when the last instruction set the flags; ARM instructions only do so when asked, which is the trailing <code>S</code> on <code>SUBS</code> and <code>ADDS</code>.</li>
+      <li>Where C says "undefined behaviour", the hardware still does something definite, and these traces show it. The catch is that the compiler is allowed to assume the undefined case never happens and may have rearranged the code before it reached the machine, so what you observe can differ from the trace and from run to run. Compile with <code>-fsanitize=undefined</code> to be told when a trace like these is happening in your program.</li>
+      <li><code>-fwrapv</code> tells GCC and Clang to treat signed overflow as a defined wrap, the way the hardware does it. Scenario 9 then compiles to the add and compare the programmer expected. It costs some optimisations and is not portable to other compilers, but it turns the undefined cases on this page into the traces shown.</li>
+      <li>To see the real instructions for your own C, paste it into <a href="https://godbolt.org/">Compiler Explorer</a> with an ARM GCC at <code>-O1</code>.</li>
+    </ul>
+  </section>
+
+  <nav class="pager" aria-label="Series navigation"><a class="prev" href="readings-drills.html">Previous: Two readings: drills</a><a class="up" href="notes.html">Contents</a><a class="next" href="bit-lab.html">Next: Bit Lab: the ALU and its flags</a></nav>
+  <footer class="site">
+    <a href="notes.html">From gates to a compiled if: contents</a>
+    <a href="../">Programmer Calculator app</a>
+    <a href="twos-complement.pdf">Two's complement tutorial (PDF)</a>
+  </footer>
+</main>
+<script>
+(function(){
+'use strict';
+/* ---------- theme ---------- */
+(function(){
+  const btn=document.getElementById('themeBtn'); if(!btn) return;
+  const THEMES=['auto','light','dark'];
+  let theme='auto'; try{ theme=localStorage.getItem('bit-lab:legacy:bitlab-theme')||'auto'; }catch(e){}
+  if(!THEMES.includes(theme)) theme='auto';
+  const apply=()=>{
+    if(theme==='auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme',theme);
+    btn.textContent='theme: '+theme; btn.setAttribute('aria-label','Theme: '+theme+'. Activate to change');
+  };
+  apply();
+  btn.addEventListener('click',()=>{ theme=THEMES[(THEMES.indexOf(theme)+1)%THEMES.length]; try{localStorage.setItem('bit-lab:legacy:bitlab-theme',theme);}catch(e){} apply(); });
+})();
+
+
+/* ---------- where C meets the wheel: stepped register traces ---------- */
+const W=8, M=0xFF;
+const bit=(x,i)=>(x>>>i)&1;
+const signed=x=>bit(x,7)?x-256:x;
+const hex=x=>'0x'+x.toString(16).toUpperCase().padStart(2,'0');
+const bits=x=>x.toString(2).padStart(8,'0');
+const cell=(t,cls)=>`<span class="hb${cls?' '+cls:''}">${t}</span>`;
+/* the tiny machine: 8-bit registers R0..R3, flags N Z C V */
+function alu(op,a,b){ // returns {r, n,z,c,v}
+  let r,c,v;
+  if(op==='add'||op==='sub'){ const bb=op==='sub'?(~b)&M:b, cin=op==='sub'?1:0; let carry=cin; r=0; const cins=[cin];
+    for(let i=0;i<8;i++){ const x=bit(a,i), y=bit(bb,i); r|=(x^y^carry)<<i; carry=(x&y)|(carry&(x^y)); cins.push(carry); }
+    c=cins[8]; v=cins[8]^cins[7]; return {r:r&M, n:bit(r&M,7), z:(r&M)===0?1:0, c, v, cins, nb:bb}; }
+  else if(op==='neg'){ return alu('sub',0,a); }
+  else if(op==='mov'){ r=b&M; c=null; v=null; }
+  return {r:r&M, n:bit(r&M,7), z:(r&M)===0?1:0, c, v};
+}
+const run=(steps)=>{ // produce frames: state after each step
+  const st={R0:0,R1:0,R2:0,R3:0,N:0,Z:0,C:0,V:0}; const frames=[];
+  for(const s of steps){ const before={...st}; let changed=[];
+    let arith=null;
+    if(s.op==='mov'){ st[s.dst]=s.imm&M; changed=[s.dst]; }
+    else if(s.op==='str'){ /* store low byte: narrowing */ st[s.dst]=s.imm&M; changed=[s.dst]; }
+    else if(s.op==='sdiv'){ const a=signed(st[s.a]), b=signed(st[s.b]); const q=b===0?0:Math.trunc(a/b); st[s.dst]=q&M; changed=[s.dst]; }
+    else if(s.op==='nop'){ changed=[]; }
+    else { const a=st[s.a], b=s.imm!==undefined?s.imm:st[s.b]; const o=alu(s.op,a,b); st[s.dst]=o.r; changed=[s.dst]; if(s.flags!==false){ st.N=o.n; st.Z=o.z; st.C=o.c; st.V=o.v; changed.push('F'); } arith={op:s.op,a,b,o}; }
+    frames.push({step:s, before, after:{...st}, changed, arith}); }
+  return frames;
+};
+const regRow=(name,before,after,changed)=>{ let h=`<div class="hrow"><span class="hl">${name}</span>`; for(let i=7;i>=0;i--){ const v=bit(after,i); const diff=changed&&bit(before,i)!==v; h+=cell(v,((v?'on':'')+(diff?' top':'')).trim()); } return h+`<span class="hv">${hex(after)} = ${after} unsigned, ${signed(after)} signed${changed&&before!==after?` (was ${hex(before)})`:''}</span></div>`; };
+const flagRow=(st,chg)=>`<div class="hflags${chg?' chg':''}"><span><b>N</b> = <b>${st.N}</b></span><span><b>Z</b> = <b>${st.Z}</b></span><span><b>C</b> = <b>${st.C}</b></span><span><b>V</b> = <b>${st.V}</b></span></div>`;
+function mount(id, sc){
+  const host=document.getElementById(id); if(!host) return;
+  const frames=run(sc.steps); let k=-1;
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const cEl=host.querySelector('.csrc'); const clines=cEl?[...cEl.querySelectorAll('.ln')].map(e=>e.textContent):[];
+  const draw=()=>{ const f=k>=0?frames[k]:null; const st=f?f.after:{R0:0,R1:0,R2:0,R3:0,N:0,Z:0,C:0,V:0};
+    let code=''; if(sc.lines){ const al=f?[].concat(f.step.al):[]; sc.lines.forEach((l,i)=>{ code+=`<span class="ln${al.includes(i)?' run':''}">${l.asm.padEnd(24)}<span class="cm">; ${l.c||''}</span></span>`; }); }
+    else sc.steps.forEach((s,i)=>{ code+=`<span class="ln${i===k?' run':''}${i<k?' done':''}">${s.asm.padEnd(22)}<span class="cm">; ${s.c||''}</span></span>`; });
+    let regs=''; for(const r of sc.regs) regs+=regRow(r, f?f.before[r]:0, st[r], f&&f.changed.includes(r));
+    host.querySelector('.asm').innerHTML=code;
+    if(cEl){ cEl.classList.toggle('live',!!f); cEl.innerHTML=clines.map((l,i)=>{ const on=!!f&&f.step.cl===i; let t=esc(l); if(on&&f.step.cf){ const p=l.indexOf(f.step.cf); if(p<0) cEl.classList.add('cfmiss'); else t=esc(l.slice(0,p))+'<span class="cf">'+esc(f.step.cf)+'</span>'+esc(l.slice(p+f.step.cf.length)); } return `<span class="ln${on?' run':''}">${t}</span>`; }).join(''); }
+    let carries='';
+    if(f&&f.arith&&f.arith.o.cins){ const o=f.arith.o, isSub=f.arith.op!=='add'; let h=`<div class="hrow carries"><span class="hl">carries</span>`+cell(o.cins[8],'c'+(o.cins[8]?' on':'')+' v'); for(let i=7;i>=0;i--) h+=cell(o.cins[i],('c'+(o.cins[i]?' on':'')+(i===7?' v':'')).trim()); carries=h+`<span class="hv">carry into each column${f.arith.op==='sub'?'; bit 0 gets the + 1 of NOT B + 1':f.arith.op==='neg'?'; bit 0 gets the + 1 that completes NOT x + 1':''}. The leftmost pair decide C and V.</span></div>`; }
+    host.querySelector('.regs').innerHTML=carries+regs+flagRow(st, f&&f.changed.includes('F'));
+    const labOp=f&&f.arith?{add:'ADD',sub:'SUB',neg:'NEG'}[f.arith.op]:null;
+    host.querySelector('.labLink').innerHTML=labOp?`<a href="bit-lab.html#op=${labOp}&w=8&a=${f.arith.a}${labOp==='NEG'?'':'&b='+f.arith.b}">See this step as gates in the Bit Lab</a>, with the carries drawn as wires.`:'';
+    host.querySelector('.note').innerHTML=f?f.step.note:sc.start;
+    host.querySelector('.pos').textContent=k<0?'before the first instruction':`after ${sc.lines?'step':'instruction'} ${k+1} of ${sc.steps.length}`;
+    host.querySelector('.prev').disabled=k<0; host.querySelector('.next').disabled=k>=sc.steps.length-1; };
+  host.querySelector('.next').addEventListener('click',()=>{ if(k<sc.steps.length-1){ k++; draw(); } });
+  host.querySelector('.prev').addEventListener('click',()=>{ if(k>=0){ k--; draw(); } });
+  host.querySelector('.reset').addEventListener('click',()=>{ k=-1; draw(); });
+  draw();
+}
+/* ---- the scenarios ---- */
+mount('s1',{ regs:['R0'], start:'A two-element array, so the whole loop fits on screen. R0 will hold i. R1 holds the 0 to be stored and is not drawn. Step from the very first instruction.',
+  lines:[
+    {asm:'      MOV   R0, #1',c:'i = n - 1'},
+    {asm:'loop: STRB  R1, [a, R0]',c:'a[i] = 0   (R1 is 0)'},
+    {asm:'      SUBS  R0, R0, #1',c:'i--'},
+    {asm:'      CMP   R0, #0',c:'i >= 0 ?'},
+    {asm:'      BHS   loop',c:'unsigned >=: branch if C = 1'},
+  ],
+  steps:[
+    {op:'mov',dst:'R0',imm:1,al:0,cl:3,cf:'i = n - 1',note:'i starts at n − 1 = 1, the index of the last element.'},
+    {op:'nop',al:1,cl:4,note:'a[1] = 0. The store writes to memory, not to a register, so nothing drawn here changes.'},
+    {op:'sub',dst:'R0',a:'R0',imm:1,al:2,cl:3,cf:'i--',note:'1 − 1 = 0. Z = 1 says the result is zero, C = 1 says no borrow.'},
+    {op:'sub',dst:'R3',a:'R0',imm:0,al:[3,4],cl:3,cf:'i >= 0',note:'Is 0 ≥ 0? The compiler compares as unsigned, because i is unsigned: 0 − 0 needs no borrow, C = 1, so the branch is taken and the loop goes round again. Correct so far: a[0] still needs clearing.'},
+    {op:'nop',al:1,cl:4,note:'a[0] = 0. Every element is now cleared. This is where the programmer means the loop to stop: one more decrement and the test should fail.'},
+    {op:'sub',dst:'R0',a:'R0',imm:1,al:2,cl:3,cf:'i--',note:'0 − 1 steps back past zero round the wheel: R0 is now 0xFF = 255. C = 0 says a borrow happened, but nothing in the loop reads C here.'},
+    {op:'sub',dst:'R3',a:'R0',imm:0,al:[3,4],cl:3,cf:'i >= 0',note:'Is 255 ≥ 0? Under the unsigned reading, yes: 255 − 0 needs no borrow, C = 1, and the branch is taken. The programmer was thinking of −1, but an unsigned i can never hold it. In fact most compilers notice that an unsigned value is always ≥ 0 and delete the test entirely, which is the same bug faster.'},
+    {op:'nop',al:1,cl:4,note:'a[255] = 0, writing 254 bytes past the end of a two-element array. The loop will carry on down from 255 to 0, wrap again, and never end.'},
+  ]});
+mount('s2',{ regs:['R0'], start:'x is 127, the largest int8_t.',
+  steps:[
+    {op:'mov',dst:'R0',imm:127,asm:'MOV   R0, #127',c:'int8_t x = 127',cl:0,note:'R0 holds 0x7F. Top bit 0: positive under the signed reading.'},
+    {op:'add',dst:'R0',a:'R0',imm:1,asm:'ADDS  R0, R0, #1',c:'x + 1',cl:1,note:'Follow the 1 up the columns. 0x7F is 0111 1111. Adding 1 to bit 0 makes it 0 and carries a 1 into bit 1; that makes bit 1 a 0 and carries into bit 2; and so on, every one of the seven low bits turning 0 and passing the carry on. So a carry arrives at the top bit. The top bit was 0, so it becomes 1 and produces no carry of its own: nothing leaves the top of the register. Result: 1000 0000, 0x80.<br><br>Now the flags. <strong>C</strong> is the carry that left the top: none did, so C = 0. Under the unsigned reading that is the right verdict: 127 + 1 = 128, and 128 fits in 8 bits, so nothing was lost. <strong>V</strong> compares the carry that went into the top bit (1) with the carry that left it (0). They differ, so V = 1. Under the signed reading that is the right verdict too: the only thing that changed in the top bit is that it went from 0 to 1, and under the signed reading that bit is worth −128, so the answer went from +127 to −128 instead of to +128. Same bits, two flags, each judging its own reading: C says the unsigned answer is fine, V says the signed answer is not.'},
+  ]});
+mount('s3',{ regs:['R0','R1'], start:'The value 200 sits in a wider register, as an int would.',
+  steps:[
+    {op:'mov',dst:'R0',imm:200,asm:'MOV   R0, #200',c:'int v = 200',cl:0,note:'As a 32-bit int, 200 is 0x000000C8. Only its low byte is drawn here: 0xC8.'},
+    {op:'str',dst:'R1',imm:200,asm:'STRB  R0, [x]',c:'int8_t x = v',cl:1,note:'Storing to an int8_t keeps only the low byte. The bits are unchanged, 0xC8, but as an int8_t they are read with the top bit worth −128: x is −56. No flag is involved; nothing was computed, only a reading was changed. C calls this implementation-defined, and every mainstream compiler does exactly this.'},
+  ]});
+mount('s4',{ regs:['R0','R1'], start:'x is −128, the most negative int8_t. The code wants its absolute value.',
+  steps:[
+    {op:'mov',dst:'R0',imm:0x80,asm:'MOV   R0, #0x80',c:'int8_t x = -128',cl:0,note:'R0 holds 0x80: top bit set, every other bit 0. It is −8 of the subtraction page at 8 bits.'},
+    {op:'neg',dst:'R1',a:'R0',asm:'RSBS  R1, R0, #0',c:'y = -x   (or abs(x))',cl:1,note:'Negation is 0 − R0, which the ALU does as 0 + NOT R0 + 1. NOT 0x80 is 0x7F, 0111 1111. Adding the 1 carries up through all seven low bits, exactly as in scenario 2, and arrives at the top bit; the top bit was 0, becomes 1, and nothing leaves the register. So the same pattern, 0x80, comes back, and V = 1 for the same reason as in scenario 2: a carry went into the top bit and none came out, so the top bit changed sign without the answer being representable. y is still −128, and any code that now assumes y ≥ 0 is wrong. C calls this undefined; the hardware calls it V.'},
+  ]});
+mount('s5',{ regs:['R0','R1','R2'], start:'A parser has read the digits of "−128" as a positive number and will negate at the end.',
+  steps:[
+    {op:'mov',dst:'R0',imm:12,asm:'MOV   R0, #12',c:'acc = 12   (after "1","2")',cl:2,note:'So far so good: 12 fits.'},
+    {op:'mov',dst:'R1',imm:120,asm:'MOV   R1, #120',c:'acc * 10',cl:2,cf:'acc * 10',note:'120 still fits in an int8_t.'},
+    {op:'add',dst:'R2',a:'R1',imm:8,asm:'ADDS  R2, R1, #8',c:'acc = acc*10 + 8',cl:2,cf:'+ d',note:'120 + 8 = 128 does not fit: R2 is 0x80, which reads as −128, and V = 1. The positive 128 never existed in the register.'},
+    {op:'neg',dst:'R2',a:'R2',asm:'RSBS  R2, R2, #0',c:'return -acc',cl:3,cf:'-acc',note:'Negating 0x80 gives 0x80 again, V = 1 again. The parser returns −128, which happens to be the right answer, by two wrongs cancelling. Try "128" without the minus sign and the same code returns −128 for +128. A parser that accumulates negatively, −1, −12, −128, never leaves the range.'},
+  ]});
+mount('s6',{ regs:['R0','R1','R2'], start:'a is 3 and b is 5, both unsigned. The code wants to know whether a − b wrapped, and C cannot read the carry flag.',
+  steps:[
+    {op:'mov',dst:'R0',imm:3,asm:'MOV   R0, #3',c:'uint8_t a = 3',cl:0,cf:'a = 3',note:''},
+    {op:'mov',dst:'R1',imm:5,asm:'MOV   R1, #5',c:'uint8_t b = 5',cl:0,cf:'b = 5',note:''},
+    {op:'sub',dst:'R2',a:'R0',b:'R1',asm:'SUBS  R2, R0, R1',c:'d = a - b',cl:1,note:'3 − 5 wraps to 0xFE = 254. The hardware says so with C = 0, but C the language has no way to read C the flag.'},
+    {op:'sub',dst:'R3',a:'R0',b:'R2',asm:'CMP   R0, R2',c:'if (d > a)',cl:2,cf:'d > a',note:'So the idiom compares instead: is the difference bigger than what we started with? 254 > 3, and that can only happen if the subtraction went round the wheel. The compare does 3 − 254 and sets C = 0 (a borrow), which is what the unsigned "greater than" branch reads. A compiler given __builtin_sub_overflow emits the first SUBS and tests its C directly, skipping the second compare.'},
+  ]});
+mount('s7',{ regs:['R0'], start:'One register, printed twice.',
+  steps:[
+    {op:'mov',dst:'R0',imm:0xFE,asm:'MOV   R0, #0xFE',c:'int8_t x = -2',cl:0,note:'R0 holds 0xFE.'},
+    {op:'mov',dst:'R0',imm:0xFE,asm:'; printf("%d", x)',c:'prints -2',cl:1,note:'%d reads the register with the top bit worth −128: −128 + 64 + 32 + 16 + 8 + 4 + 2 = −2. Nothing in the register changed.'},
+    {op:'mov',dst:'R0',imm:0xFE,asm:'; printf("%u", x)',c:'prints 254 (4294967294 at 32 bits)',cl:2,note:'%u reads the same bits with the top bit worth +128: 254. At 32 bits the same mistake prints 4294967294, the classic "huge number" that means a negative was printed as unsigned. The register never changed; only the reading did.'},
+  ]});
+
+mount('s8',{ regs:['R0','R1','R2'], start:'x is −128 and the divisor is −1. The true quotient is +128.',
+  steps:[
+    {op:'mov',dst:'R0',imm:0x80,asm:'MOV   R0, #0x80',c:'int8_t x = -128',cl:0,cf:'x = -128',note:'R0 holds 0x80, −128.'},
+    {op:'mov',dst:'R1',imm:0xFF,asm:'MOV   R1, #0xFF',c:'int8_t d = -1',cl:0,cf:'d = -1',note:'R1 holds 0xFF, −1.'},
+    {op:'sdiv',dst:'R2',a:'R0',b:'R1',asm:'SDIV  R2, R0, R1',c:'x / d',cl:1,cf:'x / d',note:'−128 ÷ −1 = +128, which does not fit. ARM\'s SDIV does not trap and sets no flags: it writes the low 8 bits of the answer, 0x80, so the quotient reads as −128 and the program carries on with the wrong sign. On x86 the equivalent IDIV instruction raises a divide-error exception instead, the same one as dividing by zero, and the process dies with a floating-point exception from integer code. Neither machine gives +128; C calls the case undefined so both are allowed.'},
+  ]});
+mount('s9',{ regs:['R0','R1'], start:'The programmer checks for overflow by asking whether adding one made the number bigger. The listing on the left is what they expect; step through to see what the compiler emitted at -O2.',
+  steps:[
+    {op:'mov',dst:'R0',imm:127,asm:'MOV   R0, #127',c:'int8_t x = 127',cl:0,note:'R0 holds 127.'},
+    {op:'mov',dst:'R1',imm:1,asm:'MOV   R1, #1',c:'if (x + 1 > x)  → true',cl:1,cf:'x + 1 > x',note:'There is no ADDS and no CMP. The compiler reasoned: for a signed x, x + 1 > x is false only when x + 1 overflows; overflow is undefined behaviour; a program with undefined behaviour may do anything; so I may assume it is true. It stored the constant 1. The wrap that scenario 2 showed never gets a chance to happen, and the check the programmer wrote is gone. Compile with -fwrapv and the add and compare come back, and the test is false for 127.'},
+  ]});
+mount('s10',{ regs:['R0','R1','R2'], start:'a is 255 and b is 1, both unsigned. The code wants to know whether a + b carried out of the top bit.',
+  steps:[
+    {op:'mov',dst:'R0',imm:255,asm:'MOV   R0, #255',c:'uint8_t a = 255',cl:0,cf:'a = 255',note:''},
+    {op:'mov',dst:'R1',imm:1,asm:'MOV   R1, #1',c:'uint8_t b = 1',cl:0,cf:'b = 1',note:''},
+    {op:'add',dst:'R2',a:'R0',b:'R1',asm:'ADDS  R2, R0, R1',c:'s = a + b',cl:1,note:'255 + 1 = 256 falls off the top: R2 is 0x00. C = 1 is the 256 that fell off, and Z = 1 because what remained is zero. V = 0: as signed this was −1 + 1 = 0, which is right.'},
+    {op:'sub',dst:'R3',a:'R2',b:'R0',asm:'CMP   R2, R0',c:'if (s < a)',cl:2,cf:'s < a',note:'The twin of scenario 6: a sum smaller than one of its inputs can only come from going round the wheel. 0 < 255 is true, so the code knows the addition carried. The compare does 0 − 255, a borrow, C = 0, which is what the unsigned less-than branch reads.'},
+  ]});
+
+})();
+</script>
+</body>
+</html>

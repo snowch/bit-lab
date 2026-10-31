@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+// Import old work once without writing to the original app's keys.
+try {
+  if (!localStorage.getItem("bit-lab:legacy:imported:v1")) {
+  for (const key of ["pc-done", "pc-done-layout", "pc-exercises-hidden", "pc-show-done", "pc-theme", "bitlab-state", "bitlab-theme", "drills-score", "readings-score"]) {
+    const target = 'bit-lab:legacy:' + key;
+    if (localStorage.getItem(target) === null) {
+      const old = localStorage.getItem(key);
+      if (old !== null) localStorage.setItem(target, old);
+    }
+  }
+  localStorage.setItem("bit-lab:legacy:imported:v1", "1");
+  }
+} catch (_) {}
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>From gates to a register</title>
+<meta name="description" content="An interactive walk-through of a D latch built from NOR, AND and NOT gates, and of a 4-bit register made from clocked flip-flops.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem("bit-lab:legacy:bitlab-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#EDF0EA;
+  --paper-2:#E2E7DF;
+  --paper-3:#F6F8F4;
+  --ink:#1B2620;
+  --ink-2:#4F5E57;
+  --rule:#C3CBC0;
+  --wire-off:#B4BDB2;
+  --wire-on:#E09B1A;
+  --wire-on-2:#F6C860;
+  --carry:#B23A2C;
+  --gate-fill:#F8FAF6;
+  --gate-stroke:#2D3B35;
+  --bit-off:#D7DDD3;
+  --bit-on:#F1B23A;
+  --bit-on-ink:#2B1E05;
+  --led-on:#D9471F;
+  --led-off:#C9D0C5;
+  --na:#98A39C;
+  --focus:#2F6FD1;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#131A16;
+    --paper-2:#1B241F;
+    --paper-3:#232E28;
+    --ink:#E6ECE4;
+    --ink-2:#9AA89F;
+    --rule:#2E3B34;
+    --wire-off:#3A4740;
+    --wire-on:#F0B23C;
+    --wire-on-2:#FFD98A;
+    --carry:#E86A55;
+    --gate-fill:#1F2A24;
+    --gate-stroke:#C9D4CC;
+    --bit-off:#26312B;
+    --bit-on:#F0B23C;
+    --bit-on-ink:#2B1E05;
+    --led-on:#FF6A3D;
+    --led-off:#2A3630;
+    --na:#5C6A62;
+    --focus:#7FA9F0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131A16; --paper-2:#1B241F; --paper-3:#232E28; --ink:#E6ECE4; --ink-2:#9AA89F; --rule:#2E3B34;
+  --wire-off:#3A4740; --wire-on:#F0B23C; --wire-on-2:#FFD98A; --carry:#E86A55;
+  --gate-fill:#1F2A24; --gate-stroke:#C9D4CC; --bit-off:#26312B; --bit-on:#F0B23C;
+  --bit-on-ink:#2B1E05; --led-on:#FF6A3D; --led-off:#2A3630; --na:#5C6A62; --focus:#7FA9F0;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:16px;line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+main{max-width:980px;margin:0 auto;padding:20px 16px 56px}
+code,kbd,.mono{font-family:var(--mono)}
+button{font:inherit;color:inherit}
+a{color:var(--ink)}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+h1{font-size:clamp(1.55rem,1.1rem + 1.6vw,2.1rem);font-weight:600;margin:0 0 6px;letter-spacing:-.015em;line-height:1.15}
+.lede{color:var(--ink-2);margin:0 0 12px;max-width:62ch;font-size:1.05rem}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.meta span{font:500 .78rem/1.6 var(--mono);border:1px solid var(--rule);border-radius:999px;padding:1px 10px;color:var(--ink-2)}
+.themebtn{flex:none;margin-top:4px}
+nav.toc{display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 26px;padding:8px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+nav.toc a{font:500 .84rem var(--mono);color:var(--ink-2);text-decoration:none;padding:3px 9px;border-radius:6px}
+nav.toc a:hover{color:var(--ink);background:var(--paper-2)}
+
+/* ---------- prose sections ---------- */
+.tut{margin-top:36px;border-top:1px solid var(--rule);padding-top:22px}
+.tut h2{font-size:1.4rem;font-weight:600;margin:0 0 12px;letter-spacing:-.01em;line-height:1.2}
+.tut h3{font-size:1.02rem;font-weight:600;margin:20px 0 6px}
+.tut p,.tut li{max-width:70ch}
+.tut p{margin:0 0 12px}
+.tut ul,.tut ol{padding-left:22px;margin:0 0 12px}
+.tut li{margin-bottom:5px}
+.tut strong{font-weight:600}
+.tut code{background:var(--paper-2);padding:1px 5px;border-radius:4px;font-size:.88em}
+.tut table{border-collapse:collapse;font-size:.9rem;margin:8px 0 14px;font-variant-numeric:tabular-nums}
+.tut td,.tut th{border:1px solid var(--rule);padding:5px 11px;text-align:left;vertical-align:top}
+.tut th{background:var(--paper-2);font-weight:600}
+.tut td.mono{font-family:var(--mono);font-size:.86rem}
+pre.work{font:.86rem/1.55 var(--mono);background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:10px 14px;overflow-x:auto;margin:8px 0 14px}
+.check{border-left:3px solid var(--wire-on);padding:2px 0 2px 14px;margin:14px 0}
+.check ol{margin-bottom:6px}
+.steps{list-style:none;padding:0;counter-reset:step}
+.steps>li{position:relative;padding-left:36px;margin-bottom:14px;max-width:72ch}
+.steps>li::before{
+  counter-increment:step;content:counter(step);position:absolute;left:0;top:2px;
+  width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--paper);
+  font:600 .8rem/24px var(--mono);text-align:center;
+}
+
+/* ---------- schematic ---------- */
+figure.schem{margin:10px 0 18px;background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:10px 8px 8px;overflow-x:auto}
+figure.schem svg{display:block;width:100%;min-width:680px;max-width:800px;height:auto;margin:0 auto}
+figure.schem figcaption{font-size:.84rem;color:var(--ink-2);margin:8px 6px 0;text-align:center;line-height:1.4}
+.schem .box{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.5}
+.schem .opt{stroke-dasharray:5 4}
+.schem .bus{stroke:var(--wire-on);stroke-width:3;fill:none;stroke-linejoin:round}
+.schem .sig{stroke:var(--ink-2);stroke-width:1.6;fill:none}
+.schem .ctl{stroke:var(--ink-2);stroke-width:1.6;fill:none;stroke-dasharray:4 3;stroke-linejoin:round}
+.schem .cy{stroke:var(--carry);stroke-width:2.2;fill:none}
+.schem .fb{stroke:var(--focus);stroke-width:2;fill:none;stroke-dasharray:6 4;stroke-linejoin:round}
+.schem .dot{fill:var(--wire-on)}
+.schem .dotf{fill:var(--focus)}
+.schem .tick{stroke:var(--ink-2);stroke-width:1.4}
+.schem text{font-family:var(--mono);font-size:11px;fill:var(--ink)}
+.schem .t2{fill:var(--ink-2);font-size:10px}
+.schem .tc{fill:var(--carry);font-weight:600}
+.schem .tf{fill:var(--focus)}
+.schem .badge circle{fill:var(--ink);stroke:var(--paper);stroke-width:1.5}
+.schem .badge text{fill:var(--paper);font-weight:600;font-size:10px}
+.schem .led{fill:var(--led-off);stroke:var(--rule);stroke-width:1}
+.schem .led.lit{fill:var(--led-on);stroke:var(--led-on)}
+
+/* ---------- the lab ---------- */
+.labwrap{margin-top:16px}
+.ops{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px}
+.opgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.opcap{font:500 .7rem var(--mono);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-2);margin-right:2px}
+.op{
+  font:500 .9rem var(--mono);border:1px solid var(--rule);background:var(--paper-2);border-radius:8px;
+  padding:6px 11px;cursor:pointer;
+}
+.op:hover{border-color:var(--ink-2)}
+.op[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.op:focus-visible,.small:focus-visible,.preset:focus-visible,.load:focus-visible,.themebtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;color:var(--ink-2);margin-bottom:12px;font:.84rem var(--mono)}
+.small{border:1px solid var(--rule);background:transparent;border-radius:6px;padding:3px 9px;cursor:pointer;font:500 .84rem var(--mono);color:var(--ink)}
+.small:hover{border-color:var(--ink-2)}
+.small[aria-pressed="true"]{background:var(--ink-2);color:var(--paper);border-color:var(--ink-2)}
+.circuit{
+  background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;
+  padding:10px 8px 6px;overflow-x:auto;
+}
+.circuit svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
+svg text{font-family:var(--mono);fill:var(--ink)}
+.wire{stroke:var(--wire-off);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.wire.on{stroke:var(--wire-on)}
+.wire.carry.on{stroke:var(--carry)}
+.gate{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.8}
+.bit{cursor:pointer}
+.bit rect{fill:var(--bit-off);stroke:var(--rule);stroke-width:1;transition:fill .12s}
+.bit.on rect{fill:var(--bit-on);stroke:var(--bit-on)}
+.bit text{font-weight:600;font-size:15px;pointer-events:none}
+.bit.on text{fill:var(--bit-on-ink)}
+.bit:focus{outline:none}
+.bit:focus-visible rect{stroke:var(--focus);stroke-width:2.5}
+.bit.ro{cursor:default}
+.bit.ro rect{stroke-dasharray:3 2}
+.lab{font-size:11px;fill:var(--ink-2)}
+.lab.sm{font-size:10px}
+.idx{font-size:9.5px;fill:var(--ink-2)}
+.cv{font-size:10.5px;font-weight:600}
+.cv.on{fill:var(--carry)}
+.cv.off{fill:var(--ink-2)}
+.fv{font-size:10.5px;font-weight:600}
+.fv.on{fill:var(--wire-on)}
+.fv.off{fill:var(--ink-2)}
+.cnst{font-size:11px;fill:var(--ink-2)}
+.tip{color:var(--ink-2);font-size:.82rem;margin:8px 0 0}
+
+.values{margin:16px 0 4px;overflow-x:auto}
+.values table{border-collapse:collapse;font:.9rem var(--mono);font-variant-numeric:tabular-nums;width:100%;max-width:600px}
+.values th{text-align:left;color:var(--ink-2);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;padding:4px 14px 4px 0}
+.values th.num,.values td.num{text-align:right}
+.values td{padding:5px 14px 5px 0;border-top:1px solid var(--rule);white-space:nowrap}
+.values th.rowk{color:var(--ink);font-weight:600;font-size:.9rem;text-transform:none;letter-spacing:0;border-top:1px solid var(--rule)}
+.values td.bin{font-weight:600;letter-spacing:.04em}
+.values tr.r td,.values tr.r th{background:var(--paper-3)}
+
+.flags{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin-top:14px}
+.flag{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;background:var(--paper-2)}
+.flag header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.led{width:14px;height:14px;border-radius:50%;background:var(--led-off);border:1px solid var(--rule);flex:none;transition:background .15s,box-shadow .15s}
+.led.on{background:var(--led-on);border-color:var(--led-on);box-shadow:0 0 0 3px color-mix(in srgb,var(--led-on) 25%,transparent)}
+.led.na{background:transparent;border-style:dashed;border-color:var(--na)}
+.flag h3{margin:0;font:600 1rem var(--mono)}
+.flag h3 span{color:var(--ink-2);font-weight:400;font-size:.85rem;margin-left:6px}
+.flag svg{width:100%;max-width:240px;height:auto;display:block;margin:2px 0 8px;overflow:visible}
+.flag p{margin:0;font-size:.88rem;color:var(--ink-2);line-height:1.45}
+.flag p strong{color:var(--ink);font-weight:600}
+.flag.na{opacity:.72}
+.why{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px}
+.why h2{font:600 1rem var(--mono);margin:0 0 6px}
+.why p{margin:0 0 8px;max-width:70ch;font-size:.95rem}
+.presets{margin-top:22px}
+.presets h2{font-size:1rem;margin:0 0 8px;font-weight:600}
+#presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
+.preset{
+  display:block;text-align:left;border:1px solid var(--rule);background:transparent;
+  border-radius:8px;padding:8px 10px;cursor:pointer;font:500 .86rem var(--mono);
+}
+.preset:hover{background:var(--paper-2);border-color:var(--ink-2)}
+.preset span{display:block;color:var(--ink-2);font:.84rem var(--sans);margin-top:2px}
+
+/* ---------- exercises & quiz ---------- */
+.ex{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--paper-2)}
+.ex h3{font-size:1rem;margin:0 0 8px;font-weight:600}
+.ex p{margin:0 0 8px}
+.ex .load{font:500 .84rem var(--mono);border:1px solid var(--ink);background:transparent;border-radius:6px;padding:4px 10px;cursor:pointer;margin-bottom:10px}
+.ex .load:hover{background:var(--ink);color:var(--paper)}
+details{margin-top:6px}
+summary{cursor:pointer;color:var(--ink-2);font:500 .84rem var(--mono);display:inline-block;padding:2px 9px;border:1px solid var(--rule);border-radius:6px;list-style:none;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"\25B8  "}
+details[open] summary::before{content:"\25BE  "}
+summary:hover{color:var(--ink);border-color:var(--ink-2)}
+details p{margin:8px 0 0;color:var(--ink);font-size:.93rem}
+.lab-anchor{scroll-margin-top:12px}
+
+/* ---------- footer ---------- */
+footer.site{margin-top:44px;border-top:1px solid var(--rule);padding-top:14px;font:.84rem var(--mono);color:var(--ink-2);display:flex;flex-wrap:wrap;gap:6px 20px}
+footer.site a{color:var(--ink-2)}
+footer.site a:hover{color:var(--ink)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* ---------- block diagram & full adder widget ---------- */
+svg.blockdiag{width:100%;max-width:420px;height:auto;display:block;margin:6px 0 14px}
+.fawrap{display:grid;grid-template-columns:minmax(240px,370px) minmax(0,1fr);gap:14px 26px;align-items:start;margin:10px 0 16px}
+@media (max-width:640px){.fawrap{grid-template-columns:minmax(0,1fr)}}
+.fa{background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:8px 6px}
+.fa svg{display:block;width:100%;height:auto}
+.jdot{fill:var(--wire-off)}
+.jdot.on{fill:var(--wire-on)}
+.jdot.carry.on{fill:var(--carry)}
+.faeq{font:.9rem/1.5 var(--mono);margin:0 0 10px}
+table.truth{border-collapse:collapse;font:.86rem var(--mono);font-variant-numeric:tabular-nums;margin:0 0 8px}
+table.truth th,table.truth td{border:1px solid var(--rule);padding:3px 11px;text-align:center}
+table.truth th{background:var(--paper-2);font-weight:600}
+table.truth tr.cur td{background:var(--bit-on);color:var(--bit-on-ink);font-weight:600}
+.clk{fill:none;stroke:var(--gate-stroke);stroke-width:1.5}
+
+/* ---------- 4-bit chain widget ---------- */
+.chainwrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:640px){.chainwrap{grid-template-columns:minmax(0,1fr)}}
+#chainTable{overflow-x:auto}
+table.add th,table.add td{padding:3px 8px}
+.gate.sel{stroke:var(--focus);stroke-width:2.6}
+.fabox{cursor:pointer}
+.bit.wait rect{fill:transparent;stroke:var(--na);stroke-dasharray:3 2}
+.bit.wait text{fill:var(--na)}
+table.add td.k{text-align:left;color:var(--ink-2);font-size:.8rem;white-space:nowrap}
+table.add td.cin{color:var(--carry);font-weight:600}
+table.add tr.sum td{border-top:2px solid var(--ink-2);font-weight:600}
+table.add td.q{color:var(--na)}
+
+/* ---------- CMP and the branches ---------- */
+.asmwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 24px;margin:4px 0 10px}
+@media (max-width:760px){.asmwrap{grid-template-columns:minmax(0,1fr)}}
+.asmwrap h3{margin:8px 0 4px}
+table.asm{width:100%}
+table.asm td{text-align:left;padding:3px 8px}
+table.asm td.mn{font-weight:600}
+table.asm td.k{color:var(--ink-2)}
+table.asm tr.take td{background:var(--bit-on);color:var(--bit-on-ink)}
+table.asm tr.take td.k{color:var(--bit-on-ink)}
+
+/* ---------- the same thing as a program ---------- */
+.asmprog{margin:0 0 6px;white-space:pre}
+.asmprog .ln{display:block;opacity:.5;padding:0 6px;margin:0 -6px;border-radius:4px}
+.asmprog .ln.run{opacity:1;background:var(--bit-on);color:var(--bit-on-ink)}
+.asmprog .cm{color:var(--ink-2)}
+.asmprog .ln.run .cm{color:var(--bit-on-ink);opacity:.8}
+ol.trace{margin:4px 0 14px;padding-left:22px}
+ol.trace li{margin:0 0 4px}
+
+/* ---------- under the hood ---------- */
+.hood{background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:8px 14px 4px;overflow-x:auto;margin:8px 0 14px;font:.8rem var(--mono);font-variant-numeric:tabular-nums}
+.hood h4{margin:8px 0 6px;font:600 .86rem var(--sans)}
+.hood h4+ .hrow .hb.c{color:var(--ink-2);font-size:9px}
+.hrow{display:flex;align-items:center;white-space:nowrap;margin:2px 0}
+.hrow .hl{width:132px;flex:none;color:var(--ink-2)}
+.hrow .hv{margin-left:12px;color:var(--ink-2);white-space:normal;flex:1 1 auto;min-width:22ch;line-height:1.35}
+.hrow{align-items:flex-start}
+.hrow .hl,.hrow .hb{margin-top:1px}
+.hb{display:inline-flex;width:15px;height:17px;flex:none;align-items:center;justify-content:center;border:1px solid var(--rule);background:var(--bit-off);font-weight:600;font-size:10.5px;margin-right:1px;border-radius:2px;color:var(--ink)}
+.hb.on{background:var(--bit-on);border-color:var(--bit-on);color:var(--bit-on-ink)}
+.hb.fill{border:1px dashed var(--ink-2)}
+.hb.fill.on{border-color:var(--bit-on-ink)}
+.hb.gap{margin-right:7px}
+.hb.blank{visibility:hidden}
+.hb.c{background:transparent;border-color:transparent;color:var(--ink-2);font-weight:500}
+.hb.c.on{color:var(--carry);font-weight:700}
+.hb.c.v{border-color:var(--carry);border-style:dashed}
+.hb.top{box-shadow:0 0 0 2px var(--carry) inset}
+.hflags{display:flex;flex-wrap:wrap;gap:4px 18px;margin:8px 0 2px;color:var(--ink-2)}
+.hflags b{color:var(--ink)}
+.hnote{color:var(--ink-2);font:.82rem/1.5 var(--sans);margin:6px 0 10px;white-space:normal}
+.hnote code{background:var(--paper);padding:1px 5px;border-radius:4px}
+
+
+.crumbs{font:.84rem var(--mono);color:var(--ink-2);margin:0 0 14px}
+.crumbs a{color:var(--ink-2)}
+.crumbs a:hover{color:var(--ink)}
+.tut.first{margin-top:26px;border-top:0;padding-top:0}
+nav.toc + .tut.first{margin-top:0}
+nav.pager{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin:34px 0 0;padding:14px 0;border-top:1px solid var(--rule);font:.9rem var(--sans)}
+nav.pager a{color:var(--ink);text-decoration:none;border:1px solid var(--rule);border-radius:8px;padding:8px 12px}
+nav.pager a:hover{border-color:var(--ink-2)}
+nav.pager .next{text-align:right}
+nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
+@media (max-width:640px){nav.pager{grid-template-columns:1fr}nav.pager .next{text-align:left}}
+
+
+</style>
+</head>
+<body>
+<nav aria-label="Bit Lab navigation" style="padding:12px 16px;font:16px system-ui;display:flex;gap:24px;flex-wrap:wrap"><a href="../../#/">← Bit Lab lessons</a><a href="../../#/practice">Practice</a></nav>
+<main>
+  <div class="top">
+    <div>
+      <p class="crumbs"><a href="notes.html" title="From gates to a compiled if: contents">Home</a> · part 6 of 9</p>
+      <h1>From gates to a register</h1>
+      <p class="lede">Why the ALU needs no memory, how two NOR gates remember a bit, and how a clock turns latches into a register.</p>
+    </div>
+    <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
+  </div>
+  <section class="tut first" id="memory">
+    <h2>Gates that compute, gates that remember</h2>
+    <p>The ALU needs no memory. A gate is <em>combinational</em>: its output depends only on what its inputs are right now, so change an input and the output follows. The adders and the whole ALU inherit that.</p>
+    <p><strong>Where memory is needed.</strong> The registers on either side of the ALU must hold their bits steady while the gates work on them, and keep them until a new value is written. There is no special memory part inside them. A register is made of the same kinds of gates as the ALU, here NOT, AND and NOR, wired in a different way: an output is led back round to become an input, so the circuit can hold itself in a state. That loop is called <em>feedback</em>.</p>
+    <p class="tip">Notation: <code>A·B</code> is AND, <code>¬A</code> is NOT, and S and R stand for <em>set</em> and <em>reset</em>.</p>
+  </section>
+  <section class="tut" id="latch-cell">
+    <h2>The smallest memory: two NOR gates</h2>
+    <p> Wire two NOR gates so that each one's output is an input of the other, and the pair has two stable states that it holds for as long as the power is on.</p>
+    <p><strong>Adding a data input and an enable.</strong> An inverter and two AND gates in front turn the pair into a <em>D latch</em>: while enable is 1, Q copies D; the moment enable drops to 0, the latch keeps whatever it last saw. Try it: with enable on, set D; turn enable off; now change D and watch Q stay put.</p>
+    <div class="fawrap">
+      <div class="fa" id="latch"></div>
+      <div>
+        <p class="faeq" id="latchNote"></p>
+        <table class="truth"><tr><th>enable</th><th>D</th><th>Q</th></tr><tr><td>0</td><td>×</td><td>holds</td></tr><tr><td>1</td><td>0</td><td>0</td></tr><tr><td>1</td><td>1</td><td>1</td></tr></table>
+        <p class="tip">S = D·enable sets the pair and R = ¬D·enable resets it. With enable at 0 neither can fire, and the two NOR gates simply keep holding each other's output in place.</p>
+      </div>
+    </div>
+  </section>
+  <section class="tut" id="register">
+    <h2>A clock, and four cells in a row</h2>
+    <p>A register is a row of these cells, one per bit, sharing one enable line. In a CPU that enable comes from the <em>clock</em>: a signal that swings between 0 and 1 billions of times a second and paces everything. The instant it rises, called the <em>clock edge</em>, is the one moment when registers may take in a new value; between edges they hold still while the gates settle. Real CPUs use a sharper cell than the latch for this, the edge-triggered <em>D flip-flop</em>: two latches back to back, arranged so that Q changes only at the rising edge and never "sees through" while the clock is high. Four flip-flops with a shared clock and a load line make a 4-bit register, and the 74HC173 in the Bit Lab's build section is exactly that. Set the D bits, then press the clock:</p>
+    <div class="fawrap">
+      <div class="fa" id="reg"></div>
+      <div>
+        <div class="row" style="margin:0 0 10px"><button class="small" id="regClock" type="button">clock ▲</button><button class="small" id="regLoad" type="button" aria-pressed="true">load</button></div>
+        <p class="faeq" id="regNote"></p>
+        <p class="tip">Between clock edges the D inputs can change freely; nothing reaches Q until the next edge. With load off, the edge is ignored. That is how a CPU writes one register and leaves all the others alone: every register sees the same clock, but only the chosen one has its load line raised.</p>
+      </div>
+    </div>
+  </section>
+  <section class="tut" id="next">
+    <h2>Where this leads</h2>
+    <ul>
+      <li>The <a href="https://snowch.github.io/d-flipflop-tutorial">D flip-flop tutorial</a> opens up the edge-triggered cell: the master and slave latches inside it, setup and hold time, and clock-to-Q delay, with an <a href="https://snowch.github.io/d-flip-flop-interactive">interactive visualisation</a>.</li>
+      <li>The <a href="bit-lab.html">Bit Lab</a> shows what the registers feed: an 8-bit ALU with its flags, each flag one flip-flop loaded at the same clock edge as the result.</li>
+      <li>The companion page <a href="gates-to-alu.html"><em>From gates to an ALU</em></a> builds the adder those registers feed, from five gates up.</li>
+      <li>The <a href="https://snowch.github.io/digital-design/">Digital Design course</a> carries on from signals to a complete working computer.</li>
+    </ul>
+  </section>
+
+  <nav class="pager" aria-label="Series navigation"><a class="prev" href="bit-lab.html">Previous: Bit Lab: the ALU and its flags</a><a class="up" href="notes.html">Contents</a><a class="next" href="who-decides.html">Next: Signed or unsigned: who decides?</a></nav>
+  <footer class="site">
+    <a href="notes.html">From gates to a compiled if: contents</a>
+    <a href="../">Programmer Calculator app</a>
+    <a href="twos-complement.pdf">Two's complement tutorial (PDF)</a>
+  </footer>
+</main>
+<script>
+(function(){
+'use strict';
+/* ---------- theme ---------- */
+(function(){
+  const btn=document.getElementById('themeBtn'); if(!btn) return;
+  const THEMES=['auto','light','dark'];
+  let theme='auto'; try{ theme=localStorage.getItem('bit-lab:legacy:bitlab-theme')||'auto'; }catch(e){}
+  if(!THEMES.includes(theme)) theme='auto';
+  const apply=()=>{
+    if(theme==='auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme',theme);
+    btn.textContent='theme: '+theme; btn.setAttribute('aria-label','Theme: '+theme+'. Activate to change');
+  };
+  apply();
+  btn.addEventListener('click',()=>{ theme=THEMES[(THEMES.indexOf(theme)+1)%THEMES.length]; try{localStorage.setItem('bit-lab:legacy:bitlab-theme',theme);}catch(e){} apply(); });
+})();
+
+
+/* ---------- SVG helpers ---------- */
+const NS='http://www.w3.org/2000/svg';
+function el(tag, attrs, parent){
+  const e=document.createElementNS(NS,tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+function wire(parent, pts, on, extra){
+  return el('path',{d:'M'+pts.map(p=>p.join(',')).join(' L'), class:'wire'+(on?' on':'')+(extra?' '+extra:'')},parent);
+}
+function txt(parent,x,y,s,cls,anchor){
+  const t=el('text',{x,y,class:cls||'',  'text-anchor':anchor||'middle','dominant-baseline':'middle'},parent);
+  t.textContent=s; return t;
+}
+/* gate shapes drawn in a box with top-left (x,y), width 30, height 24, inputs at top, output at bottom.
+   Returns {in1:[x,y], in2:[x,y], out:[x,y]} for wiring. */
+function drawGate(parent, type, x, y, w=30, h=24){
+  const cx=x+w/2, g=el('g',{},parent);
+  const bubble = (bx,by)=>el('circle',{cx:bx,cy:by,r:3.2,class:'gate'},g);
+  let out=[cx,y+h];
+  switch(type){
+    case 'not':
+      el('path',{d:`M${x+4},${y} L${x+w-4},${y} L${cx},${y+h-6} Z`,class:'gate'},g);
+      bubble(cx,y+h-3); out=[cx,y+h];
+      return {in1:[cx,y], in2:null, out};
+    case 'and': case 'nand':
+      el('path',{d:`M${x},${y} L${x+w},${y} L${x+w},${y+h-w/2} A${w/2},${w/2} 0 0 1 ${x},${y+h-w/2} Z`,class:'gate'},g);
+      break;
+    case 'or': case 'nor': case 'xor':
+      el('path',{d:`M${x},${y} Q${cx},${y+6} ${x+w},${y} Q${x+w},${y+h-4} ${cx},${y+h} Q${x},${y+h-4} ${x},${y} Z`,class:'gate'},g);
+      if(type==='xor') el('path',{d:`M${x},${y-4} Q${cx},${y+2} ${x+w},${y-4}`,class:'gate',fill:'none'},g);
+      break;
+  }
+  if(type==='nand'||type==='nor'){ bubble(cx,y+h+3); out=[cx,y+h+6]; }
+  return {in1:[x+8,y], in2:[x+w-8,y], out};
+}
+
+/* ---------- main circuit ---------- */
+function bitCell(parent, x, y, val, label, editable, onToggle){
+  const g=el('g',{class:'bit'+(val?' on':'')+(editable?'':' ro'), transform:`translate(${x-14},${y-14})`},parent);
+  if(editable){ g.setAttribute('tabindex','0'); g.setAttribute('role','switch'); g.setAttribute('aria-checked', val?'true':'false'); g.setAttribute('aria-label',label); }
+  el('rect',{width:28,height:28,rx:5},g);
+  txt(g,14,15,String(val));
+  if(editable){
+    g.addEventListener('click',onToggle);
+    g.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();onToggle();} });
+  }
+  return g;
+}
+
+/* ---------- one full adder, gate by gate ---------- */
+function drawFullAdder(host,a,b,c,onToggle){
+  host.innerHTML='';
+  const svg=el('svg',{viewBox:'0 -12 360 274',xmlns:NS,'aria-label':'One full adder: two XOR gates, two AND gates and one OR gate'},host);
+  const p=a^b, g=a&b, pc=p&c, s=p^c, co=g|pc, ed=!!onToggle;
+  const dot=(x,y,on)=>el('circle',{cx:x,cy:y,r:3,class:'jdot'+(on?' on':'')},svg);
+  txt(svg,50,-1,'A','lab'); txt(svg,110,-1,'B','lab'); txt(svg,250,-1,'carry in','lab');
+  wire(svg,[[50,40],[50,50],[73,50],[73,70]],a); wire(svg,[[50,44],[133,44],[133,70]],a); dot(50,44,a);
+  wire(svg,[[110,40],[110,56],[87,56],[87,70]],b); wire(svg,[[110,56],[147,56],[147,70]],b); dot(110,56,b);
+  wire(svg,[[80,94],[80,110],[73,110],[73,150]],p); wire(svg,[[80,110],[187,110],[187,150]],p); dot(80,110,p);
+  wire(svg,[[250,40],[250,126],[87,126],[87,150]],c); wire(svg,[[201,126],[201,150]],c); dot(201,126,c);
+  wire(svg,[[140,94],[140,100],[302,100],[302,200]],g);
+  wire(svg,[[194,174],[194,190],[288,190],[288,200]],pc);
+  wire(svg,[[80,174],[80,200]],s); wire(svg,[[295,224],[295,232]],co,'carry');
+  drawGate(svg,'xor',65,70); drawGate(svg,'and',125,70); drawGate(svg,'xor',65,150); drawGate(svg,'and',179,150); drawGate(svg,'or',280,200);
+  txt(svg,100,82,'XOR','lab','start'); txt(svg,160,78,'AND','lab','start'); txt(svg,100,162,'XOR','lab','start'); txt(svg,214,162,'AND','lab','start'); txt(svg,316,212,'OR','lab','start');
+  txt(svg,120,118,'A ⊕ B','lab','start'); txt(svg,306,150,'A · B','lab','start');
+  bitCell(svg,50,26,a,'A',ed,()=>onToggle('a'));
+  bitCell(svg,110,26,b,'B',ed,()=>onToggle('b'));
+  bitCell(svg,250,26,c,'carry in',ed,()=>onToggle('c'));
+  bitCell(svg,80,214,s,'sum',false); txt(svg,100,214,'sum','lab','start');
+  bitCell(svg,295,246,co,'carry out',false); txt(svg,275,246,'carry out','lab','end');
+  return {s,co};
+}
+const fa={a:1,b:1,c:0};
+function renderFA(){
+  const host=document.getElementById('fa'); if(!host) return;
+  const {a,b,c}=fa;
+  const {s,co}=drawFullAdder(host,a,b,c,k=>{fa[k]^=1;renderFA();});
+  document.getElementById('faEq').innerHTML=`sum = A ⊕ B ⊕ cin = <b>${s}</b><br>carry out = A·B + cin·(A ⊕ B) = <b>${co}</b>`;
+  let t='<table class="truth"><tr><th>A</th><th>B</th><th>cin</th><th>sum</th><th>cout</th></tr>';
+  for(let i=0;i<8;i++){
+    const A=(i>>2)&1, B=(i>>1)&1, C=i&1, P=A^B, S=P^C, CO=(A&B)|(P&C);
+    t+=`<tr${(A===a&&B===b&&C===c)?' class="cur"':''}><td>${A}</td><td>${B}</td><td>${C}</td><td>${S}</td><td>${CO}</td></tr>`;
+  }
+  document.getElementById('faTable').innerHTML=t+'</table>';
+}
+renderFA();
+
+/* ---------- four full adders make a 4-bit adder ---------- */
+const chain={a:[1,1,1,0],b:[1,0,0,0],sel:0,stage:4,timer:null};
+function chainCalc(){
+  const c=[0], s=[];
+  for(let i=0;i<4;i++){ const x=chain.a[i], y=chain.b[i], ci=c[i]; s.push(x^y^ci); c.push((x&y)|(ci&(x^y))); }
+  return {s,c};
+}
+function renderChain(){
+  const host=document.getElementById('chain'); if(!host) return;
+  host.innerHTML='';
+  const {s,c}=chainCalc(), w=4, colW=72, left=66, W=424, yA=22, yB=66, by=104, bw=34, bh=30, yR=176, H=200;
+  const svg=el('svg',{viewBox:`0 -10 ${W} ${H+10}`,xmlns:NS,'aria-label':'Four full adders chained into a 4-bit ripple-carry adder'},host);
+  const colX=i=>left+colW*(w-1-i)+colW/2;
+  txt(svg,left-34,yA,'A','lab'); txt(svg,left-34,yB,'B','lab'); txt(svg,left-34,yR,'sum','lab');
+  for(let i=0;i<w;i++){
+    const x=colX(i), settled=i<chain.stage, bx=x-bw/2, cy=by+bh/2;
+    txt(svg,x,-3,'bit '+i,'idx');
+    wire(svg,[[x-8,yA+14],[x-8,by]],chain.a[i]);
+    wire(svg,[[x+8,yB+14],[x+8,by]],chain.b[i]);
+    const cout=c[i+1], toX=(i===w-1)?left-28:colX(i+1)+bw/2;
+    wire(svg,[[bx,cy],[toX,cy]],settled&&cout,'carry');
+    txt(svg,(bx+toX)/2,cy-8,settled?String(cout):'?','cv '+(settled&&cout?'on':'off'));
+    if(i===w-1) txt(svg,left-38,cy,'C','lab');
+    if(i===0){ wire(svg,[[bx+bw,cy],[bx+bw+26,cy]],0,'carry'); txt(svg,bx+bw+13,cy-8,'0','cv off'); txt(svg,bx+bw+38,cy,'cin','lab'); }
+    wire(svg,[[x,by+bh],[x,yR-14]],settled&&s[i]);
+    const box=el('rect',{x:bx,y:by,width:bw,height:bh,rx:4,class:'gate fabox'+(i===chain.sel?' sel':''),tabindex:'0',role:'button','aria-label':`open full adder for bit ${i}`},svg);
+    box.addEventListener('click',()=>{chain.sel=i;renderChain();});
+    box.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();chain.sel=i;renderChain();} });
+    const fl=txt(svg,x,cy+1,'FA','lab'); fl.style.pointerEvents='none';
+    bitCell(svg,x,yA,chain.a[i],`A bit ${i}`,true,()=>{chain.a[i]^=1;chain.stage=4;renderChain();});
+    bitCell(svg,x,yB,chain.b[i],`B bit ${i}`,true,()=>{chain.b[i]^=1;chain.stage=4;renderChain();});
+    const cell=bitCell(svg,x,yR,settled?s[i]:0,`sum bit ${i}`,false);
+    if(!settled){ cell.classList.add('wait'); cell.querySelector('text').textContent='?'; }
+  }
+  const k=chain.sel;
+  drawFullAdder(document.getElementById('chainFA'),chain.a[k],chain.b[k],c[k],null);
+  const from = k===0 ? 'the cin wire, tied to 0' : `bit ${k-1}`;
+  const to = k===3 ? 'the C flag' : `bit ${k+1}`;
+  document.getElementById('chainNote').innerHTML=`<b>Bit ${k} opened.</b> Its inputs are A = ${chain.a[k]}, B = ${chain.b[k]} and a carry in of ${c[k]} from ${from}. It produces sum ${s[k]} and a carry out of ${c[k+1]}, which goes to ${to}.`;
+  const q=(v,i)=> i<chain.stage ? String(v) : '<span class="q">?</span>';
+  const cols=[3,2,1,0];
+  let t='<table class="truth add"><tr><th></th><th>C</th>'+cols.map(i=>`<th>bit ${i}</th>`).join('')+'</tr>';
+  t+='<tr><td class="k">carry in</td><td></td>'+cols.map(i=>`<td class="cin">${q(c[i],i)}</td>`).join('')+'</tr>';
+  t+='<tr><td class="k">A</td><td></td>'+cols.map(i=>`<td>${chain.a[i]}</td>`).join('')+'</tr>';
+  t+='<tr><td class="k">+ B</td><td></td>'+cols.map(i=>`<td>${chain.b[i]}</td>`).join('')+'</tr>';
+  t+='<tr class="sum"><td class="k">= sum</td>'+`<td class="cin">${q(c[4],3)}</td>`+cols.map(i=>`<td>${q(s[i],i)}</td>`).join('')+'</tr></table>';
+  document.getElementById('chainTable').innerHTML=t;
+}
+const chainRippleBtn=document.getElementById('chainRipple');
+if(chainRippleBtn) chainRippleBtn.addEventListener('click',()=>{
+  if(chain.timer) clearInterval(chain.timer);
+  chain.stage=0; renderChain();
+  chain.timer=setInterval(()=>{ chain.stage++; renderChain(); if(chain.stage>=4){ clearInterval(chain.timer); chain.timer=null; } },550);
+});
+renderChain();
+
+/* ---------- gates drawn sideways: inputs on the left, output on the right ---------- */
+function gateR(parent,type,cx,cy){
+  const g=el('g',{transform:`translate(${cx},${cy}) rotate(-90) translate(-15,-12)`},parent);
+  drawGate(g,type,0,0);
+  if(type==='not') return {in1:[cx-12,cy], out:[cx+12,cy]};
+  const bub=(type==='nor'||type==='nand');
+  return {in1:[cx-12,cy+7], in2:[cx-12,cy-7], out:[cx+(bub?18:12),cy]};
+}
+
+/* ---------- one bit of memory: a D latch from five gates ---------- */
+const latch={d:1,e:1,q:0};
+function renderLatch(){
+  const host=document.getElementById('latch'); if(!host) return;
+  host.innerHTML='';
+  const svg=el('svg',{viewBox:'0 -6 380 216',xmlns:NS,'aria-label':'A D latch: an inverter, two AND gates and two cross-coupled NOR gates'},host);
+  const {d,e}=latch, s=d&e, r=(d^1)&e;
+  if(s) latch.q=1; else if(r) latch.q=0;
+  const q=latch.q, nq=q^1, nd=d^1;
+  const dot=(x,y,on)=>el('circle',{cx:x,cy:y,r:3,class:'jdot'+(on?' on':'')},svg);
+  wire(svg,[[50,70],[70,70],[70,50],[88,50]],d);
+  wire(svg,[[70,70],[70,143],[138,143]],d); dot(70,70,d);
+  wire(svg,[[112,50],[120,50],[120,55],[138,55]],nd);
+  wire(svg,[[50,165],[60,165],[60,157],[138,157]],e);
+  wire(svg,[[100,157],[100,69],[138,69]],e); dot(100,157,e);
+  wire(svg,[[162,62],[238,62]],r);
+  wire(svg,[[162,150],[238,150]],s);
+  wire(svg,[[268,69],[306,69]],q);
+  wire(svg,[[268,143],[306,143]],nq);
+  wire(svg,[[285,69],[285,96],[215,96],[215,136],[238,136]],q); dot(285,69,q);
+  wire(svg,[[285,143],[285,116],[222,116],[222,76],[238,76]],nq); dot(285,143,nq);
+  gateR(svg,'not',100,50); gateR(svg,'and',150,62); gateR(svg,'and',150,150); gateR(svg,'nor',250,69); gateR(svg,'nor',250,143);
+  txt(svg,100,30,'NOT','lab'); txt(svg,150,38,'AND','lab'); txt(svg,150,174,'AND','lab'); txt(svg,250,45,'NOR','lab'); txt(svg,250,167,'NOR','lab');
+  txt(svg,200,53,'R = ¬D·E','lab'); txt(svg,200,160,'S = D·E','lab');
+  txt(svg,36,43,'D','lab'); txt(svg,36,138,'enable','lab'); txt(svg,320,42,'Q','lab'); txt(svg,320,170,'¬Q','lab');
+  bitCell(svg,36,70,d,'D',true,()=>{latch.d^=1;renderLatch();});
+  bitCell(svg,36,165,e,'enable',true,()=>{latch.e^=1;renderLatch();});
+  bitCell(svg,320,69,q,'Q',false); bitCell(svg,320,143,nq,'not Q',false);
+  document.getElementById('latchNote').innerHTML = e
+    ? `enable = 1: the latch is <strong>transparent</strong>. ${d?'S':'R'} = 1 ${d?'sets':'resets'} the NOR pair, so Q follows D: Q = <strong>${q}</strong>.`
+    : `enable = 0: both AND gates put out 0, so the NOR pair sees only its own feedback and <strong>holds</strong> Q = <strong>${q}</strong>. Change D all you like.`;
+}
+renderLatch();
+
+/* ---------- a 4-bit register: four flip-flops, one clock ---------- */
+const reg={d:[1,0,1,0],q:[0,0,0,0],load:1,pulse:0,note:'Press the clock to copy D into Q.'};
+function renderReg(){
+  const host=document.getElementById('reg'); if(!host) return;
+  host.innerHTML='';
+  const svg=el('svg',{viewBox:'0 -8 360 194',xmlns:NS,'aria-label':'A 4-bit register: four D flip-flops sharing one clock and one load line'},host);
+  const xs=[86,154,222,290];
+  wire(svg,[[56,98],[318,98]],reg.pulse,'carry'); txt(svg,50,98,'clock','lab sm','end');
+  wire(svg,[[56,110],[318,110]],reg.load); txt(svg,324,110,'load','lab sm','start');
+  xs.forEach((x,i)=>{
+    const b=3-i, dv=reg.d[b], qv=reg.q[b];
+    txt(svg,x,3,'b'+b,'idx');
+    wire(svg,[[x,44],[x,74]],dv);
+    el('rect',{x:x-20,y:74,width:40,height:40,rx:4,class:'gate'},svg);
+    txt(svg,x,83,'D','idx'); txt(svg,x,95,'DFF','lab'); txt(svg,x,107,'Q','idx');
+    el('path',{d:`M${x-20},94 L${x-14},98 L${x-20},102`,class:'clk'},svg);
+    wire(svg,[[x,114],[x,144]],qv);
+    bitCell(svg,x,30,dv,`D bit ${b}`,true,()=>{reg.d[b]^=1;renderReg();});
+    bitCell(svg,x,158,qv,`Q bit ${b}`,false);
+  });
+  const val=a=>a.slice().reverse().join('');
+  document.getElementById('regNote').innerHTML=`D = ${val(reg.d)} &nbsp; Q = <strong>${val(reg.q)}</strong><br><span class="small-note">${reg.note}</span>`;
+  const rl=document.getElementById('regLoad'); if(rl) rl.setAttribute('aria-pressed', reg.load?'true':'false');
+}
+const regClockBtn=document.getElementById('regClock');
+if(regClockBtn) regClockBtn.addEventListener('click',()=>{
+  if(reg.load){ reg.q=reg.d.slice(); reg.note='Rising edge with load = 1: every flip-flop copied its D into Q.'; }
+  else { reg.note='Rising edge with load = 0: the edge was ignored and Q kept its value.'; }
+  reg.pulse=1; renderReg();
+  setTimeout(()=>{reg.pulse=0;renderReg();},350);
+});
+const regLoadBtn=document.getElementById('regLoad');
+if(regLoadBtn) regLoadBtn.addEventListener('click',()=>{ reg.load^=1; reg.note=reg.load?'load = 1: the next clock edge will copy D.':'load = 0: clock edges are ignored; Q holds.'; renderReg(); });
+renderReg();
+
+
+})();
+</script>
+</body>
+</html>

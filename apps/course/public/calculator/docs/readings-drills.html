@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+// Import old work once without writing to the original app's keys.
+try {
+  if (!localStorage.getItem("bit-lab:legacy:imported:v1")) {
+  for (const key of ["pc-done", "pc-done-layout", "pc-exercises-hidden", "pc-show-done", "pc-theme", "bitlab-state", "bitlab-theme", "drills-score", "readings-score"]) {
+    const target = 'bit-lab:legacy:' + key;
+    if (localStorage.getItem(target) === null) {
+      const old = localStorage.getItem(key);
+      if (old !== null) localStorage.setItem(target, old);
+    }
+  }
+  localStorage.setItem("bit-lab:legacy:imported:v1", "1");
+  }
+} catch (_) {}
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Two readings: drills</title>
+<meta name="description" content="Predict-then-check drills on two's complement at 4 and 8 bits: read a pattern both ways, write a value as bits, step round the wheel, negate by hand, and decide whether a sum fits.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem("bit-lab:legacy:bitlab-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#EDF0EA;
+  --paper-2:#E2E7DF;
+  --paper-3:#F6F8F4;
+  --ink:#1B2620;
+  --ink-2:#4F5E57;
+  --rule:#C3CBC0;
+  --wire-off:#B4BDB2;
+  --wire-on:#E09B1A;
+  --wire-on-2:#F6C860;
+  --carry:#B23A2C;
+  --gate-fill:#F8FAF6;
+  --gate-stroke:#2D3B35;
+  --bit-off:#D7DDD3;
+  --bit-on:#F1B23A;
+  --bit-on-ink:#2B1E05;
+  --led-on:#D9471F;
+  --led-off:#C9D0C5;
+  --na:#98A39C;
+  --focus:#2F6FD1;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#131A16;
+    --paper-2:#1B241F;
+    --paper-3:#232E28;
+    --ink:#E6ECE4;
+    --ink-2:#9AA89F;
+    --rule:#2E3B34;
+    --wire-off:#3A4740;
+    --wire-on:#F0B23C;
+    --wire-on-2:#FFD98A;
+    --carry:#E86A55;
+    --gate-fill:#1F2A24;
+    --gate-stroke:#C9D4CC;
+    --bit-off:#26312B;
+    --bit-on:#F0B23C;
+    --bit-on-ink:#2B1E05;
+    --led-on:#FF6A3D;
+    --led-off:#2A3630;
+    --na:#5C6A62;
+    --focus:#7FA9F0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131A16; --paper-2:#1B241F; --paper-3:#232E28; --ink:#E6ECE4; --ink-2:#9AA89F; --rule:#2E3B34;
+  --wire-off:#3A4740; --wire-on:#F0B23C; --wire-on-2:#FFD98A; --carry:#E86A55;
+  --gate-fill:#1F2A24; --gate-stroke:#C9D4CC; --bit-off:#26312B; --bit-on:#F0B23C;
+  --bit-on-ink:#2B1E05; --led-on:#FF6A3D; --led-off:#2A3630; --na:#5C6A62; --focus:#7FA9F0;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:16px;line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+main{max-width:980px;margin:0 auto;padding:20px 16px 56px}
+code,kbd,.mono{font-family:var(--mono)}
+button{font:inherit;color:inherit}
+a{color:var(--ink)}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+h1{font-size:clamp(1.55rem,1.1rem + 1.6vw,2.1rem);font-weight:600;margin:0 0 6px;letter-spacing:-.015em;line-height:1.15}
+.lede{color:var(--ink-2);margin:0 0 12px;max-width:62ch;font-size:1.05rem}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.meta span{font:500 .78rem/1.6 var(--mono);border:1px solid var(--rule);border-radius:999px;padding:1px 10px;color:var(--ink-2)}
+.themebtn{flex:none;margin-top:4px}
+nav.toc{display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 26px;padding:8px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+nav.toc a{font:500 .84rem var(--mono);color:var(--ink-2);text-decoration:none;padding:3px 9px;border-radius:6px}
+nav.toc a:hover{color:var(--ink);background:var(--paper-2)}
+
+/* ---------- prose sections ---------- */
+.tut{margin-top:36px;border-top:1px solid var(--rule);padding-top:22px}
+.tut h2{font-size:1.4rem;font-weight:600;margin:0 0 12px;letter-spacing:-.01em;line-height:1.2}
+.tut h3{font-size:1.02rem;font-weight:600;margin:20px 0 6px}
+.tut p,.tut li{max-width:70ch}
+.tut p{margin:0 0 12px}
+.tut ul,.tut ol{padding-left:22px;margin:0 0 12px}
+.tut li{margin-bottom:5px}
+.tut strong{font-weight:600}
+.tut code{background:var(--paper-2);padding:1px 5px;border-radius:4px;font-size:.88em}
+.tut table{border-collapse:collapse;font-size:.9rem;margin:8px 0 14px;font-variant-numeric:tabular-nums}
+.tut td,.tut th{border:1px solid var(--rule);padding:5px 11px;text-align:left;vertical-align:top}
+.tut th{background:var(--paper-2);font-weight:600}
+.tut td.mono{font-family:var(--mono);font-size:.86rem}
+pre.work{font:.86rem/1.55 var(--mono);background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:10px 14px;overflow-x:auto;margin:8px 0 14px}
+.check{border-left:3px solid var(--wire-on);padding:2px 0 2px 14px;margin:14px 0}
+.check ol{margin-bottom:6px}
+.steps{list-style:none;padding:0;counter-reset:step}
+.steps>li{position:relative;padding-left:36px;margin-bottom:14px;max-width:72ch}
+.steps>li::before{
+  counter-increment:step;content:counter(step);position:absolute;left:0;top:2px;
+  width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--paper);
+  font:600 .8rem/24px var(--mono);text-align:center;
+}
+
+/* ---------- schematic ---------- */
+figure.schem{margin:10px 0 18px;background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:10px 8px 8px;overflow-x:auto}
+figure.schem svg{display:block;width:100%;min-width:680px;max-width:800px;height:auto;margin:0 auto}
+figure.schem figcaption{font-size:.84rem;color:var(--ink-2);margin:8px 6px 0;text-align:center;line-height:1.4}
+.schem .box{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.5}
+.schem .opt{stroke-dasharray:5 4}
+.schem .bus{stroke:var(--wire-on);stroke-width:3;fill:none;stroke-linejoin:round}
+.schem .sig{stroke:var(--ink-2);stroke-width:1.6;fill:none}
+.schem .ctl{stroke:var(--ink-2);stroke-width:1.6;fill:none;stroke-dasharray:4 3;stroke-linejoin:round}
+.schem .cy{stroke:var(--carry);stroke-width:2.2;fill:none}
+.schem .fb{stroke:var(--focus);stroke-width:2;fill:none;stroke-dasharray:6 4;stroke-linejoin:round}
+.schem .dot{fill:var(--wire-on)}
+.schem .dotf{fill:var(--focus)}
+.schem .tick{stroke:var(--ink-2);stroke-width:1.4}
+.schem text{font-family:var(--mono);font-size:11px;fill:var(--ink)}
+.schem .t2{fill:var(--ink-2);font-size:10px}
+.schem .tc{fill:var(--carry);font-weight:600}
+.schem .tf{fill:var(--focus)}
+.schem .badge circle{fill:var(--ink);stroke:var(--paper);stroke-width:1.5}
+.schem .badge text{fill:var(--paper);font-weight:600;font-size:10px}
+.schem .led{fill:var(--led-off);stroke:var(--rule);stroke-width:1}
+.schem .led.lit{fill:var(--led-on);stroke:var(--led-on)}
+
+/* ---------- the lab ---------- */
+.labwrap{margin-top:16px}
+.ops{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px}
+.opgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.opcap{font:500 .7rem var(--mono);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-2);margin-right:2px}
+.op{
+  font:500 .9rem var(--mono);border:1px solid var(--rule);background:var(--paper-2);border-radius:8px;
+  padding:6px 11px;cursor:pointer;
+}
+.op:hover{border-color:var(--ink-2)}
+.op[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.op:focus-visible,.small:focus-visible,.preset:focus-visible,.load:focus-visible,.themebtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;color:var(--ink-2);margin-bottom:12px;font:.84rem var(--mono)}
+.small{border:1px solid var(--rule);background:transparent;border-radius:6px;padding:3px 9px;cursor:pointer;font:500 .84rem var(--mono);color:var(--ink)}
+.small:hover{border-color:var(--ink-2)}
+.small[aria-pressed="true"]{background:var(--ink-2);color:var(--paper);border-color:var(--ink-2)}
+.circuit{
+  background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;
+  padding:10px 8px 6px;overflow-x:auto;
+}
+.circuit svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
+svg text{font-family:var(--mono);fill:var(--ink)}
+.wire{stroke:var(--wire-off);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.wire.on{stroke:var(--wire-on)}
+.wire.carry.on{stroke:var(--carry)}
+.gate{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.8}
+.bit{cursor:pointer}
+.bit rect{fill:var(--bit-off);stroke:var(--rule);stroke-width:1;transition:fill .12s}
+.bit.on rect{fill:var(--bit-on);stroke:var(--bit-on)}
+.bit text{font-weight:600;font-size:15px;pointer-events:none}
+.bit.on text{fill:var(--bit-on-ink)}
+.bit:focus{outline:none}
+.bit:focus-visible rect{stroke:var(--focus);stroke-width:2.5}
+.bit.ro{cursor:default}
+.bit.ro rect{stroke-dasharray:3 2}
+.lab{font-size:11px;fill:var(--ink-2)}
+.lab.sm{font-size:10px}
+.idx{font-size:9.5px;fill:var(--ink-2)}
+.cv{font-size:10.5px;font-weight:600}
+.cv.on{fill:var(--carry)}
+.cv.off{fill:var(--ink-2)}
+.fv{font-size:10.5px;font-weight:600}
+.fv.on{fill:var(--wire-on)}
+.fv.off{fill:var(--ink-2)}
+.cnst{font-size:11px;fill:var(--ink-2)}
+.tip{color:var(--ink-2);font-size:.82rem;margin:8px 0 0}
+
+.values{margin:16px 0 4px;overflow-x:auto}
+.values table{border-collapse:collapse;font:.9rem var(--mono);font-variant-numeric:tabular-nums;width:100%;max-width:600px}
+.values th{text-align:left;color:var(--ink-2);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;padding:4px 14px 4px 0}
+.values th.num,.values td.num{text-align:right}
+.values td{padding:5px 14px 5px 0;border-top:1px solid var(--rule);white-space:nowrap}
+.values th.rowk{color:var(--ink);font-weight:600;font-size:.9rem;text-transform:none;letter-spacing:0;border-top:1px solid var(--rule)}
+.values td.bin{font-weight:600;letter-spacing:.04em}
+.values tr.r td,.values tr.r th{background:var(--paper-3)}
+
+.flags{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin-top:14px}
+.flag{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;background:var(--paper-2)}
+.flag header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.led{width:14px;height:14px;border-radius:50%;background:var(--led-off);border:1px solid var(--rule);flex:none;transition:background .15s,box-shadow .15s}
+.led.on{background:var(--led-on);border-color:var(--led-on);box-shadow:0 0 0 3px color-mix(in srgb,var(--led-on) 25%,transparent)}
+.led.na{background:transparent;border-style:dashed;border-color:var(--na)}
+.flag h3{margin:0;font:600 1rem var(--mono)}
+.flag h3 span{color:var(--ink-2);font-weight:400;font-size:.85rem;margin-left:6px}
+.flag svg{width:100%;max-width:240px;height:auto;display:block;margin:2px 0 8px;overflow:visible}
+.flag p{margin:0;font-size:.88rem;color:var(--ink-2);line-height:1.45}
+.flag p strong{color:var(--ink);font-weight:600}
+.flag.na{opacity:.72}
+.why{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px}
+.why h2{font:600 1rem var(--mono);margin:0 0 6px}
+.why p{margin:0 0 8px;max-width:70ch;font-size:.95rem}
+.presets{margin-top:22px}
+.presets h2{font-size:1rem;margin:0 0 8px;font-weight:600}
+#presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
+.preset{
+  display:block;text-align:left;border:1px solid var(--rule);background:transparent;
+  border-radius:8px;padding:8px 10px;cursor:pointer;font:500 .86rem var(--mono);
+}
+.preset:hover{background:var(--paper-2);border-color:var(--ink-2)}
+.preset span{display:block;color:var(--ink-2);font:.84rem var(--sans);margin-top:2px}
+
+/* ---------- exercises & quiz ---------- */
+.ex{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--paper-2)}
+.ex h3{font-size:1rem;margin:0 0 8px;font-weight:600}
+.ex p{margin:0 0 8px}
+.ex .load{font:500 .84rem var(--mono);border:1px solid var(--ink);background:transparent;border-radius:6px;padding:4px 10px;cursor:pointer;margin-bottom:10px}
+.ex .load:hover{background:var(--ink);color:var(--paper)}
+details{margin-top:6px}
+summary{cursor:pointer;color:var(--ink-2);font:500 .84rem var(--mono);display:inline-block;padding:2px 9px;border:1px solid var(--rule);border-radius:6px;list-style:none;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"\25B8  "}
+details[open] summary::before{content:"\25BE  "}
+summary:hover{color:var(--ink);border-color:var(--ink-2)}
+details p{margin:8px 0 0;color:var(--ink);font-size:.93rem}
+.lab-anchor{scroll-margin-top:12px}
+
+/* ---------- footer ---------- */
+footer.site{margin-top:44px;border-top:1px solid var(--rule);padding-top:14px;font:.84rem var(--mono);color:var(--ink-2);display:flex;flex-wrap:wrap;gap:6px 20px}
+footer.site a{color:var(--ink-2)}
+footer.site a:hover{color:var(--ink)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* ---------- block diagram & full adder widget ---------- */
+svg.blockdiag{width:100%;max-width:420px;height:auto;display:block;margin:6px 0 14px}
+.fawrap{display:grid;grid-template-columns:minmax(240px,370px) minmax(0,1fr);gap:14px 26px;align-items:start;margin:10px 0 16px}
+@media (max-width:640px){.fawrap{grid-template-columns:minmax(0,1fr)}}
+.fa{background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:8px 6px}
+.fa svg{display:block;width:100%;height:auto}
+.jdot{fill:var(--wire-off)}
+.jdot.on{fill:var(--wire-on)}
+.jdot.carry.on{fill:var(--carry)}
+.faeq{font:.9rem/1.5 var(--mono);margin:0 0 10px}
+table.truth{border-collapse:collapse;font:.86rem var(--mono);font-variant-numeric:tabular-nums;margin:0 0 8px}
+table.truth th,table.truth td{border:1px solid var(--rule);padding:3px 11px;text-align:center}
+table.truth th{background:var(--paper-2);font-weight:600}
+table.truth tr.cur td{background:var(--bit-on);color:var(--bit-on-ink);font-weight:600}
+.clk{fill:none;stroke:var(--gate-stroke);stroke-width:1.5}
+
+/* ---------- 4-bit chain widget ---------- */
+.chainwrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:640px){.chainwrap{grid-template-columns:minmax(0,1fr)}}
+#chainTable{overflow-x:auto}
+table.add th,table.add td{padding:3px 8px}
+.gate.sel{stroke:var(--focus);stroke-width:2.6}
+.fabox{cursor:pointer}
+.bit.wait rect{fill:transparent;stroke:var(--na);stroke-dasharray:3 2}
+.bit.wait text{fill:var(--na)}
+table.add td.k{text-align:left;color:var(--ink-2);font-size:.8rem;white-space:nowrap}
+table.add td.cin{color:var(--carry);font-weight:600}
+table.add tr.sum td{border-top:2px solid var(--ink-2);font-weight:600}
+table.add td.q{color:var(--na)}
+
+/* ---------- CMP and the branches ---------- */
+.asmwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 24px;margin:4px 0 10px}
+@media (max-width:760px){.asmwrap{grid-template-columns:minmax(0,1fr)}}
+.asmwrap h3{margin:8px 0 4px}
+table.asm{width:100%}
+table.asm td{text-align:left;padding:3px 8px}
+table.asm td.mn{font-weight:600}
+table.asm td.k{color:var(--ink-2)}
+table.asm tr.take td{background:var(--bit-on);color:var(--bit-on-ink)}
+table.asm tr.take td.k{color:var(--bit-on-ink)}
+
+/* ---------- the same thing as a program ---------- */
+.asmprog{margin:0 0 6px;white-space:pre}
+.asmprog .ln{display:block;opacity:.5;padding:0 6px;margin:0 -6px;border-radius:4px}
+.asmprog .ln.run{opacity:1;background:var(--bit-on);color:var(--bit-on-ink)}
+.asmprog .cm{color:var(--ink-2)}
+.asmprog .ln.run .cm{color:var(--bit-on-ink);opacity:.8}
+ol.trace{margin:4px 0 14px;padding-left:22px}
+ol.trace li{margin:0 0 4px}
+
+/* ---------- under the hood ---------- */
+.hood{background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:8px 14px 4px;overflow-x:auto;margin:8px 0 14px;font:.8rem var(--mono);font-variant-numeric:tabular-nums}
+.hood h4{margin:8px 0 6px;font:600 .86rem var(--sans)}
+.hood h4+ .hrow .hb.c{color:var(--ink-2);font-size:9px}
+.hrow{display:flex;align-items:center;white-space:nowrap;margin:2px 0}
+.hrow .hl{width:132px;flex:none;color:var(--ink-2)}
+.hrow .hv{margin-left:12px;color:var(--ink-2);white-space:normal;flex:1 1 auto;min-width:22ch;line-height:1.35}
+.hrow{align-items:flex-start}
+.hrow .hl,.hrow .hb{margin-top:1px}
+.hb{display:inline-flex;width:15px;height:17px;flex:none;align-items:center;justify-content:center;border:1px solid var(--rule);background:var(--bit-off);font-weight:600;font-size:10.5px;margin-right:1px;border-radius:2px;color:var(--ink)}
+.hb.on{background:var(--bit-on);border-color:var(--bit-on);color:var(--bit-on-ink)}
+.hb.fill{border:1px dashed var(--ink-2)}
+.hb.fill.on{border-color:var(--bit-on-ink)}
+.hb.gap{margin-right:7px}
+.hb.blank{visibility:hidden}
+.hb.c{background:transparent;border-color:transparent;color:var(--ink-2);font-weight:500}
+.hb.c.on{color:var(--carry);font-weight:700}
+.hb.c.v{border-color:var(--carry);border-style:dashed}
+.hb.top{box-shadow:0 0 0 2px var(--carry) inset}
+.hflags{display:flex;flex-wrap:wrap;gap:4px 18px;margin:8px 0 2px;color:var(--ink-2)}
+.hflags b{color:var(--ink)}
+.hnote{color:var(--ink-2);font:.82rem/1.5 var(--sans);margin:6px 0 10px;white-space:normal}
+.hnote code{background:var(--paper);padding:1px 5px;border-radius:4px}
+
+
+.crumbs{font:.84rem var(--mono);color:var(--ink-2);margin:0 0 14px}
+.crumbs a{color:var(--ink-2)}
+.crumbs a:hover{color:var(--ink)}
+.tut.first{margin-top:26px;border-top:0;padding-top:0}
+nav.toc + .tut.first{margin-top:0}
+nav.pager{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin:34px 0 0;padding:14px 0;border-top:1px solid var(--rule);font:.9rem var(--sans)}
+nav.pager a{color:var(--ink);text-decoration:none;border:1px solid var(--rule);border-radius:8px;padding:8px 12px}
+nav.pager a:hover{border-color:var(--ink-2)}
+nav.pager .next{text-align:right}
+nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
+@media (max-width:640px){nav.pager{grid-template-columns:1fr}nav.pager .next{text-align:left}}
+
+.scorebar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font:.84rem var(--mono);color:var(--ink-2);margin:0 0 8px}
+.scorebar b{color:var(--ink)}
+.ans{display:inline-flex;align-items:center;gap:6px;margin-right:10px}
+.ans>span:first-child{color:var(--ink-2)}
+.ans input{font:500 .9rem var(--mono);border:1px solid var(--rule);border-radius:6px;padding:4px 8px;background:var(--paper);color:var(--ink);width:11ch}
+.ans input:focus{outline:2px solid var(--focus);outline-offset:1px}
+:root{--ok:#2E7D4F}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ok:#6CCB8A}}
+:root[data-theme="dark"]{--ok:#6CCB8A}
+.feedback .ok{color:var(--ok);font-weight:600}
+.feedback .bad{color:var(--carry);font-weight:600}
+.feedback .hood{margin-top:6px}
+.feedback .hood .hl{width:70px}
+pre.work.prompt{min-height:2.6em;font-size:1rem}
+.wheelwrap{display:grid;grid-template-columns:300px minmax(0,1fr);gap:8px 24px;align-items:center;margin:8px 0 12px}
+@media (max-width:640px){.wheelwrap{grid-template-columns:minmax(0,1fr)}}
+.wheelsvg{width:100%;max-width:300px;height:auto;display:block}
+.wheelsvg .ring{fill:none;stroke:var(--rule);stroke-width:1.5}
+.wheelsvg .tick{stroke:var(--ink-2);stroke-width:1.2}
+.wheelsvg .lab{font-size:11px;fill:var(--ink)}
+.wheelsvg .lab.s{fill:var(--ink-2)}
+.wheelsvg .lab.bits{font-size:9px;fill:var(--ink-2);font-family:var(--mono)}
+.wheelsvg .lab.bits.hi{fill:var(--ink);font-weight:600}
+.wheelsvg .lab.bits.hi.r{fill:var(--carry)}
+.wheelsvg .mid{font-size:14px;font-weight:600;fill:var(--ink)}
+.wheelsvg .arc{fill:none;stroke:var(--carry);stroke-width:4;stroke-linecap:round}
+.wheelsvg .dot.start{fill:var(--bit-on)}
+.wheelsvg .dot.end{fill:var(--carry)}
+.wheelsvg g.spoke.click{cursor:pointer}
+.wheelsvg g.spoke .hit{fill:transparent}
+.wheelsvg g.spoke.click:hover .hit,.wheelsvg g.spoke.click:focus-visible .hit{fill:var(--bit-on);opacity:.45}
+.wheelsvg g.spoke.click:focus{outline:none}
+#d2 .cells .hb.tap{cursor:pointer}
+#d2 .cells .hb.tap:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.wheelhost .wheelsvg{max-width:320px}
+.steps .step{margin:10px 0 4px}
+.steps h4{margin:6px 0 4px;font:600 .95rem var(--sans)}
+.steps .hood .hl{width:60px}
+svg.nl{width:100%;max-width:640px;height:auto;display:block;margin:4px 0}
+svg.nl .axis{stroke:var(--ink-2);stroke-width:1.5}
+svg.nl .tick{stroke:var(--ink-2);stroke-width:1}
+svg.nl .tk{font:10px var(--mono);fill:var(--ink-2)}
+svg.nl .band.s{fill:var(--rule)}
+svg.nl .band.u{fill:var(--bit-on);opacity:.55}
+svg.nl .bl{font:10px var(--sans);fill:var(--ink-2)}
+svg.nl .dot.t{fill:var(--ink)}
+svg.nl .dot.s{fill:var(--ink-2)}
+svg.nl .dot.u{fill:var(--bit-on);stroke:var(--bit-on-ink);stroke-width:1}
+svg.nl .dl{font:600 11px var(--mono);fill:var(--ink)}
+svg.nl .shift{fill:none;stroke-width:2}
+svg.nl .shift.s{stroke:var(--ink-2)}
+svg.nl .shift.u{stroke:var(--carry)}
+svg.nl .sh{font:600 10px var(--mono)}
+svg.nl .sh.s{fill:var(--ink-2)}
+svg.nl .sh.u{fill:var(--carry)}
+
+</style>
+</head>
+<body>
+<nav aria-label="Bit Lab navigation" style="padding:12px 16px;font:16px system-ui;display:flex;gap:24px;flex-wrap:wrap"><a href="../../#/">← Bit Lab lessons</a><a href="../../#/practice">Practice</a></nav>
+<main>
+  <div class="top">
+    <div>
+      <p class="crumbs"><a href="notes.html" title="From gates to a compiled if: contents">Home</a> · part 3 of 9</p>
+      <h1>Two readings: drills</h1>
+      <p class="lede">Six short randomised exercises on the thing every later page assumes: that one bit pattern is two numbers, and which one you get depends only on how you read the top bit. Four bits first, so every pattern is in sight.</p>
+    </div>
+    <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
+  </div>
+  <nav class="toc" aria-label="Drills">
+    <a href="#d1">1 Read a pattern both ways</a><a href="#d2">2 Write a value as a pattern</a><a href="#d6">3 Find it on the wheel</a><a href="#d3">4 Step round the wheel</a><a href="#d4">5 Negate by hand</a><a href="#d5">6 Does it fit?</a><a href="#how">How to use these</a>
+  </nav>
+  <div class="scorebar" aria-live="polite">
+    <span>Width</span><button class="small" type="button" data-w="4" aria-pressed="true">4 bits</button><button class="small" type="button" data-w="8" aria-pressed="false">8 bits</button>
+    <span style="margin-left:12px">Score this browser:</span>
+    <span>read <b id="sc-read">0 / 0</b></span><span>write <b id="sc-write">0 / 0</b></span><span>find <b id="sc-find">0 / 0</b></span><span>wheel <b id="sc-wheel">0 / 0</b></span><span>negate <b id="sc-neg">0 / 0</b></span><span>fit <b id="sc-fit">0 / 0</b></span>
+    <button class="small" type="button" id="scoreReset">reset</button>
+  </div>
+  <p class="tip">Start at 4 bits, where there are only sixteen patterns and you can keep them all in your head. Switch to 8 once 4 feels mechanical. Answer on paper before you press check.</p>
+
+  <section class="tut first drill" id="d1">
+    <h2>1. Read a pattern both ways</h2>
+    <p>The same bits are two numbers. Read as unsigned, every bit is worth a positive power of two. Read as signed, the top bit is worth minus its power of two instead, and nothing else changes. Give both readings.</p>
+    <pre class="work prompt"></pre>
+    <div class="row answers"><label class="ans"><span>unsigned</span><input class="uin" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="0"></label><label class="ans"><span>signed</span><input class="sin" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="0"></label></div>
+    <div class="row"><button class="op check" type="button">Check</button><button class="small next" type="button">Next pattern</button></div>
+    <div class="feedback"></div>
+  </section>
+
+  <section class="tut drill" id="d2">
+    <h2>2. Write a value as a pattern</h2>
+    <p>The other direction, in the two steps you would do on paper. First the wheel: a negative value is a count back from zero, so find the unsigned number on the same spoke, written in ordinary decimal: 16 − 3 = 13 for −3. Then the bits: build that unsigned number from place values by tapping cells. The reveal cross-checks it with invert-and-add-1. Once you can write the pattern directly, skip the wheel step, or just type the bits into step 1.</p>
+    <pre class="work prompt"></pre>
+    <div class="row answers"><label class="ans"><span>Step 1: the unsigned number on the same spoke, in decimal</span><input class="uin" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="e.g. 13"></label><button class="small check1" type="button">Check step 1</button><button class="small skip1" type="button">Skip the wheel, go to the bits</button></div>
+    <div class="stage1fb"></div>
+    <div class="stage2" hidden>
+      <div class="hood cells"></div>
+      <div class="row"><button class="op check" type="button">Check the bits</button></div>
+    </div>
+    <div class="row"><button class="small next" type="button">Next value</button></div>
+    <div class="feedback"></div>
+  </section>
+
+  <section class="tut drill" id="d6">
+    <h2>3. Find it on the wheel</h2>
+    <p>The wheel with one ring of labels hidden. Click the spoke that carries the value or pattern asked for. The hidden ring is the one you are being asked to work out.</p>
+    <pre class="work prompt"></pre>
+    <div class="wheelhost"></div>
+    <div class="row"><button class="small next" type="button">Next</button></div>
+    <div class="feedback"></div>
+  </section>
+
+  <section class="tut drill" id="d3">
+    <h2>4. Step round the wheel</h2>
+    <p>A subtraction, with the operands printed under one stated reading. Use whatever method you like, decimal or bits, to predict the pattern the register lands on and what it reads as under that reading. Then say whether the true answer fitted: about two prompts in five are chosen so that it does not, which is where the wrap, and later the flags, come from. If you work in decimal, the complete method is drawn step by step on <a href="adding-to-subtracting.html#paper">From adding to subtracting</a>.</p>
+    <pre class="work prompt"></pre>
+    <div class="row answers"><label class="ans"><span>lands on</span><input class="bin" type="text" inputmode="numeric" autocomplete="off" maxlength="9" placeholder="0000"></label><label class="ans"><span class="rdlabel">reads as</span><input class="sin" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="0"></label><span class="ans"><span>true answer fitted?</span><button class="small" type="button" data-q="fit" data-v="1" aria-pressed="false">yes</button><button class="small" type="button" data-q="fit" data-v="0" aria-pressed="false">no</button></span></div>
+    <div class="row"><button class="op check" type="button">Check</button><button class="small next" type="button">Next subtraction</button></div>
+    <div class="feedback"></div>
+  </section>
+
+  <section class="tut drill" id="d4">
+    <h2>5. Negate by hand</h2>
+    <p>Invert every bit, then add 1. Write the result, then check that it reads as the negative of what you started with. One pattern in every width cannot be negated; you will meet it.</p>
+    <pre class="work prompt"></pre>
+    <div class="row answers"><label class="ans"><span>−x =</span><input class="bin" type="text" inputmode="numeric" autocomplete="off" maxlength="9" placeholder="0000"></label></div>
+    <div class="row"><button class="op check" type="button">Check</button><button class="small next" type="button">Next pattern</button></div>
+    <div class="feedback"></div>
+  </section>
+
+  <section class="tut drill" id="d5">
+    <h2>6. Does it fit?</h2>
+    <p>Add the two patterns. The register keeps only the bottom bits, so the result may be right under one reading, both, or neither. Say whether each reading of the result is the true sum. This is what the C and V flags will report on the next page.</p>
+    <pre class="work prompt"></pre>
+    <div class="row answers"><span class="ans"><span>unsigned result is right</span><button class="small" type="button" data-q="u" data-v="1" aria-pressed="false">yes</button><button class="small" type="button" data-q="u" data-v="0" aria-pressed="false">no</button></span><span class="ans"><span>signed result is right</span><button class="small" type="button" data-q="s" data-v="1" aria-pressed="false">yes</button><button class="small" type="button" data-q="s" data-v="0" aria-pressed="false">no</button></span></div>
+    <div class="row"><button class="op check" type="button">Check</button><button class="small next" type="button">Next sum</button></div>
+    <div class="feedback"></div>
+  </section>
+
+  <section class="tut" id="how">
+    <h2>How to use these</h2>
+    <ul>
+      <li>If drill 1 is hard, write out all sixteen 4-bit patterns in a column with both readings beside each, once, by hand. Then come back. Every other drill is that column being used.</li>
+      <li>Answer first, every time. The reveal is for checking, not for learning the answer. A streak counter appears beside a score once you get three right in a row; try for ten.</li>
+      <li>Drill 6 is the bridge to the flags: "the unsigned result is wrong" is what C = 1 means after an addition, and "the signed result is wrong" is V = 1.</li>
+      <li>Scores are kept only in this browser. Reset them whenever you like.</li>
+    </ul>
+  </section>
+
+  <nav class="pager" aria-label="Series navigation"><a class="prev" href="adding-to-subtracting.html">Previous: From adding to subtracting</a><a class="up" href="notes.html">Contents</a><a class="next" href="c-meets-the-wheel.html">Next: Where C meets the wheel</a></nav>
+  <footer class="site">
+    <a href="notes.html">From gates to a compiled if: contents</a>
+    <a href="../">Programmer Calculator app</a>
+    <a href="twos-complement.pdf">Two's complement tutorial (PDF)</a>
+  </footer>
+</main>
+<script>
+(function(){
+'use strict';
+/* ---------- theme ---------- */
+(function(){
+  const btn=document.getElementById('themeBtn'); if(!btn) return;
+  const THEMES=['auto','light','dark'];
+  let theme='auto'; try{ theme=localStorage.getItem('bit-lab:legacy:bitlab-theme')||'auto'; }catch(e){}
+  if(!THEMES.includes(theme)) theme='auto';
+  const apply=()=>{
+    if(theme==='auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme',theme);
+    btn.textContent='theme: '+theme; btn.setAttribute('aria-label','Theme: '+theme+'. Activate to change');
+  };
+  apply();
+  btn.addEventListener('click',()=>{ theme=THEMES[(THEMES.indexOf(theme)+1)%THEMES.length]; try{localStorage.setItem('bit-lab:legacy:bitlab-theme',theme);}catch(e){} apply(); });
+})();
+
+
+/* ---------- two readings drills ---------- */
+const bit=(x,i)=>(x>>>i)&1;
+const mask=w=>(1<<w)-1;
+const signed=(x,w)=>bit(x,w-1)?x-(1<<w):x;
+const bits=(x,w)=>x.toString(2).padStart(w,'0');
+const hex=(x,w)=>'0x'+x.toString(16).toUpperCase().padStart(w/4,'0');
+const rnd=n=>Math.floor(Math.random()*n);
+const pick=a=>a[rnd(a.length)];
+const state={w:4};
+const cell=(t,cls)=>`<span class="hb${cls?' '+cls:''}">${t}</span>`;
+const row=(label,x,w,opts={})=>{ let h=`<div class="hrow"><span class="hl">${label}</span>`; for(let i=w-1;i>=0;i--){ const v=bit(x,i); h+=cell(v,((v?'on':'')+(opts.top&&i===w-1?' top':'')+(i%8===0&&i!==0?' gap':'')).trim()); } return h+`<span class="hv">${opts.val||''}</span></div>`; };
+const weightsRow=(w,S)=>{ let h=`<div class="hrow"><span class="hl">worth</span>`; for(let i=w-1;i>=0;i--){ const wt=(S&&i===w-1)?-(1<<i):(1<<i); h+=cell(wt,'c'+(i%8===0&&i!==0?' gap':'')); } return h+'<span class="hv"></span></div>'; };
+const mark=ok=>ok?'<span class="ok">✓ correct</span>':'<span class="bad">✗ not quite</span>';
+const sumText=(x,w,S)=>{ const parts=[]; for(let i=w-1;i>=0;i--) if(bit(x,i)) parts.push(String((S&&i===w-1)?-(1<<i):(1<<i))); return parts.length?parts.join(' + ').replace('+ -','− '):'0'; };
+const parseBits=(s,w)=>{ s=s.replace(/[\s_]/g,''); return (new RegExp('^[01]{'+w+'}$').test(s))?parseInt(s,2):null; };
+/* score */
+const score={read:[0,0,0,0],write:[0,0,0,0],find:[0,0,0,0],wheel:[0,0,0,0],neg:[0,0,0,0],fit:[0,0,0,0]}; // attempted, correct, streak, best streak
+try{ const s=JSON.parse(localStorage.getItem('bit-lab:legacy:readings-score')||'null'); if(s) for(const k in score) if(Array.isArray(s[k])) score[k]=s[k]; }catch(e){}
+function bump(k,ok){ const v=score[k]; while(v.length<4) v.push(0); v[0]++; if(ok){ v[1]++; v[2]++; if(v[2]>v[3]) v[3]=v[2]; } else v[2]=0; try{localStorage.setItem('bit-lab:legacy:readings-score',JSON.stringify(score));}catch(e){} renderScore(); }
+function renderScore(){ for(const k in score){ const v=score[k]; const el=document.getElementById('sc-'+k); if(el) el.textContent=v[1]+' / '+v[0]+(v[2]>=3?' · streak '+v[2]:''); } }
+const rb=document.getElementById('scoreReset'); if(rb) rb.addEventListener('click',()=>{ for(const k in score) score[k]=[0,0,0,0]; try{localStorage.removeItem('bit-lab:legacy:readings-score');}catch(e){} renderScore(); });
+renderScore();
+const drills=[];
+document.querySelectorAll('button[data-w]').forEach(x=>x.addEventListener('click',()=>{ state.w=Number(x.dataset.w); document.querySelectorAll('button[data-w]').forEach(y=>y.setAttribute('aria-pressed',y===x?'true':'false')); drills.forEach(f=>f()); }));
+const enterChecks=(host)=>host.querySelectorAll('input').forEach(i=>i.addEventListener('keydown',e=>{ if(e.key==='Enter') host.querySelector('.check').click(); }));
+/* wheel at 4 bits, for drill 3 */
+function wheelSvg(a,b,opts={}){
+  const N=16,R=100,cx=172,cy=172,r=(a-b)&15, click=!!opts.click, markOnly=opts.markOnly;
+  const ang=k=>(-90+k*360/N)*Math.PI/180, px=(k,rr)=>cx+rr*Math.cos(ang(k)), py=(k,rr)=>cy+rr*Math.sin(ang(k));
+  let s=`<svg viewBox="0 0 344 344" class="wheelsvg" role="img" aria-label="${markOnly?'a wheel of the 16 four-bit patterns':a+' minus '+b+' on a wheel of 16'}"><circle cx="${cx}" cy="${cy}" r="${R}" class="ring"/>`;
+  for(let k=0;k<N;k++){ const hiA=!markOnly&&k===a, hiR=markOnly?k===opts.mark:k===r; s+=`<g class="spoke${click?' click':''}${hiR?' marked':''}" data-k="${k}"${click?' role="button" tabindex="0" aria-label="spoke '+k+'"':''}><line x1="${px(k,R-6)}" y1="${py(k,R-6)}" x2="${px(k,R+6)}" y2="${py(k,R+6)}" class="tick"/>${click?`<circle cx="${px(k,R+6)}" cy="${py(k,R+6)}" r="17" class="hit"/>`:''}<text x="${px(k,R+22)}" y="${py(k,R+22)+4}" text-anchor="middle" class="lab u">${opts.hideU?'':k}</text><text x="${px(k,R-24)}" y="${py(k,R-24)+4}" text-anchor="middle" class="lab s">${opts.hideS?'':signed(k,4)}</text><text x="${px(k,R+50)}" y="${py(k,R+50)+3}" text-anchor="middle" class="lab bits${hiA?' hi':''}${hiR?' hi r':''}">${opts.hideB?'':bits(k,4)}</text></g>`; }
+  if(markOnly){ s+=(opts.mark>=0?`<circle cx="${px(opts.mark,R)}" cy="${py(opts.mark,R)}" r="7" class="dot end" style="pointer-events:none"/>`:'')+(opts.centre?`<text x="${cx}" y="${cy+4}" text-anchor="middle" class="mid">${opts.centre}</text>`:'')+'</svg>'; return s; }
+  if(b>0){ const to=r, large=b>8?1:0; s+=`<path d="M ${px(a,R)} ${py(a,R)} A ${R} ${R} 0 ${large} 0 ${px(to,R)} ${py(to,R)}" class="arc"/>`; }
+  s+=`<circle cx="${px(a,R)}" cy="${py(a,R)}" r="7" class="dot start"/><circle cx="${px(r,R)}" cy="${py(r,R)}" r="7" class="dot end"/><text x="${cx}" y="${cy-8}" text-anchor="middle" class="mid">${a} − ${b}</text><text x="${cx}" y="${cy+14}" text-anchor="middle" class="mid">= ${r} = ${signed(r,4)}</text></svg>`;
+  return s;
+}
+/* drill 1: read a pattern both ways */
+(function(){
+  const host=document.getElementById('d1'); if(!host) return; const prompt=host.querySelector('.prompt'), fb=host.querySelector('.feedback'), inU=host.querySelector('.uin'), inS=host.querySelector('.sin');
+  let x,done=false;
+  const next=()=>{ const w=state.w; x=Math.random()<0.7?(1<<(w-1))+rnd(1<<(w-1)):rnd(1<<(w-1)); done=false; inU.value=''; inS.value=''; fb.innerHTML=''; prompt.textContent=bits(x,w); };
+  host.querySelector('.check').addEventListener('click',()=>{ const w=state.w; if(inU.value.trim()===''||inS.value.trim()===''){ fb.innerHTML='<p class="tip">Fill in both readings first.</p>'; return; }
+    const okU=Number(inU.value)===x, okS=Number(inS.value)===signed(x,w), ok=okU&&okS; if(!done){ bump('read',ok); done=true; }
+    fb.innerHTML=`<p>${mark(ok)} ${bits(x,w)} is <strong>${x}</strong> unsigned${okU?'':' ✗'} and <strong>${signed(x,w)}</strong> signed${okS?'':' ✗'}.</p><div class="hood">`+weightsRow(w,false)+row('unsigned',x,w,{val:`${sumText(x,w,false)} = ${x}`})+weightsRow(w,true)+row('signed',x,w,{top:true,val:`${sumText(x,w,true)} = ${signed(x,w)}`})+`<p class="hnote">The only difference between the two readings is what the top bit is worth: +${1<<(w-1)} in one, −${1<<(w-1)} in the other. ${bit(x,w-1)?'Here it is set, so the readings differ by '+(1<<w)+'.':'Here it is 0, so the two readings agree.'}</p></div>`; });
+  host.querySelector('.next').addEventListener('click',next); enterChecks(host); drills.push(next); next();
+})();
+/* drill 2: write a value as a pattern, in two steps */
+(function(){
+  const host=document.getElementById('d2'); if(!host) return; const prompt=host.querySelector('.prompt'), fb=host.querySelector('.feedback'), inU=host.querySelector('.uin'), stage2=host.querySelector('.stage2'), cells=host.querySelector('.cells'), stage1fb=host.querySelector('.stage1fb');
+  let v,done=false,typed=0;
+  const drawCells=()=>{ const w=state.w; let h=''; for(let i=w-1;i>=0;i--){ const on=bit(typed,i); h+=`<span class="hb tap${on?' on':''}${i%8===0&&i!==0?' gap':''}" role="button" tabindex="0" data-i="${i}" aria-label="bit ${i}, worth ${1<<i}: ${on}">${on}</span>`; } cells.innerHTML=`<div class="hrow"><span class="hl">worth</span>${Array.from({length:w},(_,j)=>{const i=w-1-j; return `<span class="hb c${i%8===0&&i!==0?' gap':''}">${1<<i}</span>`;}).join('')}<span class="hv"></span></div><div class="hrow"><span class="hl">bits</span>${h}<span class="hv">= ${typed} so far. Tap a cell to flip it.</span></div>`; };
+  cells.addEventListener('click',e=>{ const t=e.target.closest('.hb.tap'); if(!t) return; typed^=1<<Number(t.dataset.i); drawCells(); });
+  cells.addEventListener('keydown',e=>{ if(e.key!=='Enter'&&e.key!==' ') return; const t=e.target.closest&&e.target.closest('.hb.tap'); if(!t) return; e.preventDefault(); typed^=1<<Number(t.dataset.i); drawCells(); });
+  const next=()=>{ const w=state.w, half=1<<(w-1); v=Math.random()<0.75?-(1+rnd(half)):rnd(half); done=false; typed=0; inU.value=''; fb.innerHTML=''; stage1fb.innerHTML=''; stage2.hidden=true; prompt.textContent=`${v}  (signed, ${w} bits)`; };
+  host.querySelector('.check1').addEventListener('click',()=>{ const w=state.w, n=1<<w, want=v&mask(w); const raw=inU.value.trim(); if(raw===''){ stage1fb.innerHTML='<p class="tip">Type the unsigned number first.</p>'; return; }
+    if(new RegExp('^[01]{'+w+'}$').test(raw)){ const asBits=parseInt(raw,2); if(asBits===want){ stage1fb.innerHTML='<p class="tip">You went straight to the bits, and they are right. Counted as the answer.</p>'; stage2.hidden=true; reveal(asBits); return; } stage1fb.innerHTML=`<p class="tip">That looks like a bit pattern, ${raw}, but it is not the pattern for ${v}. Either try the bits again here, or take the wheel step first: the unsigned number on the same spoke is ${v<0?n+' − '+(-v)+' = ':''}${want}, in decimal.</p>`; return; }
+    const ok=Number(raw)===want;
+    stage1fb.innerHTML=`<p>${mark(ok)}${ok?'':' You wrote '+raw+'.'} ${v<0?`${v} is ${-v} step${-v===1?'':'s'} back from 0 round the wheel of ${n}, which lands on ${n} − ${-v} = <strong>${want}</strong>. The same spoke carries ${v} on the inside and ${want} on the outside.`:`${v} is not negative, so no steps back: the same spoke carries <strong>${want}</strong> on the outside.`}</p>`+(w===4?`<div class="wheelwrap"><div>${wheelSvg(0,0,{markOnly:true,mark:want,centre:v+' = '+want,hideB:true})}</div><p class="tip">Red dot: the spoke for ${v}. Now write the unsigned number ${want} in bits.</p></div>`:'')+`<p>Step 2: build ${want} from place values by tapping the cells.</p>`;
+    stage2.hidden=false; drawCells(); if(!ok&&!done){ bump('write',false); done=true; } });
+  const reveal=(got)=>{ const w=state.w, M=mask(w), want=v&M; const ok=got===want; if(!done){ bump('write',ok); done=true; } typed=got;
+    const pos=Math.abs(v), np=(~pos)&M;
+    fb.innerHTML=`<p>${mark(ok)} ${v} is <strong>${bits(want,w)}</strong>, ${hex(want,w)}: ${sumText(want,w,false)} = ${want} by place value${ok?'':', and you tapped '+bits(typed,w)+' = '+typed}.</p><div class="hood">`+weightsRow(w,false)+row(`${want}`,want,w,{top:true,val:`${sumText(want,w,false)} = ${want}`})+(v<0?row(`NOT ${pos}`,np,w,{val:`cross-check: flip the bits of ${pos} = ${bits(pos,w)} to get ${bits(np,w)}, then add 1 = ${bits(want,w)}`}):'')+`<p class="hnote">Read the same cells with the top one worth −${1<<(w-1)} and you get ${sumText(want,w,true)} = ${signed(want,w)}: the pattern you built for ${v} reads as ${v}.</p></div>`; };
+  host.querySelector('.check').addEventListener('click',()=>reveal(typed));
+  host.querySelector('.skip1').addEventListener('click',()=>{ stage1fb.innerHTML='<p class="tip">Straight to the bits. The wheel step is there only until you no longer need it.</p>'; stage2.hidden=false; drawCells(); });
+  host.querySelector('.next').addEventListener('click',next); enterChecks(host); drills.push(next); next();
+})();
+/* drill 2b: find it on the wheel */
+(function(){
+  const host=document.getElementById('d6'); if(!host) return; const prompt=host.querySelector('.prompt'), fb=host.querySelector('.feedback'), wheelHost=host.querySelector('.wheelhost');
+  let k,kind,done=false;
+  const next=()=>{ if(state.w!==4){ prompt.textContent='This drill uses the 16-position wheel. Switch the width to 4 bits.'; wheelHost.innerHTML=''; fb.innerHTML=''; return; } k=rnd(16); kind=pick(['signed','unsigned','bits']); done=false; fb.innerHTML='';
+    prompt.textContent=kind==='signed'?`Click the spoke for ${signed(k,4)} (signed)`:kind==='unsigned'?`Click the spoke for ${k} (unsigned)`:`Click the spoke for the pattern ${bits(k,4)}`;
+    wheelHost.innerHTML=wheelSvg(0,0,{markOnly:true,mark:-1,click:true,hideS:kind==='signed',hideU:kind==='unsigned',hideB:kind==='bits'}); };
+  wheelHost.addEventListener('click',e=>{ const g=e.target.closest('g.spoke.click'); if(!g||done) return; const c=Number(g.dataset.k); const ok=c===k; done=true; bump('find',ok);
+    wheelHost.innerHTML=wheelSvg(0,0,{markOnly:true,mark:k,centre:`${bits(k,4)} = ${k} = ${signed(k,4)}`});
+    fb.innerHTML=`<p>${mark(ok)} ${ok?'':`You clicked spoke ${c}, which is ${bits(c,4)} = ${c} unsigned = ${signed(c,4)} signed. `}The spoke for ${kind==='signed'?signed(k,4)+' signed':kind==='unsigned'?k+' unsigned':bits(k,4)} is the one marked: ${bits(k,4)}, which is ${k} on the outside and ${signed(k,4)} on the inside.${bit(k,3)?' Its top bit is set, so it sits in the half of the wheel where the two readings differ by 16.':' Its top bit is 0, so both readings agree.'}</p>`; });
+  wheelHost.addEventListener('keydown',e=>{ if(e.key!=='Enter'&&e.key!==' ') return; const g=e.target.closest&&e.target.closest('g.spoke.click'); if(!g) return; e.preventDefault(); g.dispatchEvent(new MouseEvent('click',{bubbles:true})); });
+  host.querySelector('.next').addEventListener('click',next); drills.push(next); next();
+})();
+/* drill 3: step round the wheel, under a stated reading */
+(function(){
+  const host=document.getElementById('d3'); if(!host) return; const prompt=host.querySelector('.prompt'), fb=host.querySelector('.feedback'), inB=host.querySelector('.bin'), inS=host.querySelector('.sin'), rdLabel=host.querySelector('.rdlabel');
+  let a,b,S,done=false;
+  const bind=name=>host.querySelectorAll(`button[data-q="${name}"]`).forEach(x=>x.addEventListener('click',()=>{ host.querySelectorAll(`button[data-q="${name}"]`).forEach(o=>o.setAttribute('aria-pressed','false')); x.setAttribute('aria-pressed','true'); }));
+  bind('fit'); const ans=name=>{ const x=host.querySelector(`button[data-q="${name}"][aria-pressed="true"]`); return x?x.dataset.v:null; };
+  const val=(x,w)=>S?signed(x,w):x;
+  const next=()=>{ const w=state.w, n=1<<w, half=n>>1; S=Math.random()<0.5;
+    // aim for an out-of-range true answer about 40% of the time
+    const wantOut=Math.random()<0.4;
+    for(let tries=0;tries<60;tries++){ a=rnd(n); b=rnd(n); const t=val(a,w)-val(b,w); const outside=S?(t<-half||t>half-1):(t<0); if(outside===wantOut) break; }
+    done=false; inB.value=''; inS.value=''; fb.innerHTML=''; host.querySelectorAll('button[data-q]').forEach(o=>o.setAttribute('aria-pressed','false'));
+    const fmt=x=>x<0?`(${x})`:String(x);
+    prompt.textContent=`${fmt(val(a,w))} − ${fmt(val(b,w))}   read as ${S?'signed':'unsigned'}   (A = ${bits(a,w)}, B = ${bits(b,w)}, ${w} bits)`; rdLabel.textContent=S?'reads as signed':'reads as unsigned'; };
+  host.querySelector('.check').addEventListener('click',()=>{ const w=state.w, n=1<<w, half=n>>1, r=(a-b)&mask(w), t=val(a,w)-val(b,w), landed=val(r,w), fit=landed===t;
+    const got=parseBits(inB.value,w); const f=ans('fit'); if(got===null||inS.value.trim()===''||f===null){ fb.innerHTML=`<p class="tip">Type the ${w}-bit landing pattern, its ${S?'signed':'unsigned'} reading, and say whether the true answer fitted.</p>`; return; }
+    const okB=got===r, okS=Number(inS.value)===landed, okF=(f==='1')===fit, ok=okB&&okS&&okF; if(!done){ bump('wheel',ok); done=true; }
+    fb.innerHTML=`<p>${mark(ok)} ${val(a,w)} − ${val(b,w)} = ${t}. The register lands on <strong>${bits(r,w)}</strong>${okB?'':' ✗'}, which reads as <strong>${landed}</strong> ${S?'signed':'unsigned'}${okS?'':' ✗'}. ${fit?`That is the true answer: it fitted.`:`That is not ${t}: the true answer is outside the ${S?'signed range −'+half+' to '+(half-1):'unsigned range 0 to '+(n-1)}, so it wrapped by ${n}, and ${S?'an ALU would set V = 1':'an ALU would set C = 0, meaning a borrow'}.`}${okF?'':' ✗ on the fit question.'}</p>`+
+      `<p>${t<0&&!S?`Counting back ${b} step${b===1?'':'s'} from ${a} passes 0 and continues from ${n-1}: the register holds ${t} + ${n} = ${r}.`:t>half-1&&S?`${t} is above ${half-1}, the largest signed value, so it comes out as ${t} − ${n} = ${landed}.`:t<-half&&S?`${t} is below −${half}, the smallest signed value, so it comes out as ${t} + ${n} = ${landed}.`:`Nothing wrapped. Under the other reading the same pattern is ${S?r+' unsigned':signed(r,w)+' signed'}.`}</p>`+
+      (w===4?`<div class="wheelwrap"><div>${wheelSvg(a,b)}</div><p class="tip">Amber dot: A. Red arc: B steps back as the hardware does it, pattern by pattern. Red dot: where the register lands.</p></div>`:'');
+  });
+  host.querySelector('.next').addEventListener('click',next); enterChecks(host); drills.push(next); next();
+})();
+/* drill 4: negate by hand */
+(function(){
+  const host=document.getElementById('d4'); if(!host) return; const prompt=host.querySelector('.prompt'), fb=host.querySelector('.feedback'), inB=host.querySelector('.bin');
+  let x,done=false;
+  const next=()=>{ const w=state.w; x=Math.random()<0.15?(1<<(w-1)):1+rnd((1<<w)-1); done=false; inB.value=''; fb.innerHTML=''; prompt.textContent=`${bits(x,w)}   (that is ${signed(x,w)} signed)`; };
+  host.querySelector('.check').addEventListener('click',()=>{ const w=state.w, M=mask(w), nx=(~x)&M, want=(nx+1)&M; const got=parseBits(inB.value,w); if(got===null){ fb.innerHTML=`<p class="tip">Type exactly ${w} bits.</p>`; return; }
+    const ok=got===want; if(!done){ bump('neg',ok); done=true; }
+    const special=x===(1<<(w-1));
+    fb.innerHTML=`<p>${mark(ok)} −(${signed(x,w)}) is <strong>${bits(want,w)}</strong>, which reads as ${signed(want,w)} signed.</p><div class="hood">`+row('x',x,w,{val:`${signed(x,w)}`})+row('NOT x',nx,w,{val:`${bits(nx,w)}, every bit flipped, reads ${signed(nx,w)}`})+row('+ 1',want,w,{top:true,val:`${bits(want,w)}, reads ${signed(want,w)}`})+
+      `<p class="hnote">${special?`This is the one pattern that cannot be negated: ${signed(x,w)} has no positive partner in ${w} bits, so NOT then add 1 gives the same pattern back. An ALU reports this with V = 1.`:`NOT x is ${(1<<w)-1} − x, so adding 1 makes ${1<<w} − x, which on the wheel of ${1<<w} is exactly x steps back from 0: that is −x.`}</p></div>`; });
+  host.querySelector('.next').addEventListener('click',next); enterChecks(host); drills.push(next); next();
+})();
+/* drill 5: does it fit? */
+(function(){
+  const host=document.getElementById('d5'); if(!host) return; const prompt=host.querySelector('.prompt'), fb=host.querySelector('.feedback');
+  let a,b,done=false;
+  const bind=name=>host.querySelectorAll(`button[data-q="${name}"]`).forEach(x=>x.addEventListener('click',()=>{ host.querySelectorAll(`button[data-q="${name}"]`).forEach(o=>o.setAttribute('aria-pressed','false')); x.setAttribute('aria-pressed','true'); }));
+  bind('u'); bind('s');
+  const ans=name=>{ const x=host.querySelector(`button[data-q="${name}"][aria-pressed="true"]`); return x?x.dataset.v:null; };
+  const next=()=>{ const w=state.w, n=1<<w; const kind=rnd(4); if(kind===0){ a=(n>>1)-1-rnd(n>>2); b=1+rnd(n>>2); } else if(kind===1){ a=(n>>1)+rnd(n>>2); b=(n>>1)+rnd(n>>2); } else if(kind===2){ a=n-1-rnd(n>>2); b=1+rnd(n>>2); } else { a=rnd(n>>1); b=rnd(n>>1); } done=false; host.querySelectorAll('button[data-q]').forEach(o=>o.setAttribute('aria-pressed','false')); fb.innerHTML=''; prompt.textContent=`${bits(a,w)} + ${bits(b,w)}   (${a} + ${b} unsigned, ${signed(a,w)} + ${signed(b,w)} signed)`; };
+  host.querySelector('.check').addEventListener('click',()=>{ const w=state.w, n=1<<w, r=(a+b)&mask(w); const u=ans('u'), s=ans('s'); if(u===null||s===null){ fb.innerHTML='<p class="tip">Answer both questions first.</p>'; return; }
+    const fitU=a+b===r, fitS=signed(a,w)+signed(b,w)===signed(r,w); const ok=(u==='1')===fitU&&(s==='1')===fitS; if(!done){ bump('fit',ok); done=true; }
+    fb.innerHTML=`<p>${mark(ok)} The result pattern is <strong>${bits(r,w)}</strong>: ${r} unsigned, ${signed(r,w)} signed.</p><div class="hood">`+row('A',a,w,{val:`${a} unsigned, ${signed(a,w)} signed`})+row('B',b,w,{val:`${b} unsigned, ${signed(b,w)} signed`})+row('= R',r,w,{top:true,val:`${r} unsigned, ${signed(r,w)} signed`})+
+      `<p class="hnote"><strong>Unsigned:</strong> ${a} + ${b} = ${a+b}, ${fitU?`which fits in ${w} bits, so the unsigned reading is right.`:`which does not fit: it is ${a+b-n} + ${n}, the register wrapped, and an ALU would set C = 1.`} ${(u==='1')===fitU?'✓':'✗'}<br><strong>Signed:</strong> ${signed(a,w)} + ${signed(b,w)} = ${signed(a,w)+signed(b,w)}, ${fitS?`which fits in the signed range, so the signed reading is right.`:`which is outside the signed range of −${n>>1} to ${(n>>1)-1}, so the signed reading is wrong, and an ALU would set V = 1.`} ${(s==='1')===fitS?'✓':'✗'}</p></div>`; });
+  host.querySelector('.next').addEventListener('click',next); drills.push(next); next();
+})();
+
+})();
+</script>
+</body>
+</html>

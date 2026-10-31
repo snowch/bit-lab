@@ -1,0 +1,181 @@
+/* Copyright © 2026 Christopher Snow */
+
+/*
+ * Design tokens for the whole course. Every colour, size and motion rule is a token here, so the
+ * views never carry a literal colour, and both themes come from one place. The set is Digital
+ * Design's, less what is specific to its circuits and lessons (signal values, wires, gates, the
+ * stage colours); the accent is this course's own, a deep teal where Digital Design's is blue, so
+ * the two sites are told apart at a glance. The neutrals lean towards that hue, as Digital
+ * Design's lean towards its blue. Every accent pair keeps at least the contrast Digital Design's
+ * pair has (tokens.test.ts holds the values).
+ *
+ * Reduced motion is respected: with prefers-reduced-motion, every transition and animation
+ * collapses to an instant change, and nothing in a lesson depends on seeing motion.
+ *
+ * The typefaces ship with the site, all three under the OFL, so a page renders the same on
+ * every machine: Source Sans 3 for prose (a humanist face made for long reading), Archivo for
+ * headings (a grotesque made for headlines, set a little narrow and heavy, as a datasheet sets
+ * its titles), and JetBrains Mono for every value, name and line of code, with a slashed zero so
+ * 0 and O never meet.
+ *
+ * Border, fill, radius and shadow mark an element as an object of its own, so they go by role.
+ * Radii are small; a technical page is not a pill.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Surfaces and text */
+  --bg: #f3f6f5;
+  --bg-raised: #ffffff;
+  --bg-sunken: #e9eeed;
+  --bg-inset: #e0e7e5;
+  --fg: #101a18;
+  --fg-muted: #51605d;
+  --fg-faint: #788683;
+  --border: #d6dedc;
+  --border-strong: #74827f;
+
+  /* Interaction */
+  --accent: #075a4f;
+  --accent-strong: #05423a;
+  --accent-soft: #dcefec;
+  --accent-fg: #ffffff;
+  /* A module's mark on the front page: a solid tile in the light theme, a soft one in the dark. */
+  --icon-tile: #075a4f;
+  --icon-mark: #ffffff;
+  --focus: #c2410c;
+
+  /* Verdicts */
+  --ok: #17702f;
+  --ok-bg: #e6f4ea;
+  --bad: #b42318;
+  --bad-bg: #fbeae8;
+  --warn: #8a5a00;
+  --warn-bg: #fff4d6;
+  --note-bg: #e5f1ef;
+
+  --shadow-sm: 0 1px 2px rgba(16, 26, 24, 0.06);
+  --shadow: 0 2px 10px rgba(16, 26, 24, 0.08);
+
+  /* Type and space */
+  --font-text:
+    "Source Sans 3 Variable", "Source Sans 3", ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display:
+    "Archivo Variable", Archivo, "Helvetica Neue", Arial, ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono:
+    "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.3125rem;
+  --text-xl: 1.625rem;
+  --text-xxl: 2.375rem;
+  --line: 1.55;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --radius-sm: 3px;
+  --radius: 4px;
+  --radius-lg: 6px;
+  --measure: 44rem;
+  --page: 66rem;
+  --gutter: 16px;
+  --motion: 160ms;
+  /* The cover's band: the accent's own teal, deepened, with white words on it. */
+  --hero-bg-1: #075a4f;
+  --hero-bg-2: #022b26;
+  --hero-fg: #ffffff;
+  --hero-sub: #a6f0e0;
+  --hero-muted: #d3efe9;
+  --hero-action: #ffffff;
+  --hero-action-fg: #05423a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101615;
+    --bg-raised: #171e1d;
+    --bg-sunken: #0b100f;
+    --bg-inset: #212a28;
+    --fg: #e8eeed;
+    --fg-muted: #a1adaa;
+    --fg-faint: #76847f;
+    --border: #28312f;
+    --border-strong: #6b7a77;
+    --accent: #5fd3c0;
+    --accent-strong: #9be8da;
+    --accent-soft: #153029;
+    --accent-fg: #07120f;
+    --icon-tile: #1b3d36;
+    --icon-mark: #5fd3c0;
+    --focus: #fb923c;
+    --ok: #4ade80;
+    --ok-bg: #12301b;
+    --bad: #f87171;
+    --bad-bg: #3a1513;
+    --warn: #facc15;
+    --warn-bg: #3a2e05;
+    --note-bg: #13282a;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+    --hero-bg-1: #084a40;
+    --hero-bg-2: #03201c;
+    --hero-action: #e8eeed;
+    --hero-action-fg: #04302a;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #101615;
+  --bg-raised: #171e1d;
+  --bg-sunken: #0b100f;
+  --bg-inset: #212a28;
+  --fg: #e8eeed;
+  --fg-muted: #a1adaa;
+  --fg-faint: #76847f;
+  --border: #28312f;
+  --border-strong: #6b7a77;
+  --accent: #5fd3c0;
+  --accent-strong: #9be8da;
+  --accent-soft: #153029;
+  --accent-fg: #07120f;
+  --icon-tile: #1b3d36;
+  --icon-mark: #5fd3c0;
+  --focus: #fb923c;
+  --ok: #4ade80;
+  --ok-bg: #12301b;
+  --bad: #f87171;
+  --bad-bg: #3a1513;
+  --warn: #facc15;
+  --warn-bg: #3a2e05;
+  --note-bg: #13282a;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --hero-bg-1: #084a40;
+  --hero-bg-2: #03201c;
+  --hero-action: #e8eeed;
+  --hero-action-fg: #04302a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

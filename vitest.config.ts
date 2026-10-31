@@ -1,0 +1,35 @@
+// Copyright © 2026 Christopher Snow
+
+// Unit and integration tests, under Vitest.
+//
+// The engine, the domain model, the HDL subset and the lesson schema run under Node with no DOM:
+// that is a design rule (docs/simulator.md), and running them here is what enforces it. Tests of
+// React components opt into a DOM with a `// @vitest-environment jsdom` comment at the top of
+// the file. The educational tests (every exercise completable, rejects wrong answers,
+// deterministic, resets, cannot be bypassed) drive the built site in a browser and live under
+// tests/educational, run by Playwright, not here. The learning platform's own tests run here too,
+// against this course's dependencies, so the copy in platform/ is proved to work in this
+// repository.
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    include: [
+      "packages/**/*.test.ts",
+      "packages/**/*.test.tsx",
+      "platform/**/*.test.ts",
+      "platform/**/*.test.tsx",
+      "content/**/*.test.ts",
+      "content/**/*.test.tsx",
+      "apps/**/*.test.ts",
+      "apps/**/*.test.tsx",
+    ],
+    environment: "node",
+    // The figures' tests click through whole editors and rows of 32 bits in jsdom; with all the
+    // test files running at once, a busy machine needs longer than Vitest's five seconds. (A few
+    // files already say so for themselves; this is the same allowance for all of them.)
+    testTimeout: 30_000,
+    setupFiles: ["./tests/vitest.setup.ts"],
+    passWithNoTests: false,
+  },
+});

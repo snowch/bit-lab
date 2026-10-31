@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+// Import old work once without writing to the original app's keys.
+try {
+  if (!localStorage.getItem("bit-lab:legacy:imported:v1")) {
+  for (const key of ["pc-done", "pc-done-layout", "pc-exercises-hidden", "pc-show-done", "pc-theme", "bitlab-state", "bitlab-theme", "drills-score", "readings-score"]) {
+    const target = 'bit-lab:legacy:' + key;
+    if (localStorage.getItem(target) === null) {
+      const old = localStorage.getItem(key);
+      if (old !== null) localStorage.setItem(target, old);
+    }
+  }
+  localStorage.setItem("bit-lab:legacy:imported:v1", "1");
+  }
+} catch (_) {}
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flag drills: predict, then check</title>
+<meta name="description" content="Randomised predict-then-check exercises on CMP, the N Z C V flags, ARM's signed and unsigned branches, and widening loads.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem("bit-lab:legacy:bitlab-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#EDF0EA;
+  --paper-2:#E2E7DF;
+  --paper-3:#F6F8F4;
+  --ink:#1B2620;
+  --ink-2:#4F5E57;
+  --rule:#C3CBC0;
+  --wire-off:#B4BDB2;
+  --wire-on:#E09B1A;
+  --wire-on-2:#F6C860;
+  --carry:#B23A2C;
+  --gate-fill:#F8FAF6;
+  --gate-stroke:#2D3B35;
+  --bit-off:#D7DDD3;
+  --bit-on:#F1B23A;
+  --bit-on-ink:#2B1E05;
+  --led-on:#D9471F;
+  --led-off:#C9D0C5;
+  --na:#98A39C;
+  --focus:#2F6FD1;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#131A16;
+    --paper-2:#1B241F;
+    --paper-3:#232E28;
+    --ink:#E6ECE4;
+    --ink-2:#9AA89F;
+    --rule:#2E3B34;
+    --wire-off:#3A4740;
+    --wire-on:#F0B23C;
+    --wire-on-2:#FFD98A;
+    --carry:#E86A55;
+    --gate-fill:#1F2A24;
+    --gate-stroke:#C9D4CC;
+    --bit-off:#26312B;
+    --bit-on:#F0B23C;
+    --bit-on-ink:#2B1E05;
+    --led-on:#FF6A3D;
+    --led-off:#2A3630;
+    --na:#5C6A62;
+    --focus:#7FA9F0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131A16; --paper-2:#1B241F; --paper-3:#232E28; --ink:#E6ECE4; --ink-2:#9AA89F; --rule:#2E3B34;
+  --wire-off:#3A4740; --wire-on:#F0B23C; --wire-on-2:#FFD98A; --carry:#E86A55;
+  --gate-fill:#1F2A24; --gate-stroke:#C9D4CC; --bit-off:#26312B; --bit-on:#F0B23C;
+  --bit-on-ink:#2B1E05; --led-on:#FF6A3D; --led-off:#2A3630; --na:#5C6A62; --focus:#7FA9F0;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:16px;line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+main{max-width:980px;margin:0 auto;padding:20px 16px 56px}
+code,kbd,.mono{font-family:var(--mono)}
+button{font:inherit;color:inherit}
+a{color:var(--ink)}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+h1{font-size:clamp(1.55rem,1.1rem + 1.6vw,2.1rem);font-weight:600;margin:0 0 6px;letter-spacing:-.015em;line-height:1.15}
+.lede{color:var(--ink-2);margin:0 0 12px;max-width:62ch;font-size:1.05rem}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.meta span{font:500 .78rem/1.6 var(--mono);border:1px solid var(--rule);border-radius:999px;padding:1px 10px;color:var(--ink-2)}
+.themebtn{flex:none;margin-top:4px}
+nav.toc{display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 26px;padding:8px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+nav.toc a{font:500 .84rem var(--mono);color:var(--ink-2);text-decoration:none;padding:3px 9px;border-radius:6px}
+nav.toc a:hover{color:var(--ink);background:var(--paper-2)}
+
+/* ---------- prose sections ---------- */
+.tut{margin-top:36px;border-top:1px solid var(--rule);padding-top:22px}
+.tut h2{font-size:1.4rem;font-weight:600;margin:0 0 12px;letter-spacing:-.01em;line-height:1.2}
+.tut h3{font-size:1.02rem;font-weight:600;margin:20px 0 6px}
+.tut p,.tut li{max-width:70ch}
+.tut p{margin:0 0 12px}
+.tut ul,.tut ol{padding-left:22px;margin:0 0 12px}
+.tut li{margin-bottom:5px}
+.tut strong{font-weight:600}
+.tut code{background:var(--paper-2);padding:1px 5px;border-radius:4px;font-size:.88em}
+.tut table{border-collapse:collapse;font-size:.9rem;margin:8px 0 14px;font-variant-numeric:tabular-nums}
+.tut td,.tut th{border:1px solid var(--rule);padding:5px 11px;text-align:left;vertical-align:top}
+.tut th{background:var(--paper-2);font-weight:600}
+.tut td.mono{font-family:var(--mono);font-size:.86rem}
+pre.work{font:.86rem/1.55 var(--mono);background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:10px 14px;overflow-x:auto;margin:8px 0 14px}
+.check{border-left:3px solid var(--wire-on);padding:2px 0 2px 14px;margin:14px 0}
+.check ol{margin-bottom:6px}
+.steps{list-style:none;padding:0;counter-reset:step}
+.steps>li{position:relative;padding-left:36px;margin-bottom:14px;max-width:72ch}
+.steps>li::before{
+  counter-increment:step;content:counter(step);position:absolute;left:0;top:2px;
+  width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--paper);
+  font:600 .8rem/24px var(--mono);text-align:center;
+}
+
+/* ---------- schematic ---------- */
+figure.schem{margin:10px 0 18px;background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:10px 8px 8px;overflow-x:auto}
+figure.schem svg{display:block;width:100%;min-width:680px;max-width:800px;height:auto;margin:0 auto}
+figure.schem figcaption{font-size:.84rem;color:var(--ink-2);margin:8px 6px 0;text-align:center;line-height:1.4}
+.schem .box{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.5}
+.schem .opt{stroke-dasharray:5 4}
+.schem .bus{stroke:var(--wire-on);stroke-width:3;fill:none;stroke-linejoin:round}
+.schem .sig{stroke:var(--ink-2);stroke-width:1.6;fill:none}
+.schem .ctl{stroke:var(--ink-2);stroke-width:1.6;fill:none;stroke-dasharray:4 3;stroke-linejoin:round}
+.schem .cy{stroke:var(--carry);stroke-width:2.2;fill:none}
+.schem .fb{stroke:var(--focus);stroke-width:2;fill:none;stroke-dasharray:6 4;stroke-linejoin:round}
+.schem .dot{fill:var(--wire-on)}
+.schem .dotf{fill:var(--focus)}
+.schem .tick{stroke:var(--ink-2);stroke-width:1.4}
+.schem text{font-family:var(--mono);font-size:11px;fill:var(--ink)}
+.schem .t2{fill:var(--ink-2);font-size:10px}
+.schem .tc{fill:var(--carry);font-weight:600}
+.schem .tf{fill:var(--focus)}
+.schem .badge circle{fill:var(--ink);stroke:var(--paper);stroke-width:1.5}
+.schem .badge text{fill:var(--paper);font-weight:600;font-size:10px}
+.schem .led{fill:var(--led-off);stroke:var(--rule);stroke-width:1}
+.schem .led.lit{fill:var(--led-on);stroke:var(--led-on)}
+
+/* ---------- the lab ---------- */
+.labwrap{margin-top:16px}
+.ops{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px}
+.opgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.opcap{font:500 .7rem var(--mono);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-2);margin-right:2px}
+.op{
+  font:500 .9rem var(--mono);border:1px solid var(--rule);background:var(--paper-2);border-radius:8px;
+  padding:6px 11px;cursor:pointer;
+}
+.op:hover{border-color:var(--ink-2)}
+.op[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.op:focus-visible,.small:focus-visible,.preset:focus-visible,.load:focus-visible,.themebtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;color:var(--ink-2);margin-bottom:12px;font:.84rem var(--mono)}
+.small{border:1px solid var(--rule);background:transparent;border-radius:6px;padding:3px 9px;cursor:pointer;font:500 .84rem var(--mono);color:var(--ink)}
+.small:hover{border-color:var(--ink-2)}
+.small[aria-pressed="true"]{background:var(--ink-2);color:var(--paper);border-color:var(--ink-2)}
+.circuit{
+  background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;
+  padding:10px 8px 6px;overflow-x:auto;
+}
+.circuit svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
+svg text{font-family:var(--mono);fill:var(--ink)}
+.wire{stroke:var(--wire-off);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.wire.on{stroke:var(--wire-on)}
+.wire.carry.on{stroke:var(--carry)}
+.gate{fill:var(--gate-fill);stroke:var(--gate-stroke);stroke-width:1.8}
+.bit{cursor:pointer}
+.bit rect{fill:var(--bit-off);stroke:var(--rule);stroke-width:1;transition:fill .12s}
+.bit.on rect{fill:var(--bit-on);stroke:var(--bit-on)}
+.bit text{font-weight:600;font-size:15px;pointer-events:none}
+.bit.on text{fill:var(--bit-on-ink)}
+.bit:focus{outline:none}
+.bit:focus-visible rect{stroke:var(--focus);stroke-width:2.5}
+.bit.ro{cursor:default}
+.bit.ro rect{stroke-dasharray:3 2}
+.lab{font-size:11px;fill:var(--ink-2)}
+.lab.sm{font-size:10px}
+.idx{font-size:9.5px;fill:var(--ink-2)}
+.cv{font-size:10.5px;font-weight:600}
+.cv.on{fill:var(--carry)}
+.cv.off{fill:var(--ink-2)}
+.fv{font-size:10.5px;font-weight:600}
+.fv.on{fill:var(--wire-on)}
+.fv.off{fill:var(--ink-2)}
+.cnst{font-size:11px;fill:var(--ink-2)}
+.tip{color:var(--ink-2);font-size:.82rem;margin:8px 0 0}
+
+.values{margin:16px 0 4px;overflow-x:auto}
+.values table{border-collapse:collapse;font:.9rem var(--mono);font-variant-numeric:tabular-nums;width:100%;max-width:600px}
+.values th{text-align:left;color:var(--ink-2);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;padding:4px 14px 4px 0}
+.values th.num,.values td.num{text-align:right}
+.values td{padding:5px 14px 5px 0;border-top:1px solid var(--rule);white-space:nowrap}
+.values th.rowk{color:var(--ink);font-weight:600;font-size:.9rem;text-transform:none;letter-spacing:0;border-top:1px solid var(--rule)}
+.values td.bin{font-weight:600;letter-spacing:.04em}
+.values tr.r td,.values tr.r th{background:var(--paper-3)}
+
+.flags{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin-top:14px}
+.flag{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;background:var(--paper-2)}
+.flag header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.led{width:14px;height:14px;border-radius:50%;background:var(--led-off);border:1px solid var(--rule);flex:none;transition:background .15s,box-shadow .15s}
+.led.on{background:var(--led-on);border-color:var(--led-on);box-shadow:0 0 0 3px color-mix(in srgb,var(--led-on) 25%,transparent)}
+.led.na{background:transparent;border-style:dashed;border-color:var(--na)}
+.flag h3{margin:0;font:600 1rem var(--mono)}
+.flag h3 span{color:var(--ink-2);font-weight:400;font-size:.85rem;margin-left:6px}
+.flag svg{width:100%;max-width:240px;height:auto;display:block;margin:2px 0 8px;overflow:visible}
+.flag p{margin:0;font-size:.88rem;color:var(--ink-2);line-height:1.45}
+.flag p strong{color:var(--ink);font-weight:600}
+.flag.na{opacity:.72}
+.why{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px}
+.why h2{font:600 1rem var(--mono);margin:0 0 6px}
+.why p{margin:0 0 8px;max-width:70ch;font-size:.95rem}
+.presets{margin-top:22px}
+.presets h2{font-size:1rem;margin:0 0 8px;font-weight:600}
+#presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
+.preset{
+  display:block;text-align:left;border:1px solid var(--rule);background:transparent;
+  border-radius:8px;padding:8px 10px;cursor:pointer;font:500 .86rem var(--mono);
+}
+.preset:hover{background:var(--paper-2);border-color:var(--ink-2)}
+.preset span{display:block;color:var(--ink-2);font:.84rem var(--sans);margin-top:2px}
+
+/* ---------- exercises & quiz ---------- */
+.ex{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--paper-2)}
+.ex h3{font-size:1rem;margin:0 0 8px;font-weight:600}
+.ex p{margin:0 0 8px}
+.ex .load{font:500 .84rem var(--mono);border:1px solid var(--ink);background:transparent;border-radius:6px;padding:4px 10px;cursor:pointer;margin-bottom:10px}
+.ex .load:hover{background:var(--ink);color:var(--paper)}
+details{margin-top:6px}
+summary{cursor:pointer;color:var(--ink-2);font:500 .84rem var(--mono);display:inline-block;padding:2px 9px;border:1px solid var(--rule);border-radius:6px;list-style:none;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"\25B8  "}
+details[open] summary::before{content:"\25BE  "}
+summary:hover{color:var(--ink);border-color:var(--ink-2)}
+details p{margin:8px 0 0;color:var(--ink);font-size:.93rem}
+.lab-anchor{scroll-margin-top:12px}
+
+/* ---------- footer ---------- */
+footer.site{margin-top:44px;border-top:1px solid var(--rule);padding-top:14px;font:.84rem var(--mono);color:var(--ink-2);display:flex;flex-wrap:wrap;gap:6px 20px}
+footer.site a{color:var(--ink-2)}
+footer.site a:hover{color:var(--ink)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* ---------- block diagram & full adder widget ---------- */
+svg.blockdiag{width:100%;max-width:420px;height:auto;display:block;margin:6px 0 14px}
+.fawrap{display:grid;grid-template-columns:minmax(240px,370px) minmax(0,1fr);gap:14px 26px;align-items:start;margin:10px 0 16px}
+@media (max-width:640px){.fawrap{grid-template-columns:minmax(0,1fr)}}
+.fa{background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:8px 6px}
+.fa svg{display:block;width:100%;height:auto}
+.jdot{fill:var(--wire-off)}
+.jdot.on{fill:var(--wire-on)}
+.jdot.carry.on{fill:var(--carry)}
+.faeq{font:.9rem/1.5 var(--mono);margin:0 0 10px}
+table.truth{border-collapse:collapse;font:.86rem var(--mono);font-variant-numeric:tabular-nums;margin:0 0 8px}
+table.truth th,table.truth td{border:1px solid var(--rule);padding:3px 11px;text-align:center}
+table.truth th{background:var(--paper-2);font-weight:600}
+table.truth tr.cur td{background:var(--bit-on);color:var(--bit-on-ink);font-weight:600}
+.clk{fill:none;stroke:var(--gate-stroke);stroke-width:1.5}
+
+/* ---------- 4-bit chain widget ---------- */
+.chainwrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:640px){.chainwrap{grid-template-columns:minmax(0,1fr)}}
+#chainTable{overflow-x:auto}
+table.add th,table.add td{padding:3px 8px}
+.gate.sel{stroke:var(--focus);stroke-width:2.6}
+.fabox{cursor:pointer}
+.bit.wait rect{fill:transparent;stroke:var(--na);stroke-dasharray:3 2}
+.bit.wait text{fill:var(--na)}
+table.add td.k{text-align:left;color:var(--ink-2);font-size:.8rem;white-space:nowrap}
+table.add td.cin{color:var(--carry);font-weight:600}
+table.add tr.sum td{border-top:2px solid var(--ink-2);font-weight:600}
+table.add td.q{color:var(--na)}
+
+/* ---------- CMP and the branches ---------- */
+.asmwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 24px;margin:4px 0 10px}
+@media (max-width:760px){.asmwrap{grid-template-columns:minmax(0,1fr)}}
+.asmwrap h3{margin:8px 0 4px}
+table.asm{width:100%}
+table.asm td{text-align:left;padding:3px 8px}
+table.asm td.mn{font-weight:600}
+table.asm td.k{color:var(--ink-2)}
+table.asm tr.take td{background:var(--bit-on);color:var(--bit-on-ink)}
+table.asm tr.take td.k{color:var(--bit-on-ink)}
+
+/* ---------- the same thing as a program ---------- */
+.asmprog{margin:0 0 6px;white-space:pre}
+.asmprog .ln{display:block;opacity:.5;padding:0 6px;margin:0 -6px;border-radius:4px}
+.asmprog .ln.run{opacity:1;background:var(--bit-on);color:var(--bit-on-ink)}
+.asmprog .cm{color:var(--ink-2)}
+.asmprog .ln.run .cm{color:var(--bit-on-ink);opacity:.8}
+ol.trace{margin:4px 0 14px;padding-left:22px}
+ol.trace li{margin:0 0 4px}
+
+/* ---------- under the hood ---------- */
+.hood{background:var(--paper-2);border:1px solid var(--rule);border-radius:8px;padding:8px 14px 4px;overflow-x:auto;margin:8px 0 14px;font:.8rem var(--mono);font-variant-numeric:tabular-nums}
+.hood h4{margin:8px 0 6px;font:600 .86rem var(--sans)}
+.hood h4+ .hrow .hb.c{color:var(--ink-2);font-size:9px}
+.hrow{display:flex;align-items:center;white-space:nowrap;margin:2px 0}
+.hrow .hl{width:132px;flex:none;color:var(--ink-2)}
+.hrow .hv{margin-left:12px;color:var(--ink-2);white-space:normal;flex:1 1 auto;min-width:22ch;line-height:1.35}
+.hrow{align-items:flex-start}
+.hrow .hl,.hrow .hb{margin-top:1px}
+.hb{display:inline-flex;width:15px;height:17px;flex:none;align-items:center;justify-content:center;border:1px solid var(--rule);background:var(--bit-off);font-weight:600;font-size:10.5px;margin-right:1px;border-radius:2px;color:var(--ink)}
+.hb.on{background:var(--bit-on);border-color:var(--bit-on);color:var(--bit-on-ink)}
+.hb.fill{border:1px dashed var(--ink-2)}
+.hb.fill.on{border-color:var(--bit-on-ink)}
+.hb.gap{margin-right:7px}
+.hb.blank{visibility:hidden}
+.hb.c{background:transparent;border-color:transparent;color:var(--ink-2);font-weight:500}
+.hb.c.on{color:var(--carry);font-weight:700}
+.hb.c.v{border-color:var(--carry);border-style:dashed}
+.hb.top{box-shadow:0 0 0 2px var(--carry) inset}
+.hflags{display:flex;flex-wrap:wrap;gap:4px 18px;margin:8px 0 2px;color:var(--ink-2)}
+.hflags b{color:var(--ink)}
+.hnote{color:var(--ink-2);font:.82rem/1.5 var(--sans);margin:6px 0 10px;white-space:normal}
+.hnote code{background:var(--paper);padding:1px 5px;border-radius:4px}
+
+
+.crumbs{font:.84rem var(--mono);color:var(--ink-2);margin:0 0 14px}
+.crumbs a{color:var(--ink-2)}
+.crumbs a:hover{color:var(--ink)}
+.tut.first{margin-top:26px;border-top:0;padding-top:0}
+nav.toc + .tut.first{margin-top:0}
+nav.pager{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin:34px 0 0;padding:14px 0;border-top:1px solid var(--rule);font:.9rem var(--sans)}
+nav.pager a{color:var(--ink);text-decoration:none;border:1px solid var(--rule);border-radius:8px;padding:8px 12px}
+nav.pager a:hover{border-color:var(--ink-2)}
+nav.pager .next{text-align:right}
+nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
+@media (max-width:640px){nav.pager{grid-template-columns:1fr}nav.pager .next{text-align:left}}
+
+.scorebar{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font:.84rem var(--mono);color:var(--ink-2);margin:0 0 8px}
+.scorebar b{color:var(--ink)}
+.ans{display:inline-flex;align-items:center;gap:6px;margin-right:10px}
+.ans>span:first-child{color:var(--ink-2)}
+.ans input{font:500 .9rem var(--mono);border:1px solid var(--rule);border-radius:6px;padding:4px 8px;background:var(--paper);color:var(--ink);width:11ch}
+.ans input:focus{outline:2px solid var(--focus);outline-offset:1px}
+:root{--ok:#2E7D4F}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ok:#6CCB8A}}
+:root[data-theme="dark"]{--ok:#6CCB8A}
+.feedback .ok{color:var(--ok);font-weight:600}
+.feedback .bad{color:var(--carry);font-weight:600}
+.feedback .hood{margin-top:6px}
+.feedback table.truth{margin-top:6px}
+pre.work.prompt{min-height:2.6em}
+
+</style>
+</head>
+<body>
+<nav aria-label="Bit Lab navigation" style="padding:12px 16px;font:16px system-ui;display:flex;gap:24px;flex-wrap:wrap"><a href="../../#/">← Bit Lab lessons</a><a href="../../#/practice">Practice</a></nav>
+<main>
+  <div class="top">
+    <div>
+      <p class="crumbs"><a href="notes.html" title="From gates to a compiled if: contents">Home</a> · part 9 of 9</p>
+      <h1>Flag drills: predict, then check</h1>
+      <p class="lede">Short randomised exercises on <code>CMP</code>, the N Z C V flags, ARM's signed and unsigned branches, and the two widening loads. Each one asks for your answer before it shows the working, drawn the same way as the <a href="bit-lab.html">Bit Lab</a>.</p>
+    </div>
+    <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
+  </div>
+  <nav class="toc" aria-label="Drills">
+    <a href="#d1">1 Predict the flags</a><a href="#d2">2 Which branches fire</a><a href="#d3">3 Recover the type</a><a href="#d4">4 Widen by hand</a><a href="#how">How to use these</a>
+  </nav>
+  <div class="scorebar" aria-live="polite">
+    <span>Score this browser:</span>
+    <span>flags <b id="sc-flags">0 / 0</b></span>
+    <span>branches <b id="sc-branches">0 / 0</b></span>
+    <span>type <b id="sc-type">0 / 0</b></span>
+    <span>widen <b id="sc-widen">0 / 0</b></span>
+    <button class="small" type="button" id="scoreReset">reset</button>
+  </div>
+
+  <section class="tut first drill" id="d1">
+    <h2>1. Predict the flags</h2>
+    <p>A <code>CMP</code> subtracts B from A at 8 bits and keeps only the flags. Work out N, Z, C and V on paper before you press check. ARM's rule: C is 1 when <em>no</em> borrow was needed.</p>
+    <pre class="work prompt"></pre>
+    <div class="row answers"><span class="ans"><span>N</span><button class="small" type="button" data-q="n" data-v="0" aria-pressed="false">0</button><button class="small" type="button" data-q="n" data-v="1" aria-pressed="false">1</button></span><span class="ans"><span>Z</span><button class="small" type="button" data-q="z" data-v="0" aria-pressed="false">0</button><button class="small" type="button" data-q="z" data-v="1" aria-pressed="false">1</button></span><span class="ans"><span>C</span><button class="small" type="button" data-q="c" data-v="0" aria-pressed="false">0</button><button class="small" type="button" data-q="c" data-v="1" aria-pressed="false">1</button></span><span class="ans"><span>V</span><button class="small" type="button" data-q="v" data-v="0" aria-pressed="false">0</button><button class="small" type="button" data-q="v" data-v="1" aria-pressed="false">1</button></span></div>
+    <div class="row"><button class="op check" type="button">Check</button><button class="small next" type="button">Next pair</button></div>
+    <div class="feedback"></div>
+  </section>
+
+  <section class="tut drill" id="d2">
+    <h2>2. Which branches fire</h2>
+    <p>No numbers this time, only the four flags a <code>CMP</code> left behind. Press every branch that would be taken. The unsigned family reads C and Z, the signed family reads N, V and Z, and BEQ and BNE read Z alone.</p>
+    <pre class="work prompt"></pre>
+    <div class="row branches"><span>Taken:</span></div>
+    <div class="row"><button class="op check" type="button">Check</button><button class="small next" type="button">Next flags</button></div>
+    <div class="feedback"></div>
+  </section>
+
+  <section class="tut drill" id="d3">
+    <h2>3. Recover the type</h2>
+    <p>Here is a compiled <code>if</code>. Say whether the variables were declared unsigned or signed, and which comparison the C source used. There are two clues to the type, the load and the branch, and one trap: a compiler often branches <em>over</em> the body when the test fails, so read where the branch goes before you read its condition.</p>
+    <pre class="work prompt"></pre>
+    <div class="row answers"><span class="ans"><span>Declared as</span><button class="small" type="button" data-q="type" data-v="0" aria-pressed="false">uint8_t</button><button class="small" type="button" data-q="type" data-v="1" aria-pressed="false">int8_t</button></span></div>
+    <div class="row answers"><span class="ans"><span>if (a</span><button class="small" type="button" data-q="op" data-v="<" aria-pressed="false">&lt;</button><button class="small" type="button" data-q="op" data-v=">=" aria-pressed="false">&gt;=</button><button class="small" type="button" data-q="op" data-v=">" aria-pressed="false">&gt;</button><button class="small" type="button" data-q="op" data-v="<=" aria-pressed="false">&lt;=</button><button class="small" type="button" data-q="op" data-v="==" aria-pressed="false">==</button><button class="small" type="button" data-q="op" data-v="!=" aria-pressed="false">!=</button><span>b)</span></span></div>
+    <div class="row"><button class="op check" type="button">Check</button><button class="small next" type="button">Next snippet</button></div>
+    <div class="feedback"></div>
+  </section>
+
+  <section class="tut drill" id="d4">
+    <h2>4. Widen by hand</h2>
+    <p>A byte is loaded into a 32-bit register. Write the register's contents as eight hex digits, and its value as a decimal number, read the way the load intended. <code>LDRB</code> zero-extends; <code>LDRSB</code> sign-extends.</p>
+    <pre class="work prompt"></pre>
+    <div class="row answers"><label class="ans"><span>R1 = 0x</span><input class="hexin" type="text" inputmode="text" autocomplete="off" spellcheck="false" maxlength="8" placeholder="00000000"></label><label class="ans"><span>= decimal</span><input class="decin" type="text" inputmode="numeric" autocomplete="off" maxlength="11" placeholder="0"></label></div>
+    <div class="row"><button class="op check" type="button">Check</button><button class="small next" type="button">Next byte</button></div>
+    <div class="feedback"></div>
+  </section>
+
+  <section class="tut" id="how">
+    <h2>How to use these</h2>
+    <ul>
+      <li>Answer on paper first, every time. The point is to make the prediction, not to recognise the answer once it is shown.</li>
+      <li>Do a few of one drill until it feels mechanical, then move on. Ten of drill 1 is usually enough for the borrow rule to stop needing thought.</li>
+      <li>When a reveal surprises you, load the same pair into the <a href="bit-lab.html#lab">Bit Lab</a> and watch the carries move; the worked bits here are the lab's SUB, drawn the same way.</li>
+      <li>Drill 3 is the one that transfers to real debugging. To see real compiler output for your own snippets, paste a C function into <a href="https://godbolt.org/">Compiler Explorer</a> with an ARM GCC and <code>-O1</code>.</li>
+      <li>Scores are kept only in this browser. Reset them whenever you like.</li>
+    </ul>
+  </section>
+
+  <nav class="pager" aria-label="Series navigation"><a class="prev" href="bytes-to-registers.html">Previous: From bytes to registers</a><a class="up" href="notes.html">Contents</a><a class="next" href="notes.html">Back to the contents</a></nav>
+  <footer class="site">
+    <a href="notes.html">From gates to a compiled if: contents</a>
+    <a href="../">Programmer Calculator app</a>
+    <a href="twos-complement.pdf">Two's complement tutorial (PDF)</a>
+  </footer>
+</main>
+<script>
+(function(){
+'use strict';
+/* ---------- theme ---------- */
+(function(){
+  const btn=document.getElementById('themeBtn'); if(!btn) return;
+  const THEMES=['auto','light','dark'];
+  let theme='auto'; try{ theme=localStorage.getItem('bit-lab:legacy:bitlab-theme')||'auto'; }catch(e){}
+  if(!THEMES.includes(theme)) theme='auto';
+  const apply=()=>{
+    if(theme==='auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme',theme);
+    btn.textContent='theme: '+theme; btn.setAttribute('aria-label','Theme: '+theme+'. Activate to change');
+  };
+  apply();
+  btn.addEventListener('click',()=>{ theme=THEMES[(THEMES.indexOf(theme)+1)%THEMES.length]; try{localStorage.setItem('bit-lab:legacy:bitlab-theme',theme);}catch(e){} apply(); });
+})();
+
+
+/* ---------- flag drills ---------- */
+const hex=(x,w)=>'0x'+(x>>>0).toString(16).toUpperCase().padStart(w/4,'0');
+const bit=(x,i)=>(x>>>i)&1;
+const signed=(x,w)=>bit(x,w-1)?x-(1<<w):x;
+const rnd=n=>Math.floor(Math.random()*n);
+const pick=a=>a[rnd(a.length)];
+const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function sub8(a,b){ // CMP a,b at 8 bits via a + NOT b + 1, returns flags and carries
+  const nb=(~b)&0xFF; const cin=[1]; let res=0;
+  for(let i=0;i<8;i++){ const x=bit(a,i), y=bit(nb,i), c=cin[i]; res|=(x^y^c)<<i; cin[i+1]=(x&y)|(c&(x^y)); }
+  return {res, nb, cin, n:bit(res,7), z:res===0?1:0, c:cin[8], v:cin[8]^cin[7]};
+}
+const BR=[
+  ['BLO','A &lt; B','unsigned',f=>f.c===0,'C = 0'],
+  ['BHS','A ≥ B','unsigned',f=>f.c===1,'C = 1'],
+  ['BHI','A &gt; B','unsigned',f=>f.c===1&&f.z===0,'C = 1 and Z = 0'],
+  ['BLS','A ≤ B','unsigned',f=>f.c===0||f.z===1,'C = 0 or Z = 1'],
+  ['BEQ','A = B','either',f=>f.z===1,'Z = 1'],
+  ['BNE','A ≠ B','either',f=>f.z===0,'Z = 0'],
+  ['BLT','A &lt; B','signed',f=>f.n!==f.v,'N ≠ V'],
+  ['BGE','A ≥ B','signed',f=>f.n===f.v,'N = V'],
+  ['BGT','A &gt; B','signed',f=>f.z===0&&f.n===f.v,'Z = 0 and N = V'],
+  ['BLE','A ≤ B','signed',f=>f.z===1||f.n!==f.v,'Z = 1 or N ≠ V'],
+];
+const INTERESTING=[[0x80,0x7F],[0x7F,0x80],[0xFF,0x01],[0x01,0xFF],[0x00,0x00],[0x80,0x80],[0xFF,0xFF],[0x00,0x01],[0x00,0xFF],[0x80,0x01],[0x7F,0xFF],[0xC0,0x40],[0x40,0xC0],[0x7F,0x7F],[0x81,0x80]];
+function randPair(){
+  const r=Math.random();
+  if(r<0.35) return pick(INTERESTING).slice();
+  if(r<0.6){ // one each side of 0x80 so the readings disagree
+    const lo=rnd(128), hi=128+rnd(128); return Math.random()<0.5?[lo,hi]:[hi,lo];
+  }
+  if(r<0.7){ const a=rnd(256); return [a,a]; }
+  return [rnd(256),rnd(256)];
+}
+/* ---------- score ---------- */
+const score={flags:[0,0],branches:[0,0],type:[0,0],widen:[0,0]};
+try{ const s=JSON.parse(localStorage.getItem('bit-lab:legacy:drills-score')||'null'); if(s) for(const k in score) if(Array.isArray(s[k])) score[k]=s[k]; }catch(e){}
+function bump(k,ok){ score[k][0]++; if(ok) score[k][1]++; try{localStorage.setItem('bit-lab:legacy:drills-score',JSON.stringify(score));}catch(e){} renderScore(); }
+function renderScore(){
+  for(const k in score){ const el=document.getElementById('sc-'+k); if(el) el.textContent=score[k][1]+' / '+score[k][0]; }
+}
+const rb=document.getElementById('scoreReset'); if(rb) rb.addEventListener('click',()=>{ for(const k in score) score[k]=[0,0]; try{localStorage.removeItem('bit-lab:legacy:drills-score');}catch(e){} renderScore(); });
+renderScore();
+/* ---------- shared bits of markup ---------- */
+const cell=(t,cls)=>`<span class="hb${cls?' '+cls:''}">${t}</span>`;
+function bitRow(label,x,w,opts={}){ // w cells, bit w-1 first; opts.fill marks bits >= opts.from as invented; opts.blank hides bits >= opts.from
+  let h=`<div class="hrow"><span class="hl">${label}</span>`;
+  for(let i=w-1;i>=0;i--){ const v=bit(x,i); let cls=v?'on':''; if(i%8===0&&i!==0) cls+=' gap'; if(opts.from!==undefined&&i>=opts.from){ if(opts.blank) cls=' blank'+(i%8===0&&i!==0?' gap':''); else cls+=' fill'; } if(opts.top&&i===w-1) cls+=' top'; h+=cell(v,cls.trim()); }
+  return h+`<span class="hv">${opts.val||''}</span></div>`;
+}
+function carryRow(cin,w){
+  let h=`<div class="hrow"><span class="hl">carries</span>`+cell(cin[w],'c'+(cin[w]?' on':'')+' v');
+  for(let i=w-1;i>=0;i--) h+=cell(cin[i],('c'+(cin[i]?' on':'')+(i===w-1?' v':'')+(i%8===0&&i!==0?' gap':'')).trim());
+  return h+`<span class="hv">bit 0 gets the + 1</span></div>`;
+}
+const idxRow=w=>{ let h=`<div class="hrow"><span class="hl">bit</span>`; for(let i=w-1;i>=0;i--){ const t=(i%8===7||i%8===0||i===w-1)?i:''; h+=cell(t,'c'+(i%8===0&&i!==0?' gap':'')); } return h+'<span class="hv"></span></div>'; };
+function subWork(a,b,f){ // 8-bit CMP worked in bits, with a leading blank for the carry-out column
+  const lead=cell('','blank');
+  const row=(label,x,opts)=>bitRow(label,x,8,opts).replace('<span class="hl">'+label+'</span>','<span class="hl">'+label+'</span>'+lead);
+  return `<div class="hood">`+
+    idxRow(8).replace('<span class="hl">bit</span>','<span class="hl">bit</span>'+lead)+
+    carryRow(f.cin,8)+
+    row('A',a,{val:hex(a,8)})+
+    row('NOT B',f.nb,{val:hex(f.nb,8)})+
+    row('= A − B',f.res,{top:true,val:hex(f.res,8)})+
+    `<div class="hflags"><span><b>N</b> = bit 7 of the result = <b>${f.n}</b></span><span><b>Z</b> = all zero? <b>${f.z}</b></span><span><b>C</b> = carry out of bit 7 = <b>${f.c}</b></span><span><b>V</b> = carry into bit 7 ≠ carry out = ${f.cin[7]} ≠ ${f.cin[8]}? <b>${f.v}</b></span></div></div>`;
+}
+function readings(a,b,f){
+  const ua=a,ub=b,sa=signed(a,8),sb=signed(b,8);
+  return `<p class="tip">As unsigned: ${ua} − ${ub} = ${ua-ub}${ua-ub<0?', below zero, so a borrow was needed and C = 0':', no borrow, so C = 1'}. As signed: ${sa} − ${sb} = ${sa-sb}${(sa-sb<-128||sa-sb>127)?', which does not fit in 8 bits, so V = 1':', which fits, so V = 0'}.</p>`;
+}
+const mark=ok=>ok?'<span class="ok">✓ correct</span>':'<span class="bad">✗ not quite</span>';
+function bindToggles(host, name, vals){ // exclusive toggles inside host for a given answer slot
+  host.querySelectorAll(`button[data-q="${name}"]`).forEach(b=>b.addEventListener('click',()=>{
+    host.querySelectorAll(`button[data-q="${name}"]`).forEach(o=>o.setAttribute('aria-pressed','false'));
+    b.setAttribute('aria-pressed','true');
+  }));
+}
+const answered=(host,name)=>{ const b=host.querySelector(`button[data-q="${name}"][aria-pressed="true"]`); return b?b.dataset.v:null; };
+const clearQ=(host)=>host.querySelectorAll('button[data-q]').forEach(o=>o.setAttribute('aria-pressed','false'));
+
+/* ---------- drill 1: predict the flags ---------- */
+(function(){
+  const host=document.getElementById('d1'); if(!host) return;
+  const prompt=host.querySelector('.prompt'), fb=host.querySelector('.feedback');
+  let a,b,f,done=false;
+  const next=()=>{ [a,b]=randPair(); f=sub8(a,b); done=false; clearQ(host); fb.innerHTML=''; prompt.textContent=`    CMP  A, B        ; A = ${hex(a,8)}, B = ${hex(b,8)}`; };
+  ['n','z','c','v'].forEach(k=>bindToggles(host,k));
+  host.querySelector('.check').addEventListener('click',()=>{
+    const ans=['n','z','c','v'].map(k=>answered(host,k));
+    if(ans.includes(null)){ fb.innerHTML='<p class="tip">Set all four flags first.</p>'; return; }
+    const ok=ans.every((v,i)=>Number(v)===f[['n','z','c','v'][i]]);
+    if(!done){ bump('flags',ok); done=true; }
+    fb.innerHTML=`<p>${mark(ok)} The flags are N=${f.n} Z=${f.z} C=${f.c} V=${f.v}.</p>`+subWork(a,b,f)+readings(a,b,f);
+  });
+  host.querySelector('.next').addEventListener('click',next); next();
+})();
+
+/* ---------- drill 2: which branches fire ---------- */
+(function(){
+  const host=document.getElementById('d2'); if(!host) return;
+  const prompt=host.querySelector('.prompt'), fb=host.querySelector('.feedback'), opts=host.querySelector('.branches');
+  let a,b,f,done=false;
+  BR.forEach(([mn])=>{ const btn=document.createElement('button'); btn.type='button'; btn.className='small'; btn.dataset.mn=mn; btn.textContent=mn; btn.setAttribute('aria-pressed','false'); btn.addEventListener('click',()=>btn.setAttribute('aria-pressed',btn.getAttribute('aria-pressed')==='true'?'false':'true')); opts.appendChild(btn); });
+  const next=()=>{ [a,b]=randPair(); f=sub8(a,b); done=false; opts.querySelectorAll('button').forEach(o=>o.setAttribute('aria-pressed','false')); fb.innerHTML=''; prompt.textContent=`    CMP  A, B        ; afterwards N=${f.n} Z=${f.z} C=${f.c} V=${f.v}`; };
+  host.querySelector('.check').addEventListener('click',()=>{
+    const chosen=new Set([...opts.querySelectorAll('button[aria-pressed="true"]')].map(o=>o.dataset.mn));
+    let ok=true, h='<table class="truth asm"><tr><th>branch</th><th>means</th><th>reading</th><th>tests</th><th>taken?</th><th>you said</th></tr>';
+    for(const [mn,meaning,reading,test,txt] of BR){ const t=test(f), y=chosen.has(mn); if(t!==y) ok=false; h+=`<tr class="${t?'take':''}"><td class="mn">${mn}</td><td class="k">${meaning}</td><td class="k">${reading}</td><td class="k">${txt}</td><td>${t?'taken':'not taken'}</td><td>${t===y?'✓':'✗'}</td></tr>`; }
+    h+='</table>';
+    if(!done){ bump('branches',ok); done=true; }
+    fb.innerHTML=`<p>${mark(ok)} ${ok?'Every branch right.':'The rows marked ✗ are the ones to look at.'} One pair that produces these flags is A = ${hex(a,8)}, B = ${hex(b,8)}: ${a} and ${b} unsigned, ${signed(a,8)} and ${signed(b,8)} signed.</p>`+h;
+  });
+  host.querySelector('.next').addEventListener('click',next); next();
+})();
+
+/* ---------- drill 3: recover the type ---------- */
+(function(){
+  const host=document.getElementById('d3'); if(!host) return;
+  const prompt=host.querySelector('.prompt'), fb=host.querySelector('.feedback');
+  const OPS=[['<','BLO','BLT'],['>=','BHS','BGE'],['>','BHI','BGT'],['<=','BLS','BLE'],['==','BEQ','BEQ'],['!=','BNE','BNE']];
+  const NEG={'<':'>=','>=':'<','>':'<=','<=':'>','==':'!=','!=':'=='};
+  let S,op,form,done=false,br;
+  const mnem=(o,S)=>OPS.find(x=>x[0]===o)[S?2:1];
+  const next=()=>{
+    S=Math.random()<0.5; op=pick(OPS)[0]; form=Math.random()<0.5?'then':'skip'; done=false; clearQ(host); fb.innerHTML='';
+    const ld=S?'LDRSB':'LDRB ';
+    br=form==='then'?mnem(op,S):mnem(NEG[op],S);
+    prompt.textContent = form==='then'
+      ? `        ${ld} R1, [a]\n        ${ld} R2, [b]\n        CMP   R1, R2\n        ${br.padEnd(5)} then\n        B     done\nthen:   MOV   R0, #1      ; the body of the if\ndone:`
+      : `        ${ld} R1, [a]\n        ${ld} R2, [b]\n        CMP   R1, R2\n        ${br.padEnd(5)} skip\n        MOV   R0, #1      ; the body of the if\nskip:`;
+  };
+  bindToggles(host,'type'); bindToggles(host,'op');
+  host.querySelector('.check').addEventListener('click',()=>{
+    const t=answered(host,'type'), o=answered(host,'op');
+    if(t===null||o===null){ fb.innerHTML='<p class="tip">Pick a type and an operator first.</p>'; return; }
+    const okT=(t==='1')===S, okO=o===op, ok=okT&&okO;
+    if(!done){ bump('type',ok); done=true; }
+    const ty=S?'int8_t':'uint8_t';
+    fb.innerHTML=`<p>${mark(ok)} The source was <code>${ty} a, b; if (a ${esc(op)} b) { ... }</code>.</p><ul>`+
+      `<li><strong>Type</strong> ${okT?'✓':'✗'}: the load is <code>${S?'LDRSB':'LDRB'}</code>, which ${S?'sign-extends, so the variables were signed':'zero-extends, so the variables were unsigned'}. ${(op==='=='||op==='!=')?'The branch is the same under both readings, so the load is the only clue here.':`The branch <code>${br}</code> agrees: it belongs to the ${S?'signed':'unsigned'} family.`}</li>`+
+      `<li><strong>Operator</strong> ${okO?'✓':'✗'}: `+(form==='then'
+        ?`the branch jumps <em>to</em> the body, so its condition is the C condition itself: <code>${br}</code> means ${esc(op)}.`
+        :`the branch jumps <em>over</em> the body when the test fails, so its condition is the opposite of the C condition: <code>${br}</code> means ${esc(NEG[op])}, and the source said ${esc(op)}. Compilers usually emit this form because it needs one branch instead of two.`)+`</li></ul>`;
+  });
+  host.querySelector('.next').addEventListener('click',next); next();
+})();
+
+/* ---------- drill 4: widen by hand ---------- */
+(function(){
+  const host=document.getElementById('d4'); if(!host) return;
+  const prompt=host.querySelector('.prompt'), fb=host.querySelector('.feedback'), inH=host.querySelector('.hexin'), inD=host.querySelector('.decin');
+  let v,S,r32,done=false;
+  const next=()=>{ v=Math.random()<0.6?128+rnd(128):rnd(128); if(Math.random()<0.2) v=pick([0x80,0x7F,0xFF,0x00,0x01,0xFE]); S=Math.random()<0.5; r32=S?((bit(v,7)?(v|0xFFFFFF00):v)>>>0):v; done=false; inH.value=''; inD.value=''; fb.innerHTML='';
+    prompt.textContent=`        ${S?'LDRSB':'LDRB '} R1, [a]        ; the byte at a is ${hex(v,8)}`; };
+  const sv=x=>x>>>31?x-4294967296:x;
+  host.querySelector('.check').addEventListener('click',()=>{
+    const hs=inH.value.trim().replace(/^0x/i,''), ds=inD.value.trim();
+    if(!hs||!ds){ fb.innerHTML='<p class="tip">Fill in both boxes first.</p>'; return; }
+    const okH=/^[0-9a-f]{1,8}$/i.test(hs)&&parseInt(hs,16)>>>0===r32, okD=/^-?\d+$/.test(ds)&&Number(ds)===sv(r32), ok=okH&&okD;
+    if(!done){ bump('widen',ok); done=true; }
+    const h32='0x'+r32.toString(16).toUpperCase().padStart(8,'0');
+    fb.innerHTML=`<p>${mark(ok)} R1 = <code>${h32}</code> = ${sv(r32)}. ${okH?'':'Hex '+(hs?'✗. ':'')} ${okD?'':'Decimal ✗.'}</p>`+
+      `<div class="hood">`+idxRow(32)+bitRow('byte at a',v,32,{from:8,blank:true,val:hex(v,8)})+bitRow('R1 after '+(S?'LDRSB':'LDRB'),r32,32,{from:8,val:h32+' = '+sv(r32)})+
+      `<p class="hnote">${S?`<code>LDRSB</code> copies bit 7 (${bit(v,7)}) into bits 8 to 31. ${bit(v,7)?`The byte read as signed is ${signed(v,8)}, and the 32-bit register reads as ${sv(r32)}: the same number, now with room to spare.`:`Bit 7 is 0, so sign extension and zero extension give the same answer here: ${v}.`}`:`<code>LDRB</code> puts 0 into bits 8 to 31, so the register holds ${v}, the byte's unsigned value. ${bit(v,7)?`Had the source declared it signed, LDRSB would have produced 0x${(v|0xFFFFFF00)>>>0 ? ((v|0xFFFFFF00)>>>0).toString(16).toUpperCase():''} = ${signed(v,8)} instead.`:''}`} Why a byte has to widen at all, and both loads side by side: <a href="bytes-to-registers.html">From bytes to registers</a>.</p></div>`;
+  });
+  [inH,inD].forEach(i=>i.addEventListener('keydown',e=>{ if(e.key==='Enter') host.querySelector('.check').click(); }));
+  host.querySelector('.next').addEventListener('click',next); next();
+})();
+
+})();
+</script>
+</body>
+</html>
