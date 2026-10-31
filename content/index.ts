@@ -369,13 +369,13 @@ lessons.push(
     objectives: [
       "Choose a width and interpretation, predict a result, and explain what the calculator shows.",
     ],
-    prerequisites: ["memory"],
+    prerequisites: ["patterns"],
     sections: [
       {
         kind: "question",
         title: "Can you choose the operations yourself?",
         prose:
-          "You have followed individual operations through small word models. Now use them together. The calculator keeps its 110 exercises beside the tool, with worked answers and a tick box for your own progress. You do not need to finish all 110 in one sitting.",
+          "Once you can read binary numbers and understand bit place values, you can start using the exercise bank. Begin with the reading questions and use each group’s primer when you reach a new topic. The calculator keeps its 110 exercises beside the tool, with worked answers and a tick box for your own progress. You do not need to finish all 110 in one sitting.",
       },
       {
         kind: "prediction",

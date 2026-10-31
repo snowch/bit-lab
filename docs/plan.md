@@ -48,6 +48,9 @@ and shifts, and sixteen for widening and memory. These are teaching widths, expl
 distinguished from a real processor’s register widths.
 
 The final lesson is guided self-checked practice, not another automatically graded question.
+Its prerequisite is binary place value (Build a number from bits), so learners can begin
+the question bank early and use the topic primers as needed. Its final position in the
+learning path is a suggested review point, not a requirement to finish all preceding lessons.
 It starts with a selected round from the existing bank and ends with exercises 94–96 on
 register fields. It explains the calculator’s borrow-carry convention before asking learners
 to interpret flags. The bank remains beside the calculator, collapsed for first-time visitors;

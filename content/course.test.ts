@@ -12,7 +12,7 @@ describe("course contract and independent exercise answers", () => {
     );
     const final = lessons.at(-1)!;
     expect(final.id).toBe("put-it-into-practice");
-    expect(final.prerequisites).toEqual(["memory"]);
+    expect(final.prerequisites).toEqual(["patterns"]);
     expect(final.challenges).toEqual([]);
     expect(final.sections.map((section) => section.prose).join(" ")).toContain(
       "self-checked",
