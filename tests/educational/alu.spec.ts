@@ -28,6 +28,14 @@ test("ALU selection changes both the result path and flag provenance", async ({
     ["LSR", 3, "shift", "0", "0", "1", "—"],
     ["ASR", 3, "shift", "0", "0", "1", "—"],
   ] as const;
+  const circuit = page.locator(".connected-circuit");
+  await expect(circuit).toHaveAttribute("data-revealed", "false");
+  await expect(circuit.locator("[data-carry-index][data-value]")).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("img", { name: "Result bit 3: hidden" }),
+  ).toBeVisible();
   for (const [operation, result, path, N, Z, C, V] of cases) {
     await page
       .getByRole("combobox", { name: "Operation", exact: true })
@@ -43,6 +51,13 @@ test("ALU selection changes both the result path and flag provenance", async ({
     await expect(
       page.locator('[data-path][data-selected="true"]'),
     ).toHaveAttribute("data-path", path);
+    await expect(circuit).toHaveAttribute("data-path", path);
+    await expect(circuit.locator('[data-circuit-flag="Z"]')).toHaveText(
+      `Z=${Z}`,
+    );
+    await expect(circuit.locator('[data-circuit-flag="N"]')).toHaveText(
+      `N=${N}`,
+    );
     for (const [flag, value] of Object.entries({ N, Z, C, V }))
       await expect(page.locator(`[data-flag="${flag}"] strong`)).toHaveText(
         `${flag} = ${value}`,
@@ -89,7 +104,41 @@ test("ALU selection changes both the result path and flag provenance", async ({
   await page
     .getByRole("button", { name: "Reveal result", exact: true })
     .click();
+  for (const [index, value] of [0, 1, 1, 1, 0].entries())
+    await expect(
+      circuit.locator(`[data-carry-index="${index}"]`),
+    ).toHaveAttribute("data-value", String(value));
+  await expect(
+    circuit.locator('[data-flag-gate="V"] [data-gate="XOR"]'),
+  ).toBeVisible();
+  await expect(circuit.locator('[data-flag-gate="Z"]')).toBeVisible();
+  await expect(page.locator("[data-alu-result] td")).toHaveText([
+    "1000",
+    "0x8",
+    "8",
+    "-8",
+  ]);
+  await page.getByText("Operation selection overview", { exact: true }).click();
+  await expect(page.locator(".alu-diagram")).toBeVisible();
   await page.getByText("Inside the shared adder", { exact: true }).click();
   await expect(page.locator(".carry-diagram")).toBeVisible();
+  const input = page.getByRole("button", { name: "A bit 0: 1", exact: true });
+  await input.focus();
+  await input.press("Space");
+  await expect(
+    page.getByRole("button", { name: "A bit 0: 0", exact: true }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await expect(circuit).toHaveAttribute("data-revealed", "false");
+  await page
+    .getByRole("button", { name: "A bit 0: 0", exact: true })
+    .press("Enter");
+  await expect(
+    page.getByRole("button", { name: "A bit 0: 1", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(
+    await page
+      .locator(".connected-circuit-scroll")
+      .evaluate((element) => element.scrollWidth <= element.clientWidth + 1),
+  ).toBe(true);
   expect(errors).toEqual([]);
 });

@@ -56,7 +56,10 @@ The home page labels these as roadmap topics, not available lessons:
 - C conversions and recorded compiler evidence, linked to Assembly Lab.
 
 The ALU now has a main lesson after shifts and before comparisons. It joins the operations
-already taught, with optional detail for the adder and individual logic columns.
+already taught. Its main experiment uses four clickable bits per word, a connected circuit,
+visible carry propagation and flag-generating gates. Signed and unsigned readings share a
+table below the circuit. The block overview, adder calculations and individual logic columns
+are optional details.
 
 The original gate-level ALU, gate-built register, C edge cases and breadboard activity remain
 available in the reference collection. Their eventual course treatment should be decided on

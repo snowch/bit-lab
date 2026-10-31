@@ -26,6 +26,14 @@ produce the outgoing bit as C. Logic produces neither C nor V; shifts produce no
 These absent outputs are `null` and displayed as a dash, never as a retained or cleared
 processor flag. NOT and shifts do not consume B. The model has no clock or stored flags.
 
+The connected four-bit drawing uses `aluTrace` for input bits, result bits, adder columns,
+carry taps and shift sources. N taps result bit 3. A NOR of the result bits supplies Z;
+XOR of the carries into and out of bit 3 supplies V for ADD and SUB. The drawing shows
+the selected operation, with an optional block overview for the result selector. The
+carry-chain and routing tests verify that the drawn signals reconstruct the selected result
+and agree with the independently checked flags. This is a functional diagram without
+propagation delays.
+
 `alu.test.ts` independently checks all nine operations for every four-bit operand pair,
 including selection, flag provenance, unary inputs and outgoing bits. Wider boundary cases
 cover wrapping and signed overflow. This extends the mathematical model checks, not the

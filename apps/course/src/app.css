@@ -845,3 +845,119 @@ summary {
   border: 1px solid var(--border);
   background: var(--bg-raised);
 }
+.connected-circuit-scroll,
+.alu-readings-scroll {
+  overflow-x: auto;
+}
+.connected-circuit {
+  display: block;
+  width: 100%;
+  min-width: 330px;
+  max-width: 660px;
+  margin: 16px auto;
+  font: 16px var(--font-mono);
+}
+.connected-circuit text {
+  fill: var(--fg);
+}
+.connected-circuit .circuit-small {
+  font-size: 13px;
+}
+.circuit-row-label {
+  fill: var(--fg-muted) !important;
+}
+.circuit-wire {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.circuit-wire.on {
+  stroke: var(--warn);
+  stroke-width: 3.5;
+}
+.carry-wire.on {
+  stroke: var(--bad);
+}
+.circuit-wire.pending {
+  stroke-dasharray: 4 5;
+  opacity: 0.5;
+}
+.circuit-junction {
+  fill: var(--fg);
+}
+.circuit-gate path,
+.circuit-gate rect,
+.circuit-gate circle,
+.circuit-constant {
+  fill: var(--bg-raised);
+  stroke: var(--fg);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.circuit-gate .gate-curve {
+  fill: none;
+}
+.circuit-bit .circuit-cell {
+  fill: var(--bg-inset);
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+.circuit-bit.on .circuit-cell {
+  fill: var(--warn-bg);
+  stroke: var(--warn);
+}
+.circuit-bit.on text {
+  fill: var(--warn);
+}
+.circuit-bit text {
+  font-size: 23px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.circuit-hit {
+  fill: transparent;
+}
+.circuit-bit.editable {
+  cursor: pointer;
+  outline: none;
+}
+.circuit-bit.editable:focus-visible .circuit-cell {
+  stroke: var(--focus);
+  stroke-width: 4;
+}
+.circuit-bit.editable:hover .circuit-cell {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.circuit-bit.readonly .circuit-cell {
+  stroke-dasharray: 4 3;
+}
+.circuit-key {
+  font-size: 15px !important;
+}
+.alu-readings {
+  width: 100%;
+  border-collapse: collapse;
+  font: 14px var(--font-mono);
+}
+.alu-readings caption {
+  text-align: left;
+  padding-block: 8px;
+  font-family: var(--font-text);
+  color: var(--fg-muted);
+}
+.alu-readings th,
+.alu-readings td {
+  padding: 10px 4px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+.alu-readings th:first-child {
+  text-align: left;
+}
+.alu-readings tr[data-alu-result] {
+  background: var(--accent-soft);
+  font-weight: 700;
+}

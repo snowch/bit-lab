@@ -2,14 +2,15 @@
 import { useId, useState } from "react";
 import {
   ALU_OPERATIONS,
-  alu,
+  aluTrace,
   binary,
   hex,
   signed,
   type AluOperation,
   type AluResult,
 } from "@bl/bit-model";
-import { Bits, CarryDiagram } from "./WordParts";
+import { CarryDiagram } from "./WordParts";
+import { AluCircuit } from "./AluCircuit";
 
 const descriptions: Record<AluOperation, string> = {
   ADD: "A + B",
@@ -202,7 +203,8 @@ export function AluLab() {
   const [b, setB] = useState(1);
   const [operation, setOperation] = useState<AluOperation>("ADD");
   const [revealed, setRevealed] = useState(false);
-  const output = alu(a, b, 4, operation);
+  const trace = aluTrace(a, b, 4, operation);
+  const { output } = trace;
   const usesB = operation !== "NOT" && output.path !== "shift";
   function preset(nextA: number, nextB: number, nextOperation: AluOperation) {
     setA(nextA);
@@ -211,8 +213,8 @@ export function AluLab() {
     setRevealed(false);
   }
   const notes = {
-    N: "Copies the result’s leading bit.",
-    Z: "1 only when every result bit is zero.",
+    N: `Copies result bit 3: ${output.N}. Read as two’s complement, a leading 1 means negative.`,
+    Z: `NOR combines all result bits: OR gives ${trace.resultOr}, then NOT gives ${output.Z}. Z is 1 only for an all-zero result.`,
     C:
       output.path === "arithmetic"
         ? operation === "SUB"
@@ -223,7 +225,7 @@ export function AluLab() {
           : "Not produced by this logic operation.",
     V:
       output.path === "arithmetic"
-        ? "1 when the exact signed arithmetic answer does not fit."
+        ? `Carry into bit 3 (${trace.carryIntoSign}) XOR carry out (${trace.carryOutOfSign}) = ${output.V}. V is 1 when the exact signed answer does not fit.`
         : "Not produced by this operation.",
   };
   return (
@@ -231,24 +233,6 @@ export function AluLab() {
       <p className="muted">
         Four-bit inputs · Position 0 is on the right. Press a bit to change it.
       </p>
-      <Bits
-        label="A"
-        value={a}
-        width={4}
-        onChange={(value) => {
-          setA(value);
-          setRevealed(false);
-        }}
-      />
-      <Bits
-        label="B"
-        value={b}
-        width={4}
-        onChange={(value) => {
-          setB(value);
-          setRevealed(false);
-        }}
-      />
       <label className="alu-operation">
         Operation{" "}
         <select
@@ -329,24 +313,67 @@ export function AluLab() {
           Predict the selected result and its flags, then reveal them.
         </p>
       )}
+      <AluCircuit
+        a={a}
+        b={b}
+        operation={operation}
+        revealed={revealed}
+        onA={(value) => {
+          setA(value);
+          setRevealed(false);
+        }}
+        onB={(value) => {
+          setB(value);
+          setRevealed(false);
+        }}
+      />
+      <p className="circuit-key muted">
+        Amber wires carry 1; red shows a carry of 1. Grey wires carry 0. Dots
+        join wires; crossings without dots do not. FA means full adder. Before
+        revealing, dashed wires and ? marks hide computed signals.
+      </p>
       {revealed && (
         <div className="lab-result" aria-live="polite">
-          <h3>Follow {operation} through the ALU</h3>
-          <p className="muted">
-            The highlighted path supplies the output. Unselected paths are not
-            disconnected from the inputs. Dots mark joined wires. Scroll the
-            diagram sideways on a narrow screen.
-          </p>
-          <AluDiagram a={a} b={b} operation={operation} output={output} />
-          <Bits label="Result" value={output.result} width={4} />
-          <p className="readout" data-alu-result={output.result}>
-            <span>{hex(output.result, 4)}</span>
-            <span>
-              Unsigned: <strong>{output.result}</strong>
-            </span>
-            <span>
-              Signed: <strong>{signed(output.result, 4)}</strong>
-            </span>
+          <h3>Read the same bits two ways</h3>
+          <div className="alu-readings-scroll">
+            <table className="alu-readings">
+              <caption>
+                Four-bit words: unsigned 0 to 15; signed −8 to +7.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Word</th>
+                  <th scope="col">Binary</th>
+                  <th scope="col">Hex</th>
+                  <th scope="col">Unsigned</th>
+                  <th scope="col">Signed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(
+                  [
+                    ["A", a],
+                    ["B", b],
+                    ["R", output.result],
+                  ] as const
+                ).map(([label, value]) => (
+                  <tr
+                    key={label}
+                    data-alu-result={label === "R" ? value : undefined}
+                  >
+                    <th scope="row">{label}</th>
+                    <td>{binary(value, 4)}</td>
+                    <td>{hex(value, 4)}</td>
+                    <td>{value}</td>
+                    <td>{signed(value, 4)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p>
+            The circuit operates on bits. Signed and unsigned are two readings
+            of the same word; C and V tell you about different limits.
           </p>
           <div className="flags">
             {(["N", "Z", "C", "V"] as const).map((flag) => (
@@ -362,6 +389,16 @@ export function AluLab() {
               </div>
             ))}
           </div>
+          <details className="alu-detail">
+            <summary>Operation selection overview</summary>
+            <p>
+              The connected circuit above shows the selected operation. This
+              overview places it alongside the other paths in a simple ALU. The
+              highlighted path supplies R; the selector chooses one output.
+              Scroll this overview sideways on a narrow screen.
+            </p>
+            <AluDiagram a={a} b={b} operation={operation} output={output} />
+          </details>
           {output.path === "arithmetic" && (
             <details className="alu-detail">
               <summary>Inside the shared adder</summary>

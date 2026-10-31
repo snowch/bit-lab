@@ -84,3 +84,25 @@ The first full browser run had 26 passes and two ALU-test timeouts: the test's e
 locator included the select's option text. The rendered accessibility tree already named
 the combobox correctly. The test now finds that combobox by its role and accessible name;
 the focused two-test rerun and the subsequent complete check both passed.
+
+## Connected four-bit ALU
+
+The main experiment now connects clickable A/B bits to full adders, logic gates or shift
+wires, and connects the result to N and a NOR gate for Z. ADD/SUB expose the carry chain
+and the XOR gate that derives V from the carries into and out of the sign bit. The former
+block diagram remains available as an optional overview. A table shows binary, hex, signed
+and unsigned readings together.
+
+`npm run check` passed with 87 unit/integration tests and 28 desktop/phone browser tests.
+The additional exhaustive trace test reconstructs results from the displayed adder columns
+and shift sources, verifies the carry chain and checks the flag gates for all four-bit input
+pairs and operations. Browser checks cover hidden computed signals before Reveal, carry
+values for 7 + 1, NOR/XOR gate visibility, both readings of 1000, keyboard input toggling,
+the optional overview and circuit width on a phone, alongside all previous operation checks.
+
+Visual inspection covered the connected ADD circuit in desktop light mode and 390-pixel
+phone dark mode, plus SUB and ASR on the phone. The main circuit fits without horizontal
+scrolling at that width; only the optional block overview needs sideways scrolling. An
+unused-input label was removed from the SVG after inspection because it crossed the shift
+wires; the adjacent prose already explains that B is unused. No independent editorial review
+was performed. The earlier build warnings and offline-scope limits still apply.

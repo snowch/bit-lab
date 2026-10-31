@@ -193,6 +193,45 @@ export function parseInteger(text: string): number | undefined {
   const n = sign * Number(s.replace(/^[+-]/, ""));
   return Number.isSafeInteger(n) ? n : undefined;
 }
+
+/** Signals for the connected ALU drawing. Bit arrays run from bit 0 upwards. */
+export function aluTrace(
+  a: number,
+  b: number,
+  width: number,
+  operation: AluOperation,
+) {
+  const output = alu(a, b, width, operation);
+  const bits = (value: number) =>
+    Array.from({ length: width }, (_, bit) => (word(value, width) >> bit) & 1);
+  const resultBits = bits(output.result);
+  const columns =
+    output.path === "arithmetic"
+      ? arithmetic(a, b, width, operation === "SUB").columns
+      : [];
+  const signColumn = columns[width - 1];
+  const shiftSources =
+    output.path === "shift"
+      ? Array.from({ length: width }, (_, bit) => {
+          const source = operation === "LSL" ? bit - 1 : bit + 1;
+          if (source >= 0 && source < width) return source;
+          return operation === "ASR" ? width - 1 : null;
+        })
+      : [];
+  return {
+    output,
+    bitsA: bits(a),
+    bitsB: bits(b),
+    resultBits,
+    columns,
+    shiftSources,
+    shiftedOutIndex:
+      output.path === "shift" ? (operation === "LSL" ? width - 1 : 0) : null,
+    carryIntoSign: signColumn?.incoming ?? null,
+    carryOutOfSign: signColumn?.carry ?? null,
+    resultOr: resultBits.reduce((value, bit) => value | bit, 0),
+  };
+}
 export type Topic =
   | "patterns"
   | "readings"

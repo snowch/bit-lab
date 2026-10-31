@@ -1,6 +1,45 @@
 // Copyright © 2026 Christopher Snow
 import { expect, it } from "vitest";
-import { ALU_OPERATIONS, alu } from "./index";
+import { ALU_OPERATIONS, alu, aluTrace } from "./index";
+
+it("connects the displayed gates, carry chain and shift wires to the result and flags", () => {
+  for (let a = 0; a < 16; a++)
+    for (let b = 0; b < 16; b++)
+      for (const op of ALU_OPERATIONS) {
+        const trace = aluTrace(a, b, 4, op);
+        const { output } = trace;
+        const fromBits = (bits: number[]) =>
+          bits.reduce((sum, bit, i) => sum + bit * 2 ** i, 0);
+        expect(fromBits(trace.bitsA)).toBe(a);
+        expect(fromBits(trace.bitsB)).toBe(b);
+        expect(fromBits(trace.resultBits)).toBe(output.result);
+        expect(trace.resultBits[3]).toBe(output.N);
+        expect(1 - trace.resultOr).toBe(output.Z);
+        if (output.path === "arithmetic") {
+          let carry = op === "SUB" ? 1 : 0;
+          for (const col of trace.columns) {
+            expect(col.incoming).toBe(carry);
+            expect(col.a).toBe(Math.floor(a / 2 ** col.bit) % 2);
+            expect(col.b).toBe(
+              Math.floor((op === "SUB" ? 15 - b : b) / 2 ** col.bit) % 2,
+            );
+            const total = col.a + col.b + carry;
+            expect(col.sum).toBe(total % 2);
+            carry = Math.floor(total / 2);
+            expect(col.carry).toBe(carry);
+            expect(trace.resultBits[col.bit]).toBe(col.sum);
+          }
+          expect(trace.carryOutOfSign).toBe(output.C);
+          expect(trace.carryIntoSign! ^ trace.carryOutOfSign!).toBe(output.V);
+        } else if (output.path === "shift") {
+          const routedBits = trace.shiftSources.map((source) =>
+            source === null ? 0 : trace.bitsA[source]!,
+          );
+          expect(fromBits(routedBits)).toBe(output.result);
+          expect(trace.bitsA[trace.shiftedOutIndex!]).toBe(output.C);
+        }
+      }
+});
 
 it("selects the correct result and flag sources for every four-bit input pair", () => {
   for (let a = 0; a < 16; a++)
