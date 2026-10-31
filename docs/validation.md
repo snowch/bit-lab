@@ -51,3 +51,9 @@ No independent learner/editorial review was performed. The original exercise ban
 retained, not exhaustively regraded. The smoke check of original notes does not verify every
 interaction or technical claim. Full-course offline operation is not implemented; the
 calculator’s offline shell is the scope of the offline test.
+
+## Hosted runner adjustment
+
+The first GitHub Actions run failed before tests: `ubuntu-latest` selected Ubuntu 26.04,
+which the inherited Playwright 1.56.1 does not support. Both workflows now pin
+`ubuntu-24.04`, a supported runner, rather than skipping browser checks.
