@@ -961,3 +961,29 @@ summary {
   background: var(--accent-soft);
   font-weight: 700;
 }
+
+@media (max-width: 520px) {
+  .lesson .alu-lab > p {
+    margin-block: 8px;
+  }
+  .lesson .alu-lab > p:first-child {
+    margin-top: 0;
+  }
+  .lesson .alu-lab > p:last-child {
+    margin-bottom: 0;
+  }
+  .alu-lab .controls {
+    margin-block: 8px;
+    gap: 8px;
+  }
+  .alu-lab .connected-circuit {
+    margin-block: 4px;
+  }
+  .alu-lab .alu-rules {
+    padding-left: 10px;
+    line-height: 1.45;
+  }
+  .alu-lab .lab-result {
+    margin-top: 12px;
+  }
+}

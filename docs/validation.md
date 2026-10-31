@@ -106,3 +106,14 @@ scrolling at that width; only the optional block overview needs sideways scrolli
 unused-input label was removed from the SVG after inspection because it crossed the shift
 wires; the adjacent prose already explains that B is unused. No independent editorial review
 was performed. The earlier build warnings and offline-scope limits still apply.
+
+## Compact ALU spacing
+
+Shorter wire runs and a shallower NOR gate reduce the connected diagram from 590 to 466
+SVG units high, while preserving bit sizes, touch targets and text sizes. Mobile-only CSS
+tightens paragraph, control and diagram margins. At a 390-pixel viewport, the unrevealed
+experiment measured 922 pixels high, down from 1163; the diagram itself went from 445 to
+352 pixels. Visual inspection covered ADD, SUB, XOR, LSL and ASR on the phone and ADD in
+desktop dark mode. The carry label was repositioned after inspection to stay beside the
+final carry wire. `npm run check` passed: 87 unit/integration tests and 28 browser tests,
+including the existing operation, keyboard and phone-width checks.

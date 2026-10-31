@@ -128,7 +128,7 @@ export function AluCircuit({
     >
       <svg
         className="connected-circuit"
-        viewBox="0 0 440 590"
+        viewBox="0 0 440 466"
         role="group"
         aria-label={`Four-bit ${operation} circuit. Click input bits to change them.`}
         data-path={output.path}
@@ -138,17 +138,17 @@ export function AluCircuit({
           <text
             className="circuit-small"
             x={xs(bit)}
-            y="24"
+            y="16"
             key={`index-${bit}`}
             textAnchor="middle"
           >
             bit {bit}
           </text>
         ))}
-        <text className="circuit-row-label" x="429" y="66" textAnchor="middle">
+        <text className="circuit-row-label" x="429" y="56" textAnchor="middle">
           A
         </text>
-        <text className="circuit-row-label" x="429" y="146" textAnchor="middle">
+        <text className="circuit-row-label" x="429" y="120" textAnchor="middle">
           B
         </text>
 
@@ -162,35 +162,35 @@ export function AluCircuit({
             return (
               <g key={`operation-${bit}`}>
                 {wire(
-                  `M${x},82 V96 H${x - 30} V240 H${unary ? x : x - 11} V${arithmetic ? 260 : unary ? 258 : operation === "AND" ? 256 : 259}`,
+                  `M${x},72 V82 H${x - 30} V170 H${unary ? x : x - 11} V${arithmetic ? 190 : unary ? 188 : operation === "AND" ? 186 : 189}`,
                   av,
                 )}
                 {usesB &&
                   (operation === "SUB" ? (
                     <>
-                      {wire(`M${x + 11},162 V191`, bv)}
-                      <Gate kind="NOT" x={x + 11} y={209} small />
-                      {wire(`M${x + 11},229 V260`, cell!.b)}
-                      <text className="circuit-small" x={x + 24} y="231">
+                      {wire(`M${x + 11},136 V141`, bv)}
+                      <Gate kind="NOT" x={x + 11} y={159} small />
+                      {wire(`M${x + 11},179 V190`, cell!.b)}
+                      <text className="circuit-small" x={x + 24} y="181">
                         {show(cell!.b)}
                       </text>
                     </>
                   ) : (
                     wire(
-                      `M${x + 11},162 V${arithmetic ? 260 : operation === "AND" ? 256 : 259}`,
+                      `M${x + 11},136 V${arithmetic ? 190 : operation === "AND" ? 186 : 189}`,
                       bv,
                     )
                   ))}
                 {arithmetic ? (
                   <>
                     <g className="circuit-gate" data-gate="FA">
-                      <rect x={x - 25} y="260" width="50" height="40" rx="4" />
-                      <text x={x} y="287" textAnchor="middle">
+                      <rect x={x - 25} y="190" width="50" height="40" rx="4" />
+                      <text x={x} y="217" textAnchor="middle">
                         FA
                       </text>
                     </g>
                     {wire(
-                      `M${x - 25},280 H${bit === 3 ? 30 : xs(bit + 1) + 25}`,
+                      `M${x - 25},210 H${bit === 3 ? 30 : xs(bit + 1) + 25}`,
                       cell!.carry,
                       true,
                     )}
@@ -199,20 +199,20 @@ export function AluCircuit({
                       data-carry-index={bit + 1}
                       data-value={revealed ? cell!.carry : undefined}
                       x={bit === 3 ? 52 : x - 45}
-                      y="270"
+                      y="200"
                       textAnchor="middle"
                     >
                       {show(cell!.carry)}
                     </text>
                     {bit === 0 && (
                       <>
-                        {wire("M395,280 H430", cell!.incoming, true)}
+                        {wire("M395,210 H430", cell!.incoming, true)}
                         <text
                           className="circuit-small"
                           data-carry-index="0"
                           data-value={revealed ? cell!.incoming : undefined}
                           x="417"
-                          y="270"
+                          y="200"
                           textAnchor="middle"
                         >
                           {show(cell!.incoming)}
@@ -220,7 +220,7 @@ export function AluCircuit({
                         <text
                           className="circuit-small"
                           x="418"
-                          y="311"
+                          y="241"
                           textAnchor="middle"
                         >
                           cin
@@ -229,10 +229,10 @@ export function AluCircuit({
                     )}
                   </>
                 ) : (
-                  <Gate kind={operation as GateKind} x={x} y={280} />
+                  <Gate kind={operation as GateKind} x={x} y={210} />
                 )}
                 {wire(
-                  `M${x},${arithmetic ? 300 : 305} V363`,
+                  `M${x},${arithmetic ? 230 : 235} V278`,
                   trace.resultBits[bit]!,
                 )}
               </g>
@@ -244,7 +244,7 @@ export function AluCircuit({
             {bits.map((bit) => (
               <g key={`source-${bit}`}>
                 {wire(
-                  `M${xs(bit)},82 V96 H${xs(bit) - 30} V205 H${xs(bit)} V218`,
+                  `M${xs(bit)},72 V82 H${xs(bit) - 30} V151 H${xs(bit)} V164`,
                   trace.bitsA[bit]!,
                 )}
               </g>
@@ -260,22 +260,22 @@ export function AluCircuit({
                       <circle
                         className="circuit-constant"
                         cx={zeroX}
-                        cy="240"
+                        cy="186"
                         r="13"
                       />
                       <text
                         className="circuit-small"
                         x={zeroX}
-                        y="246"
+                        y="192"
                         textAnchor="middle"
                       >
                         0
                       </text>
-                      {wire(`M${zeroX},253 L${x},320 V363`, 0)}
+                      {wire(`M${zeroX},199 L${x},250 V278`, 0)}
                     </>
                   ) : (
                     wire(
-                      `M${xs(source!)},218 L${x},320 V363`,
+                      `M${xs(source!)},164 L${x},250 V278`,
                       trace.bitsA[source!]!,
                     )
                   )}
@@ -283,21 +283,21 @@ export function AluCircuit({
               );
             })}
             {operation === "ASR" && (
-              <circle className="circuit-junction" cx="100" cy="218" r="4" />
+              <circle className="circuit-junction" cx="100" cy="164" r="4" />
             )}
             {operation === "LSL" ? (
               <>
-                {wire("M100,218 H20 V280", output.C!, true)}
-                <circle className="circuit-junction" cx="100" cy="218" r="4" />
-                <text data-circuit-flag="C" x="20" y="305" textAnchor="middle">
+                {wire("M100,164 H20 V210", output.C!, true)}
+                <circle className="circuit-junction" cx="100" cy="164" r="4" />
+                <text data-circuit-flag="C" x="20" y="235" textAnchor="middle">
                   C={show(output.C)}
                 </text>
               </>
             ) : (
               <>
-                {wire("M370,218 H425 V325", output.C!, true)}
-                <circle className="circuit-junction" cx="370" cy="218" r="4" />
-                <text data-circuit-flag="C" x="425" y="348" textAnchor="end">
+                {wire("M370,164 H425 V255", output.C!, true)}
+                <circle className="circuit-junction" cx="370" cy="164" r="4" />
+                <text data-circuit-flag="C" x="425" y="278" textAnchor="end">
                   C={show(output.C)}
                 </text>
               </>
@@ -307,29 +307,29 @@ export function AluCircuit({
 
         {arithmetic ? (
           <>
-            <text data-circuit-flag="C" x="8" y="267">
+            <text data-circuit-flag="C" x="8" y="197">
               C
             </text>
-            {wire("M30,280 V330", trace.carryOutOfSign!, true)}
-            {wire("M145,280 V314 H54 V330", trace.carryIntoSign!, true)}
-            <circle className="circuit-junction" cx="145" cy="280" r="3" />
-            <circle className="circuit-junction" cx="30" cy="280" r="3" />
+            {wire("M30,210 V254", trace.carryOutOfSign!, true)}
+            {wire("M145,210 V240 H54 V254", trace.carryIntoSign!, true)}
+            <circle className="circuit-junction" cx="145" cy="210" r="3" />
+            <circle className="circuit-junction" cx="30" cy="210" r="3" />
             <g data-flag-gate="V">
-              <Gate kind="XOR" x={42} y={350} small />
+              <Gate kind="XOR" x={42} y={274} small />
             </g>
-            {wire("M42,370 V387", output.V!)}
-            <text data-circuit-flag="V" x="42" y="407" textAnchor="middle">
+            {wire("M42,294 V302", output.V!)}
+            <text data-circuit-flag="V" x="42" y="322" textAnchor="middle">
               V={show(output.V)}
             </text>
           </>
         ) : (
           <>
             {output.path === "logic" && (
-              <text data-circuit-flag="C" x="12" y="287">
+              <text data-circuit-flag="C" x="12" y="217">
                 C —
               </text>
             )}
-            <text data-circuit-flag="V" x="12" y="352">
+            <text data-circuit-flag="V" x="12" y="272">
               V —
             </text>
           </>
@@ -341,35 +341,35 @@ export function AluCircuit({
           return (
             <g key={`result-${bit}`}>
               {wire(
-                `M${x},407 V${470 + 48 * fraction * (1 - fraction)}`,
+                `M${x},322 V${366 + 48 * fraction * (1 - fraction)}`,
                 trace.resultBits[bit]!,
               )}
               <Cell
                 x={x}
-                y={385}
+                y={300}
                 value={revealed ? trace.resultBits[bit]! : null}
                 label={`Result bit ${bit}`}
               />
             </g>
           );
         })}
-        <text className="circuit-row-label" x="429" y="391" textAnchor="middle">
+        <text className="circuit-row-label" x="429" y="306" textAnchor="middle">
           R
         </text>
-        {wire("M100,427 H25", output.N)}
-        <circle className="circuit-junction" cx="100" cy="427" r="3" />
-        <text data-circuit-flag="N" x="25" y="452" textAnchor="middle">
+        {wire("M100,336 H25", output.N)}
+        <circle className="circuit-junction" cx="100" cy="336" r="3" />
+        <text data-circuit-flag="N" x="25" y="358" textAnchor="middle">
           N={show(output.N)}
         </text>
         <g className="circuit-gate" data-flag-gate="Z">
-          <path d="M75,470 Q235,494 395,470 Q370,526 235,542 Q100,526 75,470 Z" />
-          <circle cx="235" cy="548" r="5" />
-          <text x="235" y="519" textAnchor="middle">
+          <path d="M75,366 Q235,390 395,366 Q370,400 235,414 Q100,400 75,366 Z" />
+          <circle cx="235" cy="420" r="5" />
+          <text x="235" y="402" textAnchor="middle">
             NOR of R
           </text>
         </g>
-        {wire("M235,553 V568", output.Z)}
-        <text data-circuit-flag="Z" x="235" y="586" textAnchor="middle">
+        {wire("M235,425 V440", output.Z)}
+        <text data-circuit-flag="Z" x="235" y="458" textAnchor="middle">
           Z={show(output.Z)}
         </text>
 
@@ -377,14 +377,14 @@ export function AluCircuit({
           <g key={`inputs-${bit}`}>
             <Cell
               x={xs(bit)}
-              y={60}
+              y={50}
               value={trace.bitsA[bit]!}
               label={`A bit ${bit}`}
               toggle={() => onA(a ^ (1 << bit))}
             />
             <Cell
               x={xs(bit)}
-              y={140}
+              y={114}
               value={trace.bitsB[bit]!}
               label={`B bit ${bit}`}
               toggle={() => onB(b ^ (1 << bit))}
