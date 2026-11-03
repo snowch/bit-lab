@@ -395,18 +395,33 @@ export function App() {
           </a>
           <a href={calculator}>Calculator ↗︎</a>
         </nav>
-        <label className="theme-label">
-          <span>Theme</span>
-          <select
-            aria-label="Theme"
-            value={theme}
-            onChange={(e) => setTheme(e.target.value)}
+        <div className="header-actions">
+          <a
+            className="github-star"
+            href="https://github.com/snowch/bit-lab"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Star Bit Lab on GitHub (opens in a new tab)"
+            title="Star Bit Lab on GitHub"
           >
-            <option value="auto">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z" />
+            </svg>
+            <span>Star</span>
+          </a>
+          <label className="theme-label">
+            <span>Theme</span>
+            <select
+              aria-label="Theme"
+              value={theme}
+              onChange={(e) => setTheme(e.target.value)}
+            >
+              <option value="auto">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </label>
+        </div>
       </header>
       {storageWarning && (
         <p role="status" className="storage-warning">
