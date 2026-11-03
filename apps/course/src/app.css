@@ -428,23 +428,80 @@ main > section {
   font-size: 12px;
 }
 .lesson-nav {
-  display: flex;
-  justify-content: space-between;
-  gap: 30px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 24px;
   border-top: 1px solid var(--border);
-  padding-top: 24px;
+  margin-top: 24px;
+  padding-top: 16px;
+}
+.lesson-nav-forward {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  text-align: right;
 }
 .lesson-nav a {
-  max-width: 45%;
+  display: block;
+  padding-block: 10px;
 }
-.study-control {
-  margin: 28px 0;
-  text-align: center;
+.lesson-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  font-size: 15px;
+  cursor: pointer;
+  text-align: left;
+  max-width: 100%;
 }
-.study-control p {
-  margin-inline: auto;
-  font-size: 14px;
+.lesson-done input[type="checkbox"] {
+  appearance: auto;
+  display: block;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+.lesson-done input[type="checkbox"]::before {
+  display: none;
+}
+.lesson-done:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.lesson-done:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.lesson-done-note {
+  margin-top: 8px;
   color: var(--fg-muted);
+  font-size: 14px;
+}
+.chapter-list li[data-done="true"] .chapter-status {
+  color: var(--accent);
+  font-weight: 700;
+}
+@media (max-width: 520px) {
+  .lesson-nav {
+    gap: 16px;
+  }
+  .lesson-done {
+    font-size: 14px;
+    gap: 8px;
+    padding-inline: 8px;
+  }
 }
 .word-lab {
   padding: 20px;

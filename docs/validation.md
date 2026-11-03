@@ -138,3 +138,17 @@ initial and same-page exercise links, and the final lesson’s navigation and se
 mark. Existing migration and offline checks also passed. Visual inspection covered the
 final lesson and collapsed calculator header at 390 pixels; neither overflowed the page.
 The exercise bank’s questions and answers were retained, not independently regraded.
+
+## Lesson completion checkbox
+
+The lesson completion control is now a native checkbox labelled “Mark lesson as done”,
+grouped with the forward navigation link, following Assembly Lab’s placement. It uses the
+existing study-mark storage, preserving earlier marks. Completed entries in the learning
+path display “✓ Done”; the count updates when a lesson is marked or unmarked.
+
+`npm run check` passed with 88 unit/integration tests and 32 browser tests. Updated flows
+cover checking, persistence after reload, the contents tick, keyboard unchecking and removal
+of the contents tick. Final-practice coverage still verifies that lesson completion does not
+tick calculator exercises. Visual inspection covered phone light mode and desktop dark mode.
+An inherited checkbox style was corrected after inspection so the native tick stays aligned
+inside the 44-pixel label target.

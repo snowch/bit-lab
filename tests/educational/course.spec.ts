@@ -24,10 +24,29 @@ test("home, theme, study marks and practice links work", async ({ page }) => {
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("link", { name: "Start with bits" }).click();
   await page
-    .getByRole("button", { name: "Mark as studied", exact: true })
+    .getByRole("checkbox", { name: "Mark lesson as done", exact: true })
     .click();
+  await page.reload();
+  await expect(
+    page.getByRole("checkbox", { name: "Mark lesson as done" }),
+  ).toBeChecked();
+  await expect(page.locator(".lesson-nav-forward")).toContainText(
+    "Mark lesson as done",
+  );
   await page.getByRole("link", { name: "Learning path", exact: false }).click();
-  await expect(page.getByText("1 / 11 marked studied")).toBeVisible();
+  await expect(page.getByText("1 / 11 done")).toBeVisible();
+  const first = page.locator(".chapter-list li").first();
+  await expect(first).toHaveAttribute("data-done", "true");
+  await expect(first.locator(".chapter-status")).toHaveText("✓ Done");
+  await first.getByRole("link").click();
+  const done = page.getByRole("checkbox", { name: "Mark lesson as done" });
+  await done.focus();
+  await done.press("Space");
+  await page.reload();
+  await expect(done).not.toBeChecked();
+  await page.getByRole("link", { name: "Learning path", exact: false }).click();
+  await expect(first).toHaveAttribute("data-done", "false");
+  await expect(page.getByText("0 / 11 done")).toBeVisible();
   await page.getByRole("link", { name: "Practice", exact: true }).click();
   await expect(
     page.getByRole("link", { name: /Calculator exercise bank/ }),

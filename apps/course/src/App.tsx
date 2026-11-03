@@ -164,12 +164,12 @@ function Cover({ completed }: { completed: string[] }) {
             <h2 id="path-title">Bits, arithmetic and decisions</h2>
           </div>
           <span className="progress-count">
-            {completed.length} / {learningPath.length} marked studied
+            {completed.length} / {learningPath.length} done
           </span>
         </div>
         <ol className="chapter-list">
           {learningPath.map((c, i) => (
-            <li key={c.id}>
+            <li key={c.id} data-done={completed.includes(c.id)}>
               <a href={lessonHref(c.id)}>
                 <span className="chapter-number">
                   {String(i + 1).padStart(2, "0")}
@@ -179,7 +179,13 @@ function Cover({ completed }: { completed: string[] }) {
                   <p>{c.line}</p>
                 </div>
                 <span className="chapter-status">
-                  {completed.includes(c.id) ? "Studied ✓" : "Open ↗︎"}
+                  {completed.includes(c.id) ? (
+                    <>
+                      <span aria-hidden="true">✓ </span>Done
+                    </>
+                  ) : (
+                    "Open ↗︎"
+                  )}
                 </span>
               </a>
             </li>
@@ -432,19 +438,6 @@ export function App() {
               lessonHref={lessonHref}
               strings={runtimeStrings}
             />
-            <div className="study-control">
-              <button
-                className="button secondary"
-                aria-pressed={studied}
-                onClick={toggleStudy}
-              >
-                {studied ? "Marked studied ✓" : "Mark as studied"}
-              </button>
-              <p>
-                This is your study mark. It does not grade your answers or tick
-                calculator exercises.
-              </p>
-            </div>
             <nav className="lesson-nav" aria-label="Lesson navigation">
               {index > 0 ? (
                 <a href={lessonHref(learningPath[index - 1]!.id)}>
@@ -453,14 +446,29 @@ export function App() {
               ) : (
                 <span />
               )}
-              {index < learningPath.length - 1 ? (
-                <a href={lessonHref(learningPath[index + 1]!.id)}>
-                  {learningPath[index + 1]!.title} →
-                </a>
-              ) : (
-                <a href="#/practice">Continue with practice →</a>
-              )}
+              <div className="lesson-nav-forward">
+                <label className="lesson-done">
+                  <input
+                    type="checkbox"
+                    checked={studied}
+                    onChange={toggleStudy}
+                    aria-describedby="lesson-done-note"
+                  />
+                  <span>Mark lesson as done</span>
+                </label>
+                {index < learningPath.length - 1 ? (
+                  <a href={lessonHref(learningPath[index + 1]!.id)}>
+                    {learningPath[index + 1]!.title} →
+                  </a>
+                ) : (
+                  <a href="#/practice">Continue with practice →</a>
+                )}
+              </div>
             </nav>
+            <p id="lesson-done-note" className="lesson-done-note">
+              Your lesson tick is saved in this browser. Exercise answers and
+              calculator ticks are separate.
+            </p>
           </>
         ) : (
           <section>

@@ -399,7 +399,7 @@ lessons.push(
         kind: "reflection",
         title: "Explain it, then choose what to practise next",
         prose:
-          "Choose one answer you initially got wrong. Was the cause the width, the signed reading, an operation, or a flag convention? Change one input and predict what should happen before checking again.\n\nMark this lesson as studied when you have completed the practice round and can explain the three register-field capstones. The mark records your own judgement; it does not require every calculator question to be ticked.\n\nContinue with more questions in the same groups, or explore rotates, Unicode and the remaining capstones using their primers. For fresh questions with automatic checking, try the [two’s complement drills](calculator/docs/readings-drills.html) or [flag drills](calculator/docs/flag-drills.html).",
+          "Choose one answer you initially got wrong. Was the cause the width, the signed reading, an operation, or a flag convention? Change one input and predict what should happen before checking again.\n\nMark this lesson as done when you have completed the practice round and can explain the three register-field capstones. The mark records your own judgement; it does not require every calculator question to be ticked.\n\nContinue with more questions in the same groups, or explore rotates, Unicode and the remaining capstones using their primers. For fresh questions with automatic checking, try the [two’s complement drills](calculator/docs/readings-drills.html) or [flag drills](calculator/docs/flag-drills.html).",
       },
     ],
     challenges: [],

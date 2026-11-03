@@ -74,12 +74,12 @@ test("final lesson hands learners to the bank and keeps its study mark separate"
   ).toBeVisible();
   await expect(page.locator(".challenge")).toHaveCount(0);
   await page
-    .getByRole("button", { name: "Mark as studied", exact: true })
+    .getByRole("checkbox", { name: "Mark lesson as done", exact: true })
     .click();
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "Marked studied ✓", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+    page.getByRole("checkbox", { name: "Mark lesson as done", exact: true }),
+  ).toBeChecked();
   await page
     .getByRole("link", { name: "Open the calculator", exact: true })
     .click();
@@ -94,9 +94,7 @@ test("final lesson hands learners to the bank and keeps its study mark separate"
     .click();
   await expect(page.locator("#excontent")).toBeVisible();
   await page.goto("./");
-  await expect(
-    page.getByText("1 / 11 marked studied", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText("1 / 11 done", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Practice", exact: true }).click();
   await expect(page.locator(".chapter-list li")).toHaveCount(10);
   await page.getByRole("link", { name: /Calculator exercise bank/ }).click();
