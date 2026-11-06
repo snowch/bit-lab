@@ -9,8 +9,9 @@ import {
   type AluOperation,
   type AluResult,
 } from "@bl/bit-model";
-import { CarryDiagram } from "./WordParts";
 import { AluCircuit } from "./AluCircuit";
+import { AdderDetail } from "./AdderDetail";
+import { ADDER_ARCHITECTURE_STRINGS as S } from "./strings.adder-architecture";
 
 const descriptions: Record<AluOperation, string> = {
   ADD: "A + B",
@@ -199,8 +200,8 @@ function AluDiagram({
 }
 
 export function AluLab() {
-  const [a, setA] = useState(7);
-  const [b, setB] = useState(1);
+  const [a, setA] = useState(3);
+  const [b, setB] = useState(3);
   const [operation, setOperation] = useState<AluOperation>("ADD");
   const [revealed, setRevealed] = useState(false);
   const trace = aluTrace(a, b, 4, operation);
@@ -268,7 +269,7 @@ export function AluLab() {
         </button>
         <button
           className="button secondary"
-          onClick={() => preset(7, 1, "ADD")}
+          onClick={() => preset(3, 3, "ADD")}
         >
           Reset experiment
         </button>
@@ -400,20 +401,15 @@ export function AluLab() {
             <AluDiagram a={a} b={b} operation={operation} output={output} />
           </details>
           {output.path === "arithmetic" && (
-            <details className="alu-detail">
-              <summary>Inside the shared adder</summary>
-              <p>
-                {operation === "SUB"
-                  ? "SUB inverts B and supplies an initial carry of 1."
-                  : "ADD supplies B unchanged and an initial carry of 0."}
-              </p>
-              <CarryDiagram
+            <section className="alu-adder-detail">
+              <h3>{S.bitLab.wordAdderLabel}</h3>
+              <AdderDetail
                 a={a}
                 b={b}
-                width={4}
                 subtract={operation === "SUB"}
+                architecture
               />
-            </details>
+            </section>
           )}
           {output.path === "logic" && (
             <details className="alu-detail">

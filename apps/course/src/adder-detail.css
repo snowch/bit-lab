@@ -1,0 +1,252 @@
+/* Copyright © 2026 Christopher Snow */
+
+.adder-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  min-width: 0;
+}
+.adder-detail p,
+.adder-detail h3,
+.adder-detail h4 {
+  margin: 0;
+}
+.adder-preparation,
+.adder-scope {
+  font-size: 15px;
+}
+.adder-chain {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr) 18px minmax(0, 1fr) 18px minmax(0, 1fr)
+    18px minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+}
+.adder-column {
+  min-width: 0;
+  min-height: 94px;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 8px 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--bg-raised);
+  color: var(--fg);
+}
+.adder-column span {
+  font-size: 12px;
+}
+.adder-column code {
+  font-size: 12px;
+  white-space: nowrap;
+  padding: 0;
+  background: none;
+}
+.adder-column strong {
+  font: 600 24px/1.2 var(--font-mono);
+}
+.adder-column[aria-pressed="true"] {
+  border: 2px solid var(--accent);
+  background: var(--accent-soft);
+}
+.adder-chain-link {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  font: 12px var(--font-mono);
+  color: var(--fg-muted);
+}
+.adder-chain-link svg {
+  display: block;
+  width: 18px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.adder-column-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.adder-column-working,
+.adder-gate-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  min-width: 0;
+  gap: 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-raised);
+}
+.adder-gate-panel h4 {
+  font-size: 18px;
+}
+.adder-gate-panel .muted {
+  font-size: 15px;
+}
+.adder-input-triple,
+.adder-output-pair {
+  display: grid;
+  gap: 8px;
+  text-align: center;
+}
+.adder-input-triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.adder-output-pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.adder-input-triple > div,
+.adder-output-pair > div {
+  display: grid;
+  gap: 8px;
+  padding: 10px 3px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.adder-input-triple span,
+.adder-output-pair span {
+  font-size: 12px;
+}
+.adder-input-triple strong,
+.adder-output-pair strong {
+  font: 600 32px/1.2 var(--font-mono);
+}
+.adder-output-pair > div {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.adder-equation {
+  font: 20px/1.4 var(--font-mono);
+  text-align: center;
+  white-space: nowrap;
+}
+.adder-equation b {
+  font-size: 27px;
+  border-bottom: 2px solid var(--accent);
+}
+.adder-equation sub {
+  font-size: 12px;
+}
+.adder-gate-proof {
+  display: grid;
+  gap: 8px;
+}
+.adder-gate-proof > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding-block: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+.adder-gate-proof code {
+  white-space: nowrap;
+  font-size: 13px;
+}
+.adder-gate-circuit {
+  width: 100%;
+  max-width: 400px;
+  justify-self: center;
+  display: block;
+  overflow: visible;
+  font: 19px var(--font-mono);
+  color: var(--fg);
+}
+.adder-gate-circuit text {
+  fill: var(--fg);
+}
+.adder-gate-circuit .adder-signal-label {
+  font-family: var(--font-text);
+  font-size: 17px;
+}
+.adder-gate-circuit rect {
+  fill: var(--bg-raised);
+  stroke: var(--border-strong);
+  stroke-width: 1.3;
+}
+.adder-gate-circuit .adder-gate-name {
+  font-size: 17px;
+}
+.adder-gate-circuit .adder-wire {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 2;
+}
+.adder-gate-circuit .adder-wire[data-signal="1"] {
+  stroke: var(--accent);
+}
+.adder-gate-circuit .adder-junction,
+.adder-gate-circuit marker path {
+  fill: var(--border-strong);
+  stroke: none;
+}
+.adder-gate-circuit .adder-junction[data-signal="1"],
+.adder-gate-circuit marker path[data-signal="1"] {
+  fill: var(--accent);
+}
+.adder-gate-circuit .adder-output rect {
+  stroke: var(--accent);
+  fill: var(--accent-soft);
+}
+.adder-word-context {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr) 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 0;
+}
+.adder-word-context > div {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 12px 4px;
+  min-width: 0;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  background: var(--accent-soft);
+  text-align: center;
+}
+.adder-word-context span {
+  font-size: 12px;
+}
+.adder-word-context code {
+  font-size: 16px;
+  background: none;
+  white-space: nowrap;
+  padding: 0;
+}
+.adder-word-context svg {
+  width: 24px;
+  height: 16px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+.alu-adder-detail {
+  margin-block: 24px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+@media (min-width: 760px) {
+  .adder-column-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .adder-column {
+    padding: 10px;
+  }
+  .adder-column span,
+  .adder-column code {
+    font-size: 14px;
+  }
+  .adder-gate-proof code {
+    font-size: 14px;
+  }
+}

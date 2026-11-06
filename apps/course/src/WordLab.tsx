@@ -15,11 +15,12 @@ import {
 } from "@bl/bit-model";
 
 import { Bits, CarryDiagram } from "./WordParts";
+import { AdderDetail } from "./AdderDetail";
 
 const initial: Record<Exclude<Topic, "alu">, [number, number, number]> = {
   patterns: [0, 0, 4],
   readings: [7, 0, 4],
-  adder: [7, 1, 4],
+  adder: [3, 3, 4],
   flags: [3, 5, 4],
   masks: [166, 15, 8],
   shifts: [229, 1, 8],
@@ -147,7 +148,10 @@ export function WordLab({ interactive }: InteractiveProps) {
         </p>
       )}
       {revealed && (
-        <div className="lab-result" aria-live="polite">
+        <div
+          className="lab-result"
+          aria-live={topic === "adder" ? undefined : "polite"}
+        >
           {(topic === "patterns" || topic === "readings") && (
             <>
               <div className="weights">
@@ -183,13 +187,18 @@ export function WordLab({ interactive }: InteractiveProps) {
           )}
           {(topic === "adder" || topic === "flags") && (
             <>
-              <CarryDiagram a={a} b={b} width={width} subtract={subtract} />
+              {topic === "flags" && (
+                <CarryDiagram a={a} b={b} width={width} subtract={subtract} />
+              )}
               <Bits label="Result" value={sum.result} width={width} />
               {readings(sum.result, width)}
               {topic === "adder" && (
-                <p>
-                  Carry beyond the word: <strong>{sum.C}</strong>
-                </p>
+                <>
+                  <p>
+                    Carry beyond the word: <strong>{sum.C}</strong>
+                  </p>
+                  <AdderDetail a={a} b={b} width={width} />
+                </>
               )}
             </>
           )}
