@@ -58,10 +58,6 @@ export const ADDER_ARCHITECTURE_STRINGS = {
       "Change an input or the operation. Outputs follow immediately, with no clock.",
     scope:
       "The connections show logical dependencies. This model omits electrical timing and physical processor layout.",
-    lessonLinkLabel:
-      "Assembly Lab, Module 1, lesson 3: Arithmetic with four bits",
-    lessonLinkHref:
-      "https://snowch.github.io/assembly-lab/#/lesson/four-bit-arithmetic",
   },
   adder: {
     title: "Inside bit {bit}",
