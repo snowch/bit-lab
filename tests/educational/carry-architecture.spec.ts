@@ -157,6 +157,11 @@ test("the ALU reuses its full adder for ADD and SUB while keeping its other path
     .getByRole("button", { name: "Reveal result", exact: true })
     .click();
   const detail = page.locator(".adder-detail");
+  const trace = page.getByText("Trace the gates and result selector", {
+    exact: true,
+  });
+  await expect(detail).toBeHidden();
+  await trace.click();
   await expect(detail).toHaveAttribute("data-adder-operation", "ADD");
   await expect(detail.locator("[data-adder-input]")).toHaveText([
     "1",
@@ -177,6 +182,7 @@ test("the ALU reuses its full adder for ADD and SUB while keeping its other path
   await page
     .getByRole("button", { name: "Reveal result", exact: true })
     .click();
+  await trace.click();
   await expect(detail).toHaveAttribute("data-adder-operation", "SUB");
   await expect(detail.locator("[data-adder-input]")).toHaveText([
     "1",

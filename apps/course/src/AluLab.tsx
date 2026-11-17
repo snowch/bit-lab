@@ -1,5 +1,5 @@
 // Copyright © 2026 Christopher Snow
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import {
   ALU_OPERATIONS,
   aluTrace,
@@ -204,6 +204,7 @@ export function AluLab() {
   const [b, setB] = useState(3);
   const [operation, setOperation] = useState<AluOperation>("ADD");
   const [revealed, setRevealed] = useState(false);
+  const revealButton = useRef<HTMLButtonElement>(null);
   const trace = aluTrace(a, b, 4, operation);
   const { output } = trace;
   const usesB = operation !== "NOT" && output.path !== "shift";
@@ -212,28 +213,27 @@ export function AluLab() {
     setB(nextB);
     setOperation(nextOperation);
     setRevealed(false);
+    revealButton.current?.focus();
   }
+  const column = trace.columns[1];
   const notes = {
-    N: `Copies result bit 3: ${output.N}. Read as two’s complement, a leading 1 means negative.`,
-    Z: `NOR combines all result bits: OR gives ${trace.resultOr}, then NOT gives ${output.Z}. Z is 1 only for an all-zero result.`,
+    N: "Copies the leading result bit.",
+    Z: "1 when all result bits are zero.",
     C:
       output.path === "arithmetic"
         ? operation === "SUB"
-          ? "Final adder carry: 1 means no unsigned borrow."
-          : "Final adder carry: 1 means the unsigned sum exceeds the word."
+          ? "1 when unsigned subtraction needs no borrow."
+          : "1 when the unsigned sum exceeds 15."
         : output.path === "shift"
           ? "The bit shifted out of A."
-          : "Not produced by this logic operation.",
+          : "Not produced by this operation.",
     V:
       output.path === "arithmetic"
-        ? `Carry into bit 3 (${trace.carryIntoSign}) XOR carry out (${trace.carryOutOfSign}) = ${output.V}. V is 1 when the exact signed answer does not fit.`
+        ? "1 when the exact signed answer is outside −8 to +7."
         : "Not produced by this operation.",
   };
   return (
     <div className="word-lab alu-lab">
-      <p className="muted">
-        Four-bit inputs · Position 0 is on the right. Press a bit to change it.
-      </p>
       <label className="alu-operation">
         Operation{" "}
         <select
@@ -250,19 +250,28 @@ export function AluLab() {
           ))}
         </select>
       </label>
-      <p>
-        {usesB
-          ? "This operation uses A and B."
-          : "This operation uses A only. B stays visible for your next experiment, but does not affect this result."}
+      <p className="muted">
+        Press a bit in A or B to change that input.
+        {!usesB && " This operation uses A only."}
       </p>
-      <p className="alu-rules">
-        N and Z describe every result. ADD and SUB also produce C and V.
-        One-place shifts produce the outgoing bit as C. A dash means a flag is
-        not produced here; no previous flags are stored.
-      </p>
+      <AluCircuit
+        a={a}
+        b={b}
+        operation={operation}
+        revealed={revealed}
+        onA={(value) => {
+          setA(value);
+          setRevealed(false);
+        }}
+        onB={(value) => {
+          setB(value);
+          setRevealed(false);
+        }}
+      />
       <div className="controls">
         <button
           className="button primary"
+          ref={revealButton}
           onClick={() => setRevealed(!revealed)}
         >
           {revealed ? "Hide result" : "Reveal result"}
@@ -274,6 +283,128 @@ export function AluLab() {
           Reset experiment
         </button>
       </div>
+      <p className="visually-hidden" role="status" aria-atomic="true">
+        {revealed
+          ? `Result ${binary(output.result, 4)}. N ${output.N}, Z ${output.Z}, C ${output.C ?? "not produced"}, V ${output.V ?? "not produced"}.`
+          : "Result hidden."}
+      </p>
+      {revealed && (
+        <div className="lab-result">
+          <h3>Result and flags</h3>
+          <div className="alu-readings-scroll">
+            <table className="alu-readings">
+              <caption>
+                Four-bit words: unsigned 0 to 15; signed −8 to +7.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Word</th>
+                  <th scope="col">Binary</th>
+                  <th scope="col">Hex</th>
+                  <th scope="col">Unsigned</th>
+                  <th scope="col">Signed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(
+                  [
+                    ["A", a],
+                    ["B", b],
+                    ["Result (R)", output.result],
+                  ] as const
+                ).map(([label, value]) => (
+                  <tr
+                    key={label}
+                    data-alu-result={label === "Result (R)" ? value : undefined}
+                  >
+                    <th scope="row">{label}</th>
+                    <td>{binary(value, 4)}</td>
+                    <td>{hex(value, 4)}</td>
+                    <td>{value}</td>
+                    <td>{signed(value, 4)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flags">
+            {(["N", "Z", "C", "V"] as const).map((flag) => (
+              <div
+                key={flag}
+                data-flag={flag}
+                className={`flag ${output[flag] === null ? "not-produced" : output[flag] ? "set" : ""}`}
+              >
+                <strong>
+                  {flag} = {flagText(output[flag])}
+                </strong>
+                <span>{notes[flag]}</span>
+              </div>
+            ))}
+          </div>
+          {column && (
+            <p>
+              <strong>Bit 1.</strong> The adder uses {column.a} from A,{" "}
+              {column.b} from {operation === "SUB" ? "inverted B" : "B"}, and{" "}
+              {column.incoming} from the previous carry. It keeps{" "}
+              <strong>{column.sum}</strong> in bit 1 and passes{" "}
+              <strong>{column.carry}</strong> to bit 2.
+            </p>
+          )}
+          {output.path === "shift" && (
+            <p>
+              {operation === "LSL"
+                ? "The old bit 3 leaves the word. Bit 0 fills with zero."
+                : operation === "ASR"
+                  ? "The old bit 0 leaves the word. Bit 3 fills with a copy of the old sign bit."
+                  : "The old bit 0 leaves the word. Bit 3 fills with zero."}{" "}
+              The outgoing bit supplies C.
+            </p>
+          )}
+          <details className="alu-detail">
+            <summary>Trace the gates and result selector</summary>
+            <p className="circuit-key muted">
+              In the circuit above, amber marks a 1 and red marks a carry of 1.
+              Grey marks a 0. Dots join wires. Crossings without dots leave
+              wires separate.
+            </p>
+            {column && (
+              <section className="alu-adder-detail">
+                <h4>{S.bitLab.wordAdderLabel}</h4>
+                <AdderDetail
+                  a={a}
+                  b={b}
+                  subtract={operation === "SUB"}
+                  architecture
+                />
+                <p>
+                  V is the XOR of the carry into bit 3 ({trace.carryIntoSign})
+                  and the carry out ({trace.carryOutOfSign}). Z uses NOR: it
+                  inverts the OR of the result bits.
+                </p>
+              </section>
+            )}
+            {output.path === "logic" && (
+              <div className="column-cards">
+                {[3, 2, 1, 0].map((bit) => (
+                  <p key={bit}>
+                    Bit {bit}:{" "}
+                    {operation === "NOT"
+                      ? `NOT ${(a >> bit) & 1}`
+                      : `${(a >> bit) & 1} ${operation} ${(b >> bit) & 1}`}{" "}
+                    = {(output.result >> bit) & 1}
+                  </p>
+                ))}
+              </div>
+            )}
+            <h4>Which circuit supplies the result?</h4>
+            <p>
+              The highlighted path is the one the selector connects to R. Scroll
+              sideways on a narrow screen.
+            </p>
+            <AluDiagram a={a} b={b} operation={operation} output={output} />
+          </details>
+        </div>
+      )}
       <details className="alu-presets">
         <summary>Load a case to investigate</summary>
         <div className="controls">
@@ -309,136 +440,6 @@ export function AluLab() {
           </button>
         </div>
       </details>
-      {!revealed && (
-        <p role="status" className="muted">
-          Predict the selected result and its flags, then reveal them.
-        </p>
-      )}
-      <AluCircuit
-        a={a}
-        b={b}
-        operation={operation}
-        revealed={revealed}
-        onA={(value) => {
-          setA(value);
-          setRevealed(false);
-        }}
-        onB={(value) => {
-          setB(value);
-          setRevealed(false);
-        }}
-      />
-      <p className="circuit-key muted">
-        Amber wires carry 1; red shows a carry of 1. Grey wires carry 0. Dots
-        join wires; crossings without dots do not. FA means full adder. Before
-        revealing, dashed wires and ? marks hide computed signals.
-      </p>
-      {revealed && (
-        <div className="lab-result" aria-live="polite">
-          <h3>Read the same bits two ways</h3>
-          <div className="alu-readings-scroll">
-            <table className="alu-readings">
-              <caption>
-                Four-bit words: unsigned 0 to 15; signed −8 to +7.
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Word</th>
-                  <th scope="col">Binary</th>
-                  <th scope="col">Hex</th>
-                  <th scope="col">Unsigned</th>
-                  <th scope="col">Signed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(
-                  [
-                    ["A", a],
-                    ["B", b],
-                    ["R", output.result],
-                  ] as const
-                ).map(([label, value]) => (
-                  <tr
-                    key={label}
-                    data-alu-result={label === "R" ? value : undefined}
-                  >
-                    <th scope="row">{label}</th>
-                    <td>{binary(value, 4)}</td>
-                    <td>{hex(value, 4)}</td>
-                    <td>{value}</td>
-                    <td>{signed(value, 4)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p>
-            The circuit operates on bits. Signed and unsigned are two readings
-            of the same word; C and V tell you about different limits.
-          </p>
-          <div className="flags">
-            {(["N", "Z", "C", "V"] as const).map((flag) => (
-              <div
-                key={flag}
-                data-flag={flag}
-                className={`flag ${output[flag] === null ? "not-produced" : output[flag] ? "set" : ""}`}
-              >
-                <strong>
-                  {flag} = {flagText(output[flag])}
-                </strong>
-                <span>{notes[flag]}</span>
-              </div>
-            ))}
-          </div>
-          <details className="alu-detail">
-            <summary>Operation selection overview</summary>
-            <p>
-              The connected circuit above shows the selected operation. This
-              overview places it alongside the other paths in a simple ALU. The
-              highlighted path supplies R; the selector chooses one output.
-              Scroll this overview sideways on a narrow screen.
-            </p>
-            <AluDiagram a={a} b={b} operation={operation} output={output} />
-          </details>
-          {output.path === "arithmetic" && (
-            <section className="alu-adder-detail">
-              <h3>{S.bitLab.wordAdderLabel}</h3>
-              <AdderDetail
-                a={a}
-                b={b}
-                subtract={operation === "SUB"}
-                architecture
-              />
-            </section>
-          )}
-          {output.path === "logic" && (
-            <details className="alu-detail">
-              <summary>Inside the logic path</summary>
-              <div className="column-cards">
-                {[3, 2, 1, 0].map((bit) => (
-                  <p key={bit}>
-                    Bit {bit}:{" "}
-                    {operation === "NOT"
-                      ? `NOT ${(a >> bit) & 1}`
-                      : `${(a >> bit) & 1} ${operation} ${(b >> bit) & 1}`}{" "}
-                    = {(output.result >> bit) & 1}
-                  </p>
-                ))}
-              </div>
-            </details>
-          )}
-          {output.path === "shift" && (
-            <p>
-              {operation === "LSL"
-                ? "The old bit 3 leaves the word; bit 0 fills with zero."
-                : operation === "ASR"
-                  ? "The old bit 0 leaves the word; bit 3 fills with a copy of the old sign bit."
-                  : "The old bit 0 leaves the word; bit 3 fills with zero."}{" "}
-              The outgoing bit supplies C.
-            </p>
-          )}
-        </div>
-      )}
     </div>
   );
 }

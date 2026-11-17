@@ -429,7 +429,7 @@ try {
 
   <section class="panel" aria-label="Value">
     <div class="pending" id="pending"></div>
-    <div class="rows" id="rows"></div>
+    <div class="rows" id="rows" tabindex="-1"></div>
     <div class="meta">
       <div class="flags" id="flags" aria-label="Status flags from the last operation">
         <span class="flagk">flags</span>
@@ -1058,7 +1058,6 @@ try {
     applyTheme();
   });
   // Enter normally means "=" in the calculator; on this button let it activate the button instead.
-  themeBtn.addEventListener("keydown", (e) => { if (e.key === "Enter") e.stopPropagation(); });
   applyTheme();
 
   // ---------- compact pads: swipe or tap between keypad and ops ----------
@@ -1088,7 +1087,6 @@ try {
   helpBtn.addEventListener("click", () => {
     if (typeof helpDlg.showModal === "function") helpDlg.showModal(); else helpDlg.setAttribute("open", "");
   });
-  helpBtn.addEventListener("keydown", (e) => { if (e.key === "Enter") e.stopPropagation(); });
   document.getElementById("helpClose").addEventListener("click", () => helpDlg.close());
   helpDlg.addEventListener("click", (e) => { if (e.target === helpDlg) helpDlg.close(); });   // backdrop
 
@@ -1098,6 +1096,9 @@ try {
     if (e.target && e.target.tagName === "INPUT") return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key;
+    // Let Enter activate navigation and exercise controls while they have focus.
+    if (k === "Enter" && e.target instanceof Element &&
+        e.target.closest("nav a[href], .hdrbtns button, .exercises button, .exercises summary, .exercises a[href]")) return;
     let handled = true;
     if (/^[0-9]$/.test(k)) digit(Number(k));
     else if (/^[a-fA-F]$/.test(k)) digit(parseInt(k, 16));
@@ -1203,7 +1204,7 @@ try {
     ["NOR as a universal gate — make NOT from NOR: 55 NOR 55.", "AA. a NOR a = NOT a.", L("55",8)],
     ["Make OR from NOR only, with a = 0C, b = 0A: (a NOR b) NOR (a NOR b).", "0C NOR 0A = F1; F1 NOR F1 = 0E = 0C OR 0A ✓", L("0C",8)],
     ["Make AND from NOR only: (a NOR a) NOR (b NOR b), a = 0C, b = 0A.", "0C NOR 0C = F3; 0A NOR 0A = F5; F3 NOR F5 = 08 = 0C AND 0A ✓ — every logic function can be built from NOR alone.", L("0C",8)],
-    ["A status register reads 96 (1001 0110). Bit 7 = IRQ pending, bit 4 = zero flag, bit 2 = carry, bit 1 = ready. Which are set?", "IRQ (bit 7), zero (bit 4), carry (bit 2), ready (bit 1). Test each with AND 80, AND 10, AND 04, AND 02.", L("96",8)],
+    ["A status register reads 96 (1001 0110). Bit 7 = IRQ pending, bit 4 = zero flag, bit 2 = carry, bit 1 = ready. Which are set?", "IRQ pending (bit 7), carry (bit 2) and ready (bit 1) are set. The zero flag (bit 4) is clear. Reload 96 before each test: AND 80, AND 10, AND 04 and AND 02 give 80, 00, 04 and 02 respectively.", L("96",8)],
     ["Is 1234 aligned to 16 bytes? Is 1230?", "1234 AND 0F = 4 → no. 1230 AND 0F = 0 → yes. Alignment is just the low bits being zero.", L("1234",16)],
     ["Round 1234 down to a multiple of 16, then up.", "Down: 1234 AND FFF0 = 1230. Up: (1234 + F) AND FFF0 = 1240.", L("1234",16)],
     ["Power-of-two test: x AND (x − 1). Try 40, then 48.", "40 AND 3F = 0 → power of two. 48 AND 47 = 40 ≠ 0 → not.", L("40",8)],
@@ -1366,8 +1367,6 @@ try {
   };
   window.addEventListener("hashchange", openExerciseLink);
   openExerciseLink();
-  // Enter normally means "=" in the calculator; on these buttons let it activate the button instead.
-  toggle.addEventListener("keydown", (e) => { if (e.key === "Enter") e.stopPropagation(); });
 
   // "How the exercises work" opens the help page at its Exercises section.
   const exHelp = document.getElementById("exHelp");
@@ -1377,7 +1376,6 @@ try {
     const h = document.getElementById("helpExercises");
     if (h) h.scrollIntoView({ block: "start" });
   });
-  exHelp.addEventListener("keydown", (e) => { if (e.key === "Enter") e.stopPropagation(); });
 
   // A ticked exercise no longer takes up space: it is hidden until "show done" is pressed, and so
   // is a group once every exercise in it is ticked. Each group's summary keeps a running count.
@@ -1406,14 +1404,15 @@ try {
     try { localStorage.setItem(SHOW_DONE_KEY, showDone ? "1" : "0"); } catch (_) {}
     refreshDone();
   });
-  doneBtn.addEventListener("keydown", (e) => { if (e.key === "Enter") e.stopPropagation(); });
   refreshDone();
 
   root.addEventListener("click", (e) => {
     const b = e.target.closest(".exload");
     if (!b || !window.pcLoad) return;
     window.pcLoad(b.dataset.hex, Number(b.dataset.w), b.dataset.s === "1");
-    document.getElementById("rows").scrollIntoView({ behavior: "smooth", block: "start" });
+    const rows = document.getElementById("rows");
+    rows.focus({ preventScroll: true });
+    rows.scrollIntoView({ behavior: "smooth", block: "start" });
   });
   root.addEventListener("change", (e) => {
     const c = e.target;

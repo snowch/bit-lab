@@ -89,20 +89,21 @@ for (const [id, value] of answers)
       .getByRole("button", { name: "Check answer", exact: true })
       .click();
     await expect(
-      page.getByText("Check your input", { exact: true }),
+      page.getByText("Answer could not be checked.", { exact: true }),
     ).toBeVisible();
-    await page.getByLabel("Your answer", { exact: true }).fill("999999");
-    await page
-      .getByRole("button", { name: "Check answer", exact: true })
-      .click();
+    const input = page.getByLabel("Your answer", { exact: true });
+    await input.fill("999999");
+    await input.press("Enter");
+    await expect(page.getByText("That answer is incorrect.")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Try this next" }),
+    ).toBeVisible();
     await expect(page.locator(".challenge")).toHaveAttribute(
       "data-complete",
       "false",
     );
-    await page.getByLabel("Your answer", { exact: true }).fill(value);
-    await page
-      .getByRole("button", { name: "Check answer", exact: true })
-      .click();
+    await input.fill(value);
+    await input.press("Enter");
     await expect(page.locator(".challenge")).toHaveAttribute(
       "data-complete",
       "true",

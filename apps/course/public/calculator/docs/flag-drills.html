@@ -384,7 +384,7 @@ pre.work.prompt{min-height:2.6em}
 
   <section class="tut first drill" id="d1">
     <h2>1. Predict the flags</h2>
-    <p>A <code>CMP</code> subtracts B from A at 8 bits and keeps only the flags. Work out N, Z, C and V on paper before you press check. ARM's rule: C is 1 when <em>no</em> borrow was needed.</p>
+    <p>Arm’s <code>CMP</code> updates the flags from A − B. This drill uses an eight-bit model. Predict N, Z, C and V, choose 0 or 1 beside each flag, then select <strong>Check</strong>. C is 1 when the unsigned subtraction needs no borrow.</p>
     <pre class="work prompt"></pre>
     <div class="row answers"><span class="ans"><span>N</span><button class="small" type="button" data-q="n" data-v="0" aria-pressed="false">0</button><button class="small" type="button" data-q="n" data-v="1" aria-pressed="false">1</button></span><span class="ans"><span>Z</span><button class="small" type="button" data-q="z" data-v="0" aria-pressed="false">0</button><button class="small" type="button" data-q="z" data-v="1" aria-pressed="false">1</button></span><span class="ans"><span>C</span><button class="small" type="button" data-q="c" data-v="0" aria-pressed="false">0</button><button class="small" type="button" data-q="c" data-v="1" aria-pressed="false">1</button></span><span class="ans"><span>V</span><button class="small" type="button" data-q="v" data-v="0" aria-pressed="false">0</button><button class="small" type="button" data-q="v" data-v="1" aria-pressed="false">1</button></span></div>
     <div class="row"><button class="op check" type="button">Check</button><button class="small next" type="button">Next pair</button></div>
@@ -402,7 +402,7 @@ pre.work.prompt{min-height:2.6em}
 
   <section class="tut drill" id="d3">
     <h2>3. Recover the type</h2>
-    <p>Here is a compiled <code>if</code>. Say whether the variables were declared unsigned or signed, and which comparison the C source used. There are two clues to the type, the load and the branch, and one trap: a compiler often branches <em>over</em> the body when the test fails, so read where the branch goes before you read its condition.</p>
+    <p>The drill generates an Arm-style assembly example for a C <code>if</code>. Use the load instruction to choose the type for this example. Follow the branch target to see whether the branch enters or skips the body. Then choose the C comparison that would enter the body and select <strong>Check</strong>.</p>
     <pre class="work prompt"></pre>
     <div class="row answers"><span class="ans"><span>Declared as</span><button class="small" type="button" data-q="type" data-v="0" aria-pressed="false">uint8_t</button><button class="small" type="button" data-q="type" data-v="1" aria-pressed="false">int8_t</button></span></div>
     <div class="row answers"><span class="ans"><span>if (a</span><button class="small" type="button" data-q="op" data-v="<" aria-pressed="false">&lt;</button><button class="small" type="button" data-q="op" data-v=">=" aria-pressed="false">&gt;=</button><button class="small" type="button" data-q="op" data-v=">" aria-pressed="false">&gt;</button><button class="small" type="button" data-q="op" data-v="<=" aria-pressed="false">&lt;=</button><button class="small" type="button" data-q="op" data-v="==" aria-pressed="false">==</button><button class="small" type="button" data-q="op" data-v="!=" aria-pressed="false">!=</button><span>b)</span></span></div>
@@ -425,7 +425,7 @@ pre.work.prompt{min-height:2.6em}
       <li>Answer on paper first, every time. The point is to make the prediction, not to recognise the answer once it is shown.</li>
       <li>Do a few of one drill until it feels mechanical, then move on. Ten of drill 1 is usually enough for the borrow rule to stop needing thought.</li>
       <li>When a reveal surprises you, load the same pair into the <a href="bit-lab.html#lab">Bit Lab</a> and watch the carries move; the worked bits here are the lab's SUB, drawn the same way.</li>
-      <li>Drill 3 is the one that transfers to real debugging. To see real compiler output for your own snippets, paste a C function into <a href="https://godbolt.org/">Compiler Explorer</a> with an ARM GCC and <code>-O1</code>.</li>
+      <li>To compare an illustrative snippet with compiler output, open <a href="https://godbolt.org/">Compiler Explorer</a>, paste a C function, select an Arm GCC compiler and set its options to <code>-O1</code>. Look at the load and branch instructions.</li>
       <li>Scores are kept only in this browser. Reset them whenever you like.</li>
     </ul>
   </section>
@@ -595,11 +595,11 @@ const clearQ=(host)=>host.querySelectorAll('button[data-q]').forEach(o=>o.setAtt
     const okT=(t==='1')===S, okO=o===op, ok=okT&&okO;
     if(!done){ bump('type',ok); done=true; }
     const ty=S?'int8_t':'uint8_t';
-    fb.innerHTML=`<p>${mark(ok)} The source was <code>${ty} a, b; if (a ${esc(op)} b) { ... }</code>.</p><ul>`+
+    fb.innerHTML=`<p>${mark(ok)} The example represents <code>${ty} a, b; if (a ${esc(op)} b) { ... }</code>.</p><ul>`+
       `<li><strong>Type</strong> ${okT?'✓':'✗'}: the load is <code>${S?'LDRSB':'LDRB'}</code>, which ${S?'sign-extends, so the variables were signed':'zero-extends, so the variables were unsigned'}. ${(op==='=='||op==='!=')?'The branch is the same under both readings, so the load is the only clue here.':`The branch <code>${br}</code> agrees: it belongs to the ${S?'signed':'unsigned'} family.`}</li>`+
       `<li><strong>Operator</strong> ${okO?'✓':'✗'}: `+(form==='then'
         ?`the branch jumps <em>to</em> the body, so its condition is the C condition itself: <code>${br}</code> means ${esc(op)}.`
-        :`the branch jumps <em>over</em> the body when the test fails, so its condition is the opposite of the C condition: <code>${br}</code> means ${esc(NEG[op])}, and the source said ${esc(op)}. Compilers usually emit this form because it needs one branch instead of two.`)+`</li></ul>`;
+        :`the branch jumps <em>over</em> the body when the test fails. <code>${br}</code> tests ${esc(NEG[op])}, so the comparison that enters the body is ${esc(op)}.`)+`</li></ul>`;
   });
   host.querySelector('.next').addEventListener('click',next); next();
 })();

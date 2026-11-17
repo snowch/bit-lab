@@ -72,7 +72,7 @@ test("ALU selection changes both the result path and flag provenance", async ({
     "1",
   );
   await expect(page.getByText(/This operation uses A only/)).toBeVisible();
-  await page.getByText("Load a case to investigate", { exact: true }).click();
+  await page.locator(".alu-presets summary").click();
   await page
     .getByRole("button", { name: "A bit shifted out", exact: true })
     .click();
@@ -118,7 +118,11 @@ test("ALU selection changes both the result path and flag provenance", async ({
     "6",
     "6",
   ]);
-  await page.getByText("Operation selection overview", { exact: true }).click();
+  await expect(page.getByText("Bit 1.", { exact: true })).toBeVisible();
+  await expect(page.locator(".adder-detail")).toBeHidden();
+  await page
+    .getByText("Trace the gates and result selector", { exact: true })
+    .press("Enter");
   await expect(page.locator(".alu-diagram")).toBeVisible();
   await expect(page.locator(".adder-detail")).toBeVisible();
   await expect(
