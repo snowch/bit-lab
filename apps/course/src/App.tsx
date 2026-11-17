@@ -101,7 +101,7 @@ function Cover({ completed }: { completed: string[] }) {
           <p className="instrument-label">Eight bits, three readouts</p>
           <p>
             A bit is a 0 or a 1. The page starts with eight bits, called a byte.
-            Toggle the leftmost bit. Which readout becomes negative?
+            Toggle the leftmost bit. Which readout changes sign?
           </p>
           <div className="hero-bits" role="group" aria-label="Explore one byte">
             {binary(value, 8)
