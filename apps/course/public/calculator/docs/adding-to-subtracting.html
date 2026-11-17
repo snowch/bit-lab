@@ -399,7 +399,7 @@ svg.nl .sh.u{fill:var(--carry)}
     <div>
       <p class="crumbs"><a href="notes.html" title="From gates to a compiled if: contents">Home</a> · part 2 of 9</p>
       <h1>From adding to subtracting</h1>
-      <p class="lede">How 3 − 5 comes out as 0xFE, why that is the right answer, and how an adder subtracts without a subtractor: invert B, add 1, and read the borrow off the carry.</p>
+      <p class="lede">Use a fixed-width adder to subtract. Compare the signed and unsigned readings of the result, then use the carry flag to tell whether unsigned subtraction needed a borrow.</p>
     </div>
     <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
   </div>
@@ -408,7 +408,7 @@ svg.nl .sh.u{fill:var(--carry)}
   </nav>
   <div class="row"><span>Width</span><button class="small" type="button" data-w="4" aria-pressed="true">4 bits</button><button class="small" type="button" data-w="8" aria-pressed="false">8 bits</button>
     <span>Load</span><button class="small" type="button" data-preset="4,5,3">5 − 3</button><button class="small" type="button" data-preset="4,3,5">3 − 5</button><button class="small" type="button" data-preset="4,0,1">0 − 1</button><button class="small" type="button" data-preset="4,7,7">7 − 7</button><button class="small" type="button" data-preset="4,8,1">8 − 1</button><button class="small" type="button" data-preset="4,5,10">5 − (−6)</button><button class="small" type="button" data-preset="4,7,15">7 − (−1)</button><button class="small" type="button" data-preset="8,3,5">3 − 5 at 8 bits</button><button class="small" type="button" data-preset="8,128,1">0x80 − 1</button></div>
-  <p class="tip">Every section on this page shows the same A − B. Change it here, or tap bits in section 3.</p>
+  <p class="tip">The page starts at 4 bits with A = 3 and B = 5. Find the result on the wheel. Then select <strong>3 − 5 at 8 bits</strong> and compare the signed reading and result bits in section 3. Which stays the same when the width changes?</p>
 
   <section class="tut first" id="wrap">
     <h2>1. A byte wraps around</h2>
@@ -419,8 +419,8 @@ svg.nl .sh.u{fill:var(--carry)}
     <details class="inc"><summary>In C</summary>
       <ul>
         <li>For <code>unsigned</code> types the wheel is the law: the standard defines arithmetic as modulo 2<sup>n</sup>, so <code>0u − 1</code> is <code>UINT_MAX</code> by definition. That is why a loop written <code>for (unsigned i = n − 1; i &gt;= 0; i−−)</code> never ends: <code>i</code> steps back past 0 to 4294967295 and the test stays true.</li>
-        <li>For <code>signed</code> types the standard refuses to say. Signed overflow is undefined behaviour, and compilers use that: given <code>x + 1 &gt; x</code> with <code>int x</code>, GCC and Clang may fold it to <code>true</code> because the only case where it is false is one they are allowed to ignore. The hardware still wraps; the compiler just does not promise to let you see it.</li>
-        <li>Converting an out-of-range value to a narrower signed type, as in <code>int8_t x = 200;</code>, is implementation-defined, and every mainstream compiler does what the wheel does: <code>x</code> becomes −56.</li>
+        <li>If the mathematical result of a signed arithmetic operation cannot be represented in the expression’s type, C11 leaves its behaviour undefined. For example, <code>INT_MAX + 1</code> is undefined.</li>
+        <li>Narrowing an out-of-range value to a signed type is a separate rule. For <code>int8_t x = 200;</code>, C11 allows an implementation-defined value or signal. Keeping the low bits as this model does would give −56.</li>
       </ul>
     </details>
   </section>
@@ -434,8 +434,8 @@ svg.nl .sh.u{fill:var(--carry)}
     <p class="tip">Negation is a signed idea: NOT B + 1 is −B under the signed reading. Under the unsigned reading the same pattern is simply 16 − B (or 256 − B), the number you add to subtract B. Tap a bit of B to try any value. This section uses only B; A comes back in section 3.</p>
     <details class="inc"><summary>In C: where −8 bites</summary>
       <ul>
-        <li>At full width this pattern is <code>INT_MIN</code>, −2<sup>31</sup> for a 32-bit <code>int</code>. <code>-x</code> when <code>x == INT_MIN</code> is undefined behaviour, and on real hardware the same pattern comes back, so the "made positive" value is still negative.</li>
-        <li><code>abs(INT_MIN)</code> is undefined for the same reason and in practice returns <code>INT_MIN</code>. Code that uses <code>abs(a − b)</code> as a distance can get a negative distance, which then indexes an array or passes a bounds check.</li>
+        <li>For a 32-bit two’s-complement <code>int</code>, this range limit is −2<sup>31</sup>. In C, negating <code>INT_MIN</code> has undefined behaviour when its positive value cannot fit in <code>int</code>.</li>
+        <li>The same range rule applies to <code>abs(INT_MIN)</code>. Check the range or compute in a wider type before taking the absolute value.</li>
         <li><code>INT_MIN / −1</code> has to produce +2<sup>31</sup>, which does not fit; on x86 the divide instruction raises an exception and the process dies. Dividing by a value read from input is where this surfaces.</li>
         <li>A parser that reads digits as a positive number and then negates cannot parse "−2147483648", because +2147483648 never fitted. Correct parsers accumulate negatively.</li>
         <li>The flag the hardware raises, V, is invisible from C. To see the case, use <code>__builtin_sub_overflow</code> and friends, or compile with <code>-fsanitize=signed-integer-overflow</code>.</li>
@@ -457,7 +457,7 @@ svg.nl .sh.u{fill:var(--carry)}
       <ul>
         <li>C has no way to read the carry flag. The idiom for "did this unsigned subtraction borrow" is to compare afterwards: <code>if (a − b &gt; a)</code> is true exactly when the subtraction wrapped, because an answer larger than what you started from can only come from going round the wheel.</li>
         <li>The same trick for addition is <code>if (a + b &lt; a)</code>. Both are only valid for unsigned operands, where the wrap is defined; for signed operands the comparison itself may be optimised away.</li>
-        <li>Modern compilers expose the flags indirectly: <code>__builtin_add_overflow(a, b, &amp;r)</code> returns whether the result fitted, and compiles to the add plus a test of C or V depending on the types.</li>
+        <li>GCC and Clang’s <code>__builtin_add_overflow(a, b, &amp;r)</code> returns true when the exact sum does not fit in <code>r</code>’s type. The emitted instructions depend on the target and operand types.</li>
       </ul>
     </details>
   </section>
@@ -473,9 +473,9 @@ svg.nl .sh.u{fill:var(--carry)}
     <p class="tip">On the number line, the grey band above the axis is the signed range and the amber band below it the unsigned range; the ticks mark their ends. The black dot is the true decimal answer; an arrow shows the shift of one wheel size when the answer has to be fitted. Both landings are the same bits.</p>
     <details class="inc"><summary>In C</summary>
       <ul>
-        <li>Step 2 is exactly what C promises for unsigned arithmetic: the result is reduced modulo 2<sup>n</sup>, every time, portably.</li>
-        <li>For signed arithmetic C promises nothing when step 2 would have to act. The hardware does the reduction anyway, so you will usually observe it, but the compiler may have assumed it cannot happen and rearranged your code first. <code>-fwrapv</code> tells GCC and Clang to make the wrap a promise.</li>
-        <li>Step 3, reading the pattern with the top bit worth minus its place value, is what every C compiler and debugger does when it prints a signed value. Printing the same variable with <code>%u</code> instead of <code>%d</code> is choosing the other reading of the same bits.</li>
+        <li>C unsigned arithmetic in its promoted result type and conversion to an unsigned destination use reduction modulo one more than that type’s maximum.</li>
+        <li>The fixed-width model always keeps the low bits. C11 signed arithmetic has undefined behaviour if the result does not fit the expression’s type. GCC and Clang’s <code>-fwrapv</code> enables wrapping for signed addition, subtraction and multiplication.</li>
+        <li>For both readings of this byte in C, use <code>printf("%d", x)</code> for an <code>int8_t x</code> and <code>printf("%u", (unsigned)(uint8_t)x)</code> for its unsigned byte value.</li>
       </ul>
     </details>
   </section>

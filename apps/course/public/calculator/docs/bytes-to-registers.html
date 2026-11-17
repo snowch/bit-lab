@@ -355,7 +355,7 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
     <div>
       <p class="crumbs"><a href="notes.html" title="From gates to a compiled if: contents">Home</a> · part 8 of 9</p>
       <h1>From bytes to registers</h1>
-      <p class="lede">Why a byte has to be widened before a 32-bit processor can compare it, what the two loads write into the bits that were never in memory, and how the widened compare gets its flags. Drawn cell by cell, for any pair of bytes.</p>
+      <p class="lede">See how two Arm loads put a byte into a 32-bit register, then compare the widened values and read the flags.</p>
     </div>
     <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
   </div>
@@ -365,16 +365,16 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
 
   <section class="tut first" id="why">
     <h2>1. Why a byte has to widen</h2>
-    <p>A C program declares <code>uint8_t a</code> or <code>int8_t a</code>, and either way the variable occupies one byte of memory. Memory is addressed in bytes, so that is where a byte lives. But the processor cannot compute on memory. It computes on registers, and on ARM every register is 32 bits wide. <code>CMP</code>, like every other ALU instruction, compares whole registers, and there is no 8-bit compare to use instead.</p>
-    <p>So before the compare can run, the byte has to be loaded into a register, and a 32-bit register holding an 8-bit value has 24 bits that were never in memory. Something has to be written into them. There are two sensible answers, and the instruction set has one load for each: <code>LDRB</code> writes zeros, <code>LDRSB</code> writes copies of the byte's top bit. The declaration decides which one the compiler emits. A true 8-bit processor, with 8-bit registers, would need neither, and its flags would match the <a href="bit-lab.html">Bit Lab</a>'s exactly.</p>
+    <p>In this AArch32 example, the two inputs are bytes in memory and <code>CMP</code> operates on 32-bit general-purpose registers. Loading each byte into a register has to supply 24 more bits.</p>
+    <p><code>LDRB</code> fills the high bits with zeroes, preserving an unsigned byte’s value. <code>LDRSB</code> copies the byte’s high bit, preserving its two’s-complement signed value. The two C declarations in the model select which load to illustrate.</p>
   </section>
 
   <section class="tut" id="fixed">
     <h2>2. One byte, both loads</h2>
-    <p>Here is a byte put through both loads, with the registers they leave behind, and then a byte on which the two loads agree. The dashed cells are the ones the load had to invent.</p>
+    <p>Compare the two register rows for 0x80, then for 0x7F. The dashed cells show the 24 bits added by the load. Which input gives different added bits for the two loads?</p>
     <div class="hood" id="hoodFixed"></div>
     <h3>Why anything has to be written there</h3>
-    <p>A register cell is a flip-flop, and a flip-flop is always holding a 0 or a 1. There is no third state meaning "empty" or "not in use". So when an 8-bit value goes into a 32-bit register, the other 24 cells will contain <em>something</em> whether anyone chooses it or not, and the only question is whether what they contain changes the number. The two loads are the two fills that do not.</p>
+    <p>Each of the 32 positions holds a 0 or a 1. The load must fill all 32 while preserving the selected value of the input byte.</p>
     <h3>Why the fill does not change the number</h3>
     <p>For an unsigned number the fill is zeros, and leading zeros are worth nothing: 0005 is 5. Bits 8 to 31 have place values 256 up to 2<sup>31</sup>, and a 0 in each contributes 0, so the register reads exactly what the byte read.</p>
     <p>For a signed number the fill is copies of the top bit. To see why, recall how a register holds a negative number at all. A register with 8 bits has only 256 patterns, and counting runs round them in a loop: one step down from 0x00 is 0xFF, the last pattern, as if the 256 patterns were laid round a wheel. A negative number is simply a count back from zero round that wheel, so −2 is the pattern two steps below 0x00, which is 0x100 − 2 = 0xFE. (<a href="adding-to-subtracting.html">From adding to subtracting</a> draws the wheel and shows the adder doing this.) A 32-bit register is the same thing with a much bigger wheel, 0x100000000 patterns round. On it, −2 is two steps back from 0x00000000, which lands on 0x100000000 − 2 = 0xFFFFFFFE.</p>
@@ -388,24 +388,24 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
       <tr><td>−2</td><td>0xFE</td><td>0xFFFFFFFE</td><td>ones, 0xFFFFFF00</td></tr>
       <tr><td>−128</td><td>0x80</td><td>0xFFFFFF80</td><td>ones, 0xFFFFFF00</td></tr>
     </table>
-    <p>The <a href="adding-to-subtracting.html">wheel</a> says the same thing another way. On the 256-position wheel, −128 is 128 steps back from 0, which lands on 0x80. On a wheel with 2<sup>32</sup> positions, 128 steps back from 0 lands on 0xFFFFFF80. Sign extension moves a number from the small wheel to the same place on the big one.</p>
+
     <p>So both loads produce "the same number, now with room to spare". They disagree only about which number the byte was, 128 or −128, and that is the whole disagreement.</p>
   </section>
 
   <section class="tut" id="live">
     <h2>3. Your pair, live</h2>
-    <p>Pick two bytes and a declaration. The panel loads both bytes the way the declaration requires, then runs the 32-bit compare the Bit Lab's SUB would do, with 32 columns instead of 8, and reads the flags off the result.</p>
+    <p>Choose <strong>0x80 vs 0x7F</strong>. Select <strong>uint8_t (unsigned)</strong>, then <strong>int8_t (signed)</strong>. In the output, compare the widened register values and the comparison outcome for the two declarations. Do both declarations put the same operand first?</p>
     <div class="row"><span>Load a pair</span><button class="small" type="button" data-pair="5,3">5 vs 3</button><button class="small" type="button" data-pair="3,5">3 vs 5</button><button class="small" type="button" data-pair="128,127">0x80 vs 0x7F</button><button class="small" type="button" data-pair="255,1">0xFF vs 0x01</button><button class="small" type="button" data-pair="127,127">0x7F vs 0x7F</button><button class="small" type="button" data-pair="0,255">0x00 vs 0xFF</button></div>
     <div class="hood" id="pair"></div>
     <div class="row"><span>Declared as</span><button class="small asmType" type="button" data-s="0" aria-pressed="false">uint8_t (unsigned)</button><button class="small asmType" type="button" data-s="1" aria-pressed="true">int8_t (signed)</button></div>
     <div class="hood" id="hood"></div>
-    <p>If switching the declaration changes nothing, both top bits are 0, and the panel says so: copying a 0 into the spare cells is the same as writing 0. Load a pair with a top bit set to see the cells, and then the flags, change.</p>
+    <p>Now load <strong>5 vs 3</strong> and switch declarations again. Both inputs start with a zero bit, so copying the top bit and filling with zeroes produce the same widened patterns.</p>
   </section>
 
   <section class="tut" id="next">
     <h2>Where this leads</h2>
     <ul>
-      <li>The <a href="who-decides.html"><em>Signed or unsigned: who decides?</em></a> section puts these loads in a program: an <code>if</code> in C beside the ARM a compiler emits, with the lines that run highlighted and a trace.</li>
+      <li>The <a href="who-decides.html"><em>Signed or unsigned: who decides?</em></a> section puts these loads in a program: a C <code>if</code> beside an illustrative Arm sequence, with its selected path highlighted.</li>
       <li>The <a href="flag-drills.html#d4">flag drills</a> ask you to widen a byte by hand, then draw these rows for your answer.</li>
       <li>The <a href="adding-to-subtracting.html">From adding to subtracting</a> page is the compare's other half: why A + NOT B + 1 subtracts, and why the carry out reports the borrow.</li>
       <li>The <a href="twos-complement.pdf">two's complement tutorial</a> (PDF) covers sign extension alongside the rest of the arithmetic.</li>

@@ -78,7 +78,6 @@ function Cover({ completed }: { completed: string[] }) {
     <>
       <section className="hero">
         <div>
-          <p className="eyebrow">An interactive course · First draft</p>
           <h1>
             How computers
             <br />
@@ -87,8 +86,8 @@ function Cover({ completed }: { completed: string[] }) {
             <em>process data.</em>
           </h1>
           <p className="hero-intro">
-            Change a bit. Follow a carry. Find out why the same pattern can mean
-            two different numbers.
+            Explore how computers store numbers as patterns of zeroes and ones.
+            You only need to know addition and subtraction to start.
           </p>
           <a className="button hero-action" href={lessonHref(next.id)}>
             {completed.length ? "Continue learning" : "Start with bits"}
@@ -99,7 +98,11 @@ function Cover({ completed }: { completed: string[] }) {
           </p>
         </div>
         <div className="hero-instrument">
-          <p className="instrument-label">ONE BYTE / TWO READINGS</p>
+          <p className="instrument-label">Eight bits, three readouts</p>
+          <p>
+            A bit is a 0 or a 1. The page starts with eight bits, called a byte.
+            Toggle the leftmost bit. Which readout changes sign?
+          </p>
           <div className="hero-bits" role="group" aria-label="Explore one byte">
             {binary(value, 8)
               .split("")
@@ -130,11 +133,10 @@ function Cover({ completed }: { completed: string[] }) {
             </div>
           </div>
           <p>
-            Tap any bit. The pattern changes; each reading follows its own rule.
+            The unsigned reading counts only nonnegative values. The signed
+            reading can be negative when the leftmost bit is 1. Hex is short for
+            hexadecimal, a compact way to write the same bits.
           </p>
-          <div className="signal-line" aria-hidden="true">
-            BITS <span>→</span> OPERATIONS <span>→</span> MEANING
-          </div>
         </div>
       </section>
       <section className="intro-grid">
@@ -142,9 +144,8 @@ function Cover({ completed }: { completed: string[] }) {
           <p className="eyebrow">Before you start</p>
           <h2>A little arithmetic is enough.</h2>
           <p>
-            You need addition, subtraction and a willingness to try things.
-            Binary, hexadecimal, logic operations and signed numbers are
-            introduced as you need them.
+            The lessons introduce binary, hexadecimal, logic operations and
+            signed numbers before asking you to use them.
           </p>
         </div>
         <div>
@@ -153,14 +154,13 @@ function Cover({ completed }: { completed: string[] }) {
           <p>
             Ten lessons build your understanding through small experiments and
             checked questions. The final lesson guides you into the calculator’s
-            exercise bank. Your answers and study marks stay in this browser.
+            exercise bank. Lesson ticks record what you mark as studied.
           </p>
         </div>
       </section>
       <section aria-labelledby="path-title" className="path">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Learning path 01</p>
             <h2 id="path-title">Bits, arithmetic and decisions</h2>
           </div>
           <span className="progress-count">
@@ -296,9 +296,8 @@ function Practice() {
         <h2>More experiments and reference</h2>
         <p>
           The <a href={`${calculator}docs/notes.html`}>original notes</a>{" "}
-          include the gate-level ALU, registers, C examples and breadboard
-          activities. They are retained as reference material while the new
-          course develops.
+          include gate and register models, C examples and optional breadboard
+          activities.
         </p>
         <p>
           <a href={`${calculator}docs/twos-complement.pdf`}>
@@ -425,8 +424,8 @@ export function App() {
       </header>
       {storageWarning && (
         <p role="status" className="storage-warning">
-          Browser storage is unavailable. Your work will remain in this tab
-          until you reload or close it.
+          Browser storage is unavailable. Keep this tab open to retain your
+          latest changes.
         </p>
       )}
       <main id="main" tabIndex={-1}>
@@ -481,8 +480,8 @@ export function App() {
               </div>
             </nav>
             <p id="lesson-done-note" className="lesson-done-note">
-              Your lesson tick is saved in this browser. Exercise answers and
-              calculator ticks are separate.
+              This tick records your study progress. Lesson answers and
+              calculator exercise ticks are recorded separately.
             </p>
           </>
         ) : (

@@ -218,10 +218,10 @@ export function WordLab({ interactive }: InteractiveProps) {
                   <span>
                     {
                       {
-                        N: "Result’s leading bit",
-                        Z: "Result is zero",
-                        C: "No unsigned borrow",
-                        V: "Signed result does not fit",
+                        N: "Copies the leftmost result bit",
+                        Z: "1 when the result is zero",
+                        C: "1 when unsigned subtraction needs no borrow",
+                        V: "1 when the exact signed result does not fit",
                       }[k]
                     }
                   </span>

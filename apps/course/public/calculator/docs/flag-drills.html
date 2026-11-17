@@ -355,6 +355,7 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
 .feedback .bad{color:var(--carry);font-weight:600}
 .feedback .hood{margin-top:6px}
 .feedback table.truth{margin-top:6px}
+.table-scroll{overflow-x:auto}
 pre.work.prompt{min-height:2.6em}
 
 </style>
@@ -374,12 +375,12 @@ pre.work.prompt{min-height:2.6em}
     <a href="#d1">1 Predict the flags</a><a href="#d2">2 Which branches fire</a><a href="#d3">3 Recover the type</a><a href="#d4">4 Widen by hand</a><a href="#how">How to use these</a>
   </nav>
   <div class="scorebar" aria-live="polite">
-    <span>Score this browser:</span>
+    <span>Correct on first check / prompts checked:</span>
     <span>flags <b id="sc-flags">0 / 0</b></span>
     <span>branches <b id="sc-branches">0 / 0</b></span>
     <span>type <b id="sc-type">0 / 0</b></span>
     <span>widen <b id="sc-widen">0 / 0</b></span>
-    <button class="small" type="button" id="scoreReset">reset</button>
+    <button class="small" type="button" id="scoreReset">Reset scores</button>
   </div>
 
   <section class="tut first drill" id="d1">
@@ -393,7 +394,7 @@ pre.work.prompt{min-height:2.6em}
 
   <section class="tut drill" id="d2">
     <h2>2. Which branches fire</h2>
-    <p>No numbers this time, only the four flags a <code>CMP</code> left behind. Press every branch that would be taken. The unsigned family reads C and Z, the signed family reads N, V and Z, and BEQ and BNE read Z alone.</p>
+    <p>Read the four flags and select every branch that would be taken. Select Check to see which branches should be active, then Next for another flag pattern. Unsigned ordering uses C and Z, signed ordering uses N, V and Z, and BEQ and BNE use Z alone.</p>
     <pre class="work prompt"></pre>
     <div class="row branches"><span>Taken:</span></div>
     <div class="row"><button class="op check" type="button">Check</button><button class="small next" type="button">Next flags</button></div>
@@ -423,7 +424,7 @@ pre.work.prompt{min-height:2.6em}
     <h2>How to use these</h2>
     <ul>
       <li>Answer on paper first, every time. The point is to make the prediction, not to recognise the answer once it is shown.</li>
-      <li>Do a few of one drill until it feels mechanical, then move on. Ten of drill 1 is usually enough for the borrow rule to stop needing thought.</li>
+
       <li>When a reveal surprises you, load the same pair into the <a href="bit-lab.html#lab">Bit Lab</a> and watch the carries move; the worked bits here are the lab's SUB, drawn the same way.</li>
       <li>To compare an illustrative snippet with compiler output, open <a href="https://godbolt.org/">Compiler Explorer</a>, paste a C function, select an Arm GCC compiler and set its options to <code>-O1</code>. Look at the load and branch instructions.</li>
       <li>Scores are kept only in this browser. Reset them whenever you like.</li>
@@ -563,11 +564,11 @@ const clearQ=(host)=>host.querySelectorAll('button[data-q]').forEach(o=>o.setAtt
   const next=()=>{ [a,b]=randPair(); f=sub8(a,b); done=false; opts.querySelectorAll('button').forEach(o=>o.setAttribute('aria-pressed','false')); fb.innerHTML=''; prompt.textContent=`    CMP  A, B        ; afterwards N=${f.n} Z=${f.z} C=${f.c} V=${f.v}`; };
   host.querySelector('.check').addEventListener('click',()=>{
     const chosen=new Set([...opts.querySelectorAll('button[aria-pressed="true"]')].map(o=>o.dataset.mn));
-    let ok=true, h='<table class="truth asm"><tr><th>branch</th><th>means</th><th>reading</th><th>tests</th><th>taken?</th><th>you said</th></tr>';
-    for(const [mn,meaning,reading,test,txt] of BR){ const t=test(f), y=chosen.has(mn); if(t!==y) ok=false; h+=`<tr class="${t?'take':''}"><td class="mn">${mn}</td><td class="k">${meaning}</td><td class="k">${reading}</td><td class="k">${txt}</td><td>${t?'taken':'not taken'}</td><td>${t===y?'✓':'✗'}</td></tr>`; }
-    h+='</table>';
+    let ok=true, h='<div class="table-scroll" role="region" aria-label="Branch results" tabindex="0"><table class="truth asm"><tr><th>branch</th><th>means</th><th>reading</th><th>tests</th><th>taken?</th><th>Your choice</th></tr>';
+    for(const [mn,meaning,reading,test,txt] of BR){ const t=test(f), y=chosen.has(mn); if(t!==y) ok=false; h+=`<tr class="${t?'take':''}"><td class="mn">${mn}</td><td class="k">${meaning}</td><td class="k">${reading}</td><td class="k">${txt}</td><td>${t?'taken':'not taken'}</td><td>${y?'taken':'not taken'}</td></tr>`; }
+    h+='</table></div>';
     if(!done){ bump('branches',ok); done=true; }
-    fb.innerHTML=`<p>${mark(ok)} ${ok?'Every branch right.':'The rows marked ✗ are the ones to look at.'} One pair that produces these flags is A = ${hex(a,8)}, B = ${hex(b,8)}: ${a} and ${b} unsigned, ${signed(a,8)} and ${signed(b,8)} signed.</p>`+h;
+    fb.innerHTML=`<p>${mark(ok)} ${ok?'Every branch right.':'Compare Taken? with Your choice to find where they differ.'} One pair that produces these flags is A = ${hex(a,8)}, B = ${hex(b,8)}: ${a} and ${b} unsigned, ${signed(a,8)} and ${signed(b,8)} signed.</p>`+h;
   });
   host.querySelector('.next').addEventListener('click',next); next();
 })();

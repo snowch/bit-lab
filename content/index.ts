@@ -326,7 +326,7 @@ export const lessons = chapters.map((c, order) => {
             id: `${c.id}-check`,
             kind: "challenge",
             timeModel: "none",
-            caption: "Your answer is saved in this browser.",
+            caption: "Check your answer, then edit it to try again.",
             props: { challengeId: `${c.id}-practice` },
           },
         ],

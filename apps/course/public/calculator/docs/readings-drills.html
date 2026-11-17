@@ -407,7 +407,7 @@ svg.nl .sh.u{fill:var(--carry)}
     <div>
       <p class="crumbs"><a href="notes.html" title="From gates to a compiled if: contents">Home</a> · part 3 of 9</p>
       <h1>Two readings: drills</h1>
-      <p class="lede">Six short randomised exercises on the thing every later page assumes: that one bit pattern is two numbers, and which one you get depends only on how you read the top bit. Four bits first, so every pattern is in sight.</p>
+      <p class="lede">Practise reading the same pattern as signed and unsigned. Six randomised drills begin at 4 bits so you can see every position on the wheel.</p>
     </div>
     <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
   </div>
@@ -416,15 +416,15 @@ svg.nl .sh.u{fill:var(--carry)}
   </nav>
   <div class="scorebar" aria-live="polite">
     <span>Width</span><button class="small" type="button" data-w="4" aria-pressed="true">4 bits</button><button class="small" type="button" data-w="8" aria-pressed="false">8 bits</button>
-    <span style="margin-left:12px">Score this browser:</span>
+    <span style="margin-left:12px">Correct on first check / prompts checked:</span>
     <span>read <b id="sc-read">0 / 0</b></span><span>write <b id="sc-write">0 / 0</b></span><span>find <b id="sc-find">0 / 0</b></span><span>wheel <b id="sc-wheel">0 / 0</b></span><span>negate <b id="sc-neg">0 / 0</b></span><span>fit <b id="sc-fit">0 / 0</b></span>
-    <button class="small" type="button" id="scoreReset">reset</button>
+    <button class="small" type="button" id="scoreReset">Reset scores</button>
   </div>
-  <p class="tip">Start at 4 bits, where there are only sixteen patterns and you can keep them all in your head. Switch to 8 once 4 feels mechanical. Answer on paper before you press check.</p>
+  <p class="tip">The page starts at 4 bits. Answer a prompt, select its Check button and read the explanation beside the score. Choose Next for another prompt, or switch to 8 bits to practise at a different width.</p>
 
   <section class="tut first drill" id="d1">
     <h2>1. Read a pattern both ways</h2>
-    <p>The same bits are two numbers. Read as unsigned, every bit is worth a positive power of two. Read as signed, the top bit is worth minus its power of two instead, and nothing else changes. Give both readings.</p>
+    <p>The same bits can be read in two ways. Read as unsigned, every bit is worth a positive power of two. Read as signed, the top bit is worth minus its power of two instead, and nothing else changes. Give both readings.</p>
     <pre class="work prompt"></pre>
     <div class="row answers"><label class="ans"><span>unsigned</span><input class="uin" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="0"></label><label class="ans"><span>signed</span><input class="sin" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="0"></label></div>
     <div class="row"><button class="op check" type="button">Check</button><button class="small next" type="button">Next pattern</button></div>
@@ -433,7 +433,7 @@ svg.nl .sh.u{fill:var(--carry)}
 
   <section class="tut drill" id="d2">
     <h2>2. Write a value as a pattern</h2>
-    <p>The other direction, in the two steps you would do on paper. First the wheel: a negative value is a count back from zero, so find the unsigned number on the same spoke, written in ordinary decimal: 16 − 3 = 13 for −3. Then the bits: build that unsigned number from place values by tapping cells. The reveal cross-checks it with invert-and-add-1. Once you can write the pattern directly, skip the wheel step, or just type the bits into step 1.</p>
+    <p>First find the unsigned value with the same bits. For example, at 4 bits the wheel has 16 positions, so −3 shares a pattern with 16 − 3 = 13. Enter the unsigned decimal value and select <strong>Check step 1</strong>. Then set the bit cells for that value and select <strong>Check the bits</strong>. You can use <strong>Skip the wheel, go to the bits</strong> to work directly with the bit cells.</p>
     <pre class="work prompt"></pre>
     <div class="row answers"><label class="ans"><span>Step 1: the unsigned number on the same spoke, in decimal</span><input class="uin" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="e.g. 13"></label><button class="small check1" type="button">Check step 1</button><button class="small skip1" type="button">Skip the wheel, go to the bits</button></div>
     <div class="stage1fb"></div>
@@ -465,7 +465,7 @@ svg.nl .sh.u{fill:var(--carry)}
 
   <section class="tut drill" id="d4">
     <h2>5. Negate by hand</h2>
-    <p>Invert every bit, then add 1. Write the result, then check that it reads as the negative of what you started with. One pattern in every width cannot be negated; you will meet it.</p>
+    <p>Invert every bit, then add 1. Enter the result bits and select Check. For the smallest signed value, the positive counterpart cannot fit at the chosen width. The displayed pattern stays the same.</p>
     <pre class="work prompt"></pre>
     <div class="row answers"><label class="ans"><span>−x =</span><input class="bin" type="text" inputmode="numeric" autocomplete="off" maxlength="9" placeholder="0000"></label></div>
     <div class="row"><button class="op check" type="button">Check</button><button class="small next" type="button">Next pattern</button></div>
@@ -485,7 +485,7 @@ svg.nl .sh.u{fill:var(--carry)}
     <h2>How to use these</h2>
     <ul>
       <li>If drill 1 is hard, write out all sixteen 4-bit patterns in a column with both readings beside each, once, by hand. Then come back. Every other drill is that column being used.</li>
-      <li>Answer first, every time. The reveal is for checking, not for learning the answer. A streak counter appears beside a score once you get three right in a row; try for ten.</li>
+      <li>The score uses the first checked answer to each prompt. After three correct answers in a row, it also shows the current streak.</li>
       <li>Drill 6 is the bridge to the flags: "the unsigned result is wrong" is what C = 1 means after an addition, and "the signed result is wrong" is V = 1.</li>
       <li>Scores are kept only in this browser. Reset them whenever you like.</li>
     </ul>
@@ -569,19 +569,30 @@ function wheelSvg(a,b,opts={}){
   let v,done=false,typed=0;
   const drawCells=()=>{ const w=state.w; let h=''; for(let i=w-1;i>=0;i--){ const on=bit(typed,i); h+=`<span class="hb tap${on?' on':''}${i%8===0&&i!==0?' gap':''}" role="button" tabindex="0" data-i="${i}" aria-label="bit ${i}, worth ${1<<i}: ${on}">${on}</span>`; } cells.innerHTML=`<div class="hrow"><span class="hl">worth</span>${Array.from({length:w},(_,j)=>{const i=w-1-j; return `<span class="hb c${i%8===0&&i!==0?' gap':''}">${1<<i}</span>`;}).join('')}<span class="hv"></span></div><div class="hrow"><span class="hl">bits</span>${h}<span class="hv">= ${typed} so far. Tap a cell to flip it.</span></div>`; };
   cells.addEventListener('click',e=>{ const t=e.target.closest('.hb.tap'); if(!t) return; typed^=1<<Number(t.dataset.i); drawCells(); });
-  cells.addEventListener('keydown',e=>{ if(e.key!=='Enter'&&e.key!==' ') return; const t=e.target.closest&&e.target.closest('.hb.tap'); if(!t) return; e.preventDefault(); typed^=1<<Number(t.dataset.i); drawCells(); });
+  cells.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'&&e.key!==' ') return;
+    const t=e.target.closest('.hb.tap'); if(!t) return;
+    e.preventDefault(); const bitIndex=Number(t.dataset.i);
+    typed^=1<<bitIndex; drawCells(); cells.querySelector(`[data-i="${bitIndex}"]`).focus();
+  });
   const next=()=>{ const w=state.w, half=1<<(w-1); v=Math.random()<0.75?-(1+rnd(half)):rnd(half); done=false; typed=0; inU.value=''; fb.innerHTML=''; stage1fb.innerHTML=''; stage2.hidden=true; prompt.textContent=`${v}  (signed, ${w} bits)`; };
-  host.querySelector('.check1').addEventListener('click',()=>{ const w=state.w, n=1<<w, want=v&mask(w); const raw=inU.value.trim(); if(raw===''){ stage1fb.innerHTML='<p class="tip">Type the unsigned number first.</p>'; return; }
+  host.querySelector('.check1').addEventListener('click',()=>{ const w=state.w, n=1<<w, want=v&mask(w); const raw=inU.value.trim(); if(raw===''){ stage1fb.innerHTML='<p class="tip">Enter an unsigned decimal value.</p>'; return; }
     if(new RegExp('^[01]{'+w+'}$').test(raw)){ const asBits=parseInt(raw,2); if(asBits===want){ stage1fb.innerHTML='<p class="tip">You went straight to the bits, and they are right. Counted as the answer.</p>'; stage2.hidden=true; reveal(asBits); return; } stage1fb.innerHTML=`<p class="tip">That looks like a bit pattern, ${raw}, but it is not the pattern for ${v}. Either try the bits again here, or take the wheel step first: the unsigned number on the same spoke is ${v<0?n+' − '+(-v)+' = ':''}${want}, in decimal.</p>`; return; }
+    if(!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw))){
+      stage1fb.innerHTML='<p class="tip">Enter a whole number in decimal, or the full bit pattern.</p>'; return;
+    }
     const ok=Number(raw)===want;
-    stage1fb.innerHTML=`<p>${mark(ok)}${ok?'':' You wrote '+raw+'.'} ${v<0?`${v} is ${-v} step${-v===1?'':'s'} back from 0 round the wheel of ${n}, which lands on ${n} − ${-v} = <strong>${want}</strong>. The same spoke carries ${v} on the inside and ${want} on the outside.`:`${v} is not negative, so no steps back: the same spoke carries <strong>${want}</strong> on the outside.`}</p>`+(w===4?`<div class="wheelwrap"><div>${wheelSvg(0,0,{markOnly:true,mark:want,centre:v+' = '+want,hideB:true})}</div><p class="tip">Red dot: the spoke for ${v}. Now write the unsigned number ${want} in bits.</p></div>`:'')+`<p>Step 2: build ${want} from place values by tapping the cells.</p>`;
+    stage1fb.innerHTML=`<p>${mark(ok)}${ok?'':' You wrote '+Number(raw)+'.'} ${v<0?`${v} is ${-v} step${-v===1?'':'s'} back from 0 round the wheel of ${n}, which lands on ${n} − ${-v} = <strong>${want}</strong>. The same spoke carries ${v} on the inside and ${want} on the outside.`:`${v} is not negative, so no steps back: the same spoke carries <strong>${want}</strong> on the outside.`}</p>`+(w===4?`<div class="wheelwrap"><div>${wheelSvg(0,0,{markOnly:true,mark:want,centre:v+' = '+want,hideB:true})}</div><p class="tip">Red dot: the spoke for ${v}. Now write the unsigned number ${want} in bits.</p></div>`:'')+`<p>Step 2: build ${want} from place values by tapping the cells.</p>`;
     stage2.hidden=false; drawCells(); if(!ok&&!done){ bump('write',false); done=true; } });
   const reveal=(got)=>{ const w=state.w, M=mask(w), want=v&M; const ok=got===want; if(!done){ bump('write',ok); done=true; } typed=got;
     const pos=Math.abs(v), np=(~pos)&M;
     fb.innerHTML=`<p>${mark(ok)} ${v} is <strong>${bits(want,w)}</strong>, ${hex(want,w)}: ${sumText(want,w,false)} = ${want} by place value${ok?'':', and you tapped '+bits(typed,w)+' = '+typed}.</p><div class="hood">`+weightsRow(w,false)+row(`${want}`,want,w,{top:true,val:`${sumText(want,w,false)} = ${want}`})+(v<0?row(`NOT ${pos}`,np,w,{val:`cross-check: flip the bits of ${pos} = ${bits(pos,w)} to get ${bits(np,w)}, then add 1 = ${bits(want,w)}`}):'')+`<p class="hnote">Read the same cells with the top one worth −${1<<(w-1)} and you get ${sumText(want,w,true)} = ${signed(want,w)}: the pattern you built for ${v} reads as ${v}.</p></div>`; };
   host.querySelector('.check').addEventListener('click',()=>reveal(typed));
   host.querySelector('.skip1').addEventListener('click',()=>{ stage1fb.innerHTML='<p class="tip">Straight to the bits. The wheel step is there only until you no longer need it.</p>'; stage2.hidden=false; drawCells(); });
-  host.querySelector('.next').addEventListener('click',next); enterChecks(host); drills.push(next); next();
+  inU.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){ e.preventDefault(); host.querySelector('.check1').click(); }
+  });
+  host.querySelector('.next').addEventListener('click',next); drills.push(next); next();
 })();
 /* drill 2b: find it on the wheel */
 (function(){
@@ -615,7 +626,7 @@ function wheelSvg(a,b,opts={}){
     const okB=got===r, okS=Number(inS.value)===landed, okF=(f==='1')===fit, ok=okB&&okS&&okF; if(!done){ bump('wheel',ok); done=true; }
     fb.innerHTML=`<p>${mark(ok)} ${val(a,w)} − ${val(b,w)} = ${t}. The register lands on <strong>${bits(r,w)}</strong>${okB?'':' ✗'}, which reads as <strong>${landed}</strong> ${S?'signed':'unsigned'}${okS?'':' ✗'}. ${fit?`That is the true answer: it fitted.`:`That is not ${t}: the true answer is outside the ${S?'signed range −'+half+' to '+(half-1):'unsigned range 0 to '+(n-1)}, so it wrapped by ${n}, and ${S?'an ALU would set V = 1':'an ALU would set C = 0, meaning a borrow'}.`}${okF?'':' ✗ on the fit question.'}</p>`+
       `<p>${t<0&&!S?`Counting back ${b} step${b===1?'':'s'} from ${a} passes 0 and continues from ${n-1}: the register holds ${t} + ${n} = ${r}.`:t>half-1&&S?`${t} is above ${half-1}, the largest signed value, so it comes out as ${t} − ${n} = ${landed}.`:t<-half&&S?`${t} is below −${half}, the smallest signed value, so it comes out as ${t} + ${n} = ${landed}.`:`Nothing wrapped. Under the other reading the same pattern is ${S?r+' unsigned':signed(r,w)+' signed'}.`}</p>`+
-      (w===4?`<div class="wheelwrap"><div>${wheelSvg(a,b)}</div><p class="tip">Amber dot: A. Red arc: B steps back as the hardware does it, pattern by pattern. Red dot: where the register lands.</p></div>`:'');
+      (w===4?`<div class="wheelwrap"><div>${wheelSvg(a,b)}</div><p class="tip">Amber dot: A. Red arc: B steps back on the model wheel. Red dot: where the register lands.</p></div>`:'');
   });
   host.querySelector('.next').addEventListener('click',next); enterChecks(host); drills.push(next); next();
 })();

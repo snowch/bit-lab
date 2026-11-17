@@ -358,14 +358,14 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   </div>
   <section class="tut first" id="memory">
     <h2>Gates that compute, gates that remember</h2>
-    <p>The ALU needs no memory. A gate is <em>combinational</em>: its output depends only on what its inputs are right now, so change an input and the output follows. The adders and the whole ALU inherit that.</p>
+    <p>In the ALU model, the gates produce their outputs from the current inputs. This is <em>combinational</em> logic. A register has a different job: remember a value while the inputs change.</p>
     <p><strong>Where memory is needed.</strong> The registers on either side of the ALU must hold their bits steady while the gates work on them, and keep them until a new value is written. There is no special memory part inside them. A register is made of the same kinds of gates as the ALU, here NOT, AND and NOR, wired in a different way: an output is led back round to become an input, so the circuit can hold itself in a state. That loop is called <em>feedback</em>.</p>
     <p class="tip">Notation: <code>A·B</code> is AND, <code>¬A</code> is NOT, and S and R stand for <em>set</em> and <em>reset</em>.</p>
   </section>
   <section class="tut" id="latch-cell">
     <h2>The smallest memory: two NOR gates</h2>
-    <p> Wire two NOR gates so that each one's output is an input of the other, and the pair has two stable states that it holds for as long as the power is on.</p>
-    <p><strong>Adding a data input and an enable.</strong> An inverter and two AND gates in front turn the pair into a <em>D latch</em>: while enable is 1, Q copies D; the moment enable drops to 0, the latch keeps whatever it last saw. Try it: with enable on, set D; turn enable off; now change D and watch Q stay put.</p>
+    <p>A NOR gate outputs 1 only when both inputs are 0. When the output of each of these two gates feeds the other, the pair can hold either of two states while powered.</p>
+    <p>The model adds data input D, enable and output Q to make a <em>D latch</em>. Set enable to 1 and toggle D. Then set enable to 0 and toggle D again. When does Q follow D, and when does it hold the previous value?</p>
     <div class="fawrap">
       <div class="fa" id="latch"></div>
       <div>
@@ -377,13 +377,13 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   </section>
   <section class="tut" id="register">
     <h2>A clock, and four cells in a row</h2>
-    <p>A register is a row of these cells, one per bit, sharing one enable line. In a CPU that enable comes from the <em>clock</em>: a signal that swings between 0 and 1 billions of times a second and paces everything. The instant it rises, called the <em>clock edge</em>, is the one moment when registers may take in a new value; between edges they hold still while the gates settle. Real CPUs use a sharper cell than the latch for this, the edge-triggered <em>D flip-flop</em>: two latches back to back, arranged so that Q changes only at the rising edge and never "sees through" while the clock is high. Four flip-flops with a shared clock and a load line make a 4-bit register, and the 74HC173 in the Bit Lab's build section is exactly that. Set the D bits, then press the clock:</p>
+    <p>This register uses four <em>D flip-flops</em>, one per bit, with a shared clock and load control. The model copies input D to output Q on the rising edge, when the clock changes from 0 to 1, if load is 1. Toggle a D bit, then press <strong>clock ▲</strong>. Compare the Q row before and after the edge.</p>
     <div class="fawrap">
       <div class="fa" id="reg"></div>
       <div>
         <div class="row" style="margin:0 0 10px"><button class="small" id="regClock" type="button">clock ▲</button><button class="small" id="regLoad" type="button" aria-pressed="true">load</button></div>
         <p class="faeq" id="regNote"></p>
-        <p class="tip">Between clock edges the D inputs can change freely; nothing reaches Q until the next edge. With load off, the edge is ignored. That is how a CPU writes one register and leaves all the others alone: every register sees the same clock, but only the chosen one has its load line raised.</p>
+        <p>Toggle <strong>load</strong> off, change a D bit and press <strong>clock ▲</strong> again. Q holds its old value, even at the rising edge.</p>
       </div>
     </div>
   </section>
@@ -391,7 +391,7 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
     <h2>Where this leads</h2>
     <ul>
       <li>The <a href="https://snowch.github.io/d-flipflop-tutorial">D flip-flop tutorial</a> opens up the edge-triggered cell: the master and slave latches inside it, setup and hold time, and clock-to-Q delay, with an <a href="https://snowch.github.io/d-flip-flop-interactive">interactive visualisation</a>.</li>
-      <li>The <a href="bit-lab.html">Bit Lab</a> shows what the registers feed: an 8-bit ALU with its flags, each flag one flip-flop loaded at the same clock edge as the result.</li>
+      <li>The <a href="bit-lab.html">Bit Lab</a> shows what the registers feed: an ALU model that computes flags alongside its result.</li>
       <li>The companion page <a href="gates-to-alu.html"><em>From gates to an ALU</em></a> builds the adder those registers feed, from five gates up.</li>
       <li>The <a href="https://snowch.github.io/digital-design/">Digital Design course</a> carries on from signals to a complete working computer.</li>
     </ul>
@@ -469,7 +469,13 @@ function bitCell(parent, x, y, val, label, editable, onToggle){
   txt(g,14,15,String(val));
   if(editable){
     g.addEventListener('click',onToggle);
-    g.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();onToggle();} });
+    g.addEventListener('keydown',e=>{
+      if(e.key!=='Enter'&&e.key!==' ') return;
+      e.preventDefault();
+      const host=parent.closest('svg').parentElement;
+      onToggle();
+      host.querySelector(`[role="switch"][aria-label="${CSS.escape(label)}"]`)?.focus();
+    });
   }
   return g;
 }
