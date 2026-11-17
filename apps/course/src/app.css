@@ -846,11 +846,6 @@ summary {
   align-items: center;
   gap: 10px;
 }
-.alu-rules {
-  border-left: 3px solid var(--accent);
-  padding-left: 14px;
-  font-size: 16px !important;
-}
 .alu-diagram {
   width: 100%;
   min-width: 620px;
@@ -1035,10 +1030,6 @@ summary {
   }
   .alu-lab .connected-circuit {
     margin-block: 4px;
-  }
-  .alu-lab .alu-rules {
-    padding-left: 10px;
-    line-height: 1.45;
   }
   .alu-lab .lab-result {
     margin-top: 12px;

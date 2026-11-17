@@ -64,8 +64,8 @@ export function WordLab({ interactive }: InteractiveProps) {
   return (
     <div className="word-lab">
       <p className="muted">
-        {width}-bit inputs · Position 0 is on the right. Press a bit to change
-        it.
+        {width}-bit inputs. Press a bit to switch it between 0 and 1. Bit 0 is
+        on the right.
       </p>
       <Bits
         label="A"
@@ -142,11 +142,6 @@ export function WordLab({ interactive }: InteractiveProps) {
           Reset experiment
         </button>
       </div>
-      {!revealed && (
-        <p role="status" className="muted">
-          Make your prediction, then reveal the result.
-        </p>
-      )}
       {revealed && (
         <div
           className="lab-result"
@@ -174,7 +169,15 @@ export function WordLab({ interactive }: InteractiveProps) {
               </div>
               {topic === "patterns" ? (
                 <p className="readout">
-                  {binary(a, width)} = {a} unsigned = {hex(a, width)}
+                  <span>
+                    Binary: <strong>{binary(a, width)}</strong>
+                  </span>
+                  <span>
+                    Unsigned: <strong>{a}</strong>
+                  </span>
+                  <span>
+                    Hexadecimal: <strong>{hex(a, width)}</strong>
+                  </span>
                 </p>
               ) : (
                 readings(a, width)
@@ -187,11 +190,14 @@ export function WordLab({ interactive }: InteractiveProps) {
           )}
           {(topic === "adder" || topic === "flags") && (
             <>
-              {topic === "flags" && (
-                <CarryDiagram a={a} b={b} width={width} subtract={subtract} />
-              )}
               <Bits label="Result" value={sum.result} width={width} />
-              {readings(sum.result, width)}
+              {topic === "adder" ? (
+                <p>
+                  Unsigned: <strong>{sum.result}</strong>
+                </p>
+              ) : (
+                readings(sum.result, width)
+              )}
               {topic === "adder" && (
                 <>
                   <p>
@@ -223,10 +229,18 @@ export function WordLab({ interactive }: InteractiveProps) {
               ))}
             </div>
           )}
+          {topic === "flags" && (
+            <details>
+              <summary>Trace the carries in the subtraction</summary>
+              <CarryDiagram a={a} b={b} width={width} subtract={subtract} />
+            </details>
+          )}
           {topic === "masks" && (
             <>
               <Bits label="Result" value={masked} width={width} />
-              {readings(masked, width)}
+              <p>
+                Unsigned: <strong>{masked}</strong>
+              </p>
               <p>Every column applies {operation} independently.</p>
             </>
           )}
@@ -252,7 +266,7 @@ export function WordLab({ interactive }: InteractiveProps) {
                   <h3>Unsigned</h3>
                   <p>
                     {a} &lt; {b}:{" "}
-                    <strong>{String(comparison.unsignedLess)}</strong>
+                    <strong>{comparison.unsignedLess ? "yes" : "no"}</strong>
                   </p>
                   <p>Test C = 0.</p>
                 </div>
@@ -260,7 +274,7 @@ export function WordLab({ interactive }: InteractiveProps) {
                   <h3>Signed</h3>
                   <p>
                     {signed(a, width)} &lt; {signed(b, width)}:{" "}
-                    <strong>{String(comparison.signedLess)}</strong>
+                    <strong>{comparison.signedLess ? "yes" : "no"}</strong>
                   </p>
                   <p>Test N ≠ V.</p>
                 </div>

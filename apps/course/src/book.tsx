@@ -25,8 +25,7 @@ export function grade(challenge: Challenge, artifact: Artifact): Verdict {
       passed: false,
       total: challenge.tests.cases.length,
       failures: [],
-      blocked:
-        "Enter a whole number. You can use decimal, 0x hexadecimal or 0b binary.",
+      blocked: "Enter a whole number in the format shown above.",
     };
   const failures = challenge.tests.cases.flatMap((test, index) => {
     const g = test.given;
@@ -44,7 +43,7 @@ export function grade(challenge: Challenge, artifact: Artifact): Verdict {
       : [
           {
             index,
-            label: test.label,
+            label: "Try this next",
             inputs: Object.fromEntries(
               Object.entries(g)
                 .filter(([k]) => k !== "topic")
@@ -52,7 +51,7 @@ export function grade(challenge: Challenge, artifact: Artifact): Verdict {
             ),
             actual: { answer: submitted },
             expected: { answer: String(expected) },
-            detail: chapters.find((c) => c.id === topic)!.hint,
+            detail: chapters.find((c) => c.id === topic)!.retry,
           },
         ];
   });
@@ -73,6 +72,15 @@ function AnswerEditor({ challenge, artifact, onChange }: ChallengeEditorProps) {
         spellCheck={false}
         value={artifact.answers?.["value"] ?? ""}
         onChange={(e) => onChange({ answers: { value: e.target.value } })}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+          event.preventDefault();
+          // Use the shared challenge's check action for both mouse and keyboard.
+          event.currentTarget
+            .closest(".challenge")
+            ?.querySelector<HTMLButtonElement>(".challenge-run")
+            ?.click();
+        }}
       />
     </label>
   );

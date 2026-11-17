@@ -18,11 +18,12 @@ test("calculator exercises start collapsed and preserve choices and ticks", asyn
   await expect(content).toBeVisible();
   await page.reload();
   await expect(content).toBeVisible();
-  await page.locator(".exgroup > summary").first().click();
+  await page.locator(".exgroup > summary").first().press("Enter");
   const first = page.locator(".ex").first();
-  await first.getByRole("button", { name: /load FF/ }).click();
+  await first.getByRole("button", { name: /load FF/ }).press("Enter");
   await expect(page.locator('#widthSeg [data-w="8"]')).toHaveClass("on");
-  await first.locator(".exans summary").click();
+  await expect(page.locator("#rows")).toBeFocused();
+  await first.locator(".exans summary").press("Enter");
   await expect(first.locator(".exans div")).toContainText("255");
   await first.getByRole("checkbox", { name: "done", exact: true }).check();
   await expect(first).toBeHidden();
@@ -81,18 +82,18 @@ test("final lesson hands learners to the bank and keeps its study mark separate"
     page.getByRole("checkbox", { name: "Mark lesson as done", exact: true }),
   ).toBeChecked();
   await page
-    .getByRole("link", { name: "Open the calculator", exact: true })
+    .getByRole("link", {
+      name: "Open the calculator exercise bank",
+      exact: true,
+    })
     .click();
-  await expect(page.locator("#excontent")).toBeHidden();
+  await expect(page).toHaveURL(/calculator\/#exh$/);
+  await expect(page.locator("#excontent")).toBeVisible();
   expect(
     await page.evaluate(() =>
       JSON.parse(localStorage.getItem("bit-lab:legacy:pc-done") ?? "{}"),
     ),
   ).toEqual({});
-  await page
-    .getByRole("button", { name: "Show exercises", exact: true })
-    .click();
-  await expect(page.locator("#excontent")).toBeVisible();
   await page.goto("./");
   await expect(page.getByText("1 / 11 done", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Practice", exact: true }).click();
