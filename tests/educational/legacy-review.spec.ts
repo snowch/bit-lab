@@ -41,6 +41,20 @@ test("calculator keyboard supports mode selection, signed remainder and clearing
   await page.keyboard.press("Escape");
   await expect(page.locator("#pending")).toBeEmpty();
   await expect(dec.locator(".val")).toHaveText("0");
+
+  await hex.press("Enter");
+  for (const [width, expected] of [
+    [8, "0"],
+    [16, "FF00"],
+    [32, "FF00"],
+  ] as const) {
+    await page.locator(`#widthSeg [data-w="${width}"]`).press("Enter");
+    await page.locator("#rows").focus();
+    for (const key of ["Escape", "f", "f", "<", "8", "Enter"]) {
+      await page.keyboard.press(key);
+    }
+    await expect(hex.locator(".val")).toHaveText(expected);
+  }
 });
 
 test("readings drill checks the visible step and retains bit focus", async ({
