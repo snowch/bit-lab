@@ -176,13 +176,14 @@ try {
   .pending .err { color: var(--danger); }
   .rows { display: grid; gap: 6px; }
   .rows.cols3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .rows.cols3 .baserow:not([data-base="2"]) { grid-template-columns: auto minmax(0, 1fr) 24px; gap: 8px; }
-  .rows.cols3 .baserow[data-base="2"] { grid-column: 1 / -1; }
+  .base-display { position: relative; min-width: 0; }
+  .rows.cols3 .base-display:has([data-base="2"]) { grid-column: 1 / -1; }
+  .rows.cols3 .baserow:not([data-base="2"]) { grid-template-columns: auto minmax(0, 1fr); gap: 8px; padding-right: 42px; }
   .baserow {
-    display: grid; grid-template-columns: 44px minmax(0,1fr) 30px;
+    display: grid; grid-template-columns: 44px minmax(0,1fr);
     align-items: center; gap: 10px; background: var(--surface-2);
     border: 1px solid transparent; border-radius: var(--radius);
-    padding: 8px 10px; cursor: pointer; text-align: left;
+    padding: 8px 50px 8px 10px; cursor: pointer; text-align: left;
     color: inherit; font: inherit; width: 100%;
   }
   .baserow .tag { color: var(--muted); font-size: 12px; }
@@ -195,9 +196,12 @@ try {
   .baserow.active .tag { color: var(--accent); font-weight: 600; }
   .copy {
     appearance: none; border: 0; background: transparent; color: var(--muted);
-    cursor: pointer; font-size: 13px; padding: 4px; border-radius: 6px; justify-self: end;
+    cursor: pointer; font-size: 13px; padding: 4px; border-radius: 6px;
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
   }
   .copy:hover { color: var(--accent); }
+  .copy-status { margin: 6px 4px 0; color: var(--muted); font-size: 12px; }
+  .copy-status:empty { margin: 0; }
   .meta {
     margin-top: 8px; padding: 0 4px; display: flex; justify-content: space-between;
     align-items: center; gap: 6px 12px; flex-wrap: wrap;
@@ -406,7 +410,6 @@ try {
 <div class="wrap">
   <header class="app">
     <h1>Programmer Calculator</h1>
-    <span class="hint">keyboard: 0–9 a–f ( ) &amp; | ^ ~ &lt; &gt; + − * / % ⏎ ⌫ esc</span>
     <div class="hdrbtns">
       <button type="button" class="install" id="installBtn">install app</button>
       <button type="button" class="themebtn" id="themeBtn"><span class="themek">theme</span> <span id="themeVal">auto</span></button>
@@ -428,8 +431,9 @@ try {
   </div>
 
   <section class="panel" aria-label="Value">
-    <div class="pending" id="pending"></div>
+    <div class="pending" id="pending" role="status" aria-atomic="true"></div>
     <div class="rows" id="rows" tabindex="-1"></div>
+    <p id="copyStatus" class="copy-status" role="status"></p>
     <div class="meta">
       <div class="flags" id="flags" aria-label="Status flags from the last operation">
         <span class="flagk">flags</span>
@@ -470,7 +474,7 @@ try {
       </div>
     </div>
     <div class="excontent" id="excontent">
-    <p class="lede">Each group starts with a <b>primer</b>; <b>load</b> sets up the calculator, <b>answer</b> reveals the worked solution, and a ticked exercise is tucked away. These exercises are self-checked. <button type="button" class="linkbtn" id="exHelp">How the exercises work</button></p>
+    <p class="lede">Open a group. <b>load</b> prepares the value, width and sign mode. Select the <b>HEX</b> row for new entries unless the prompt names another row. On a phone, <b>ops</b> opens the bitwise keys. Compare your result with <b>answer</b>, then tick the exercise to mark it done. <button type="button" class="linkbtn" id="exHelp">Reviewing finished exercises</button></p>
     <div id="exercises"></div>
     </div>
   </section>
@@ -483,14 +487,14 @@ try {
   </div>
   <div class="helpbody">
     <h3>The display</h3>
-    <p>The HEX, DEC, OCT and BIN readouts show one value four ways. Tap one to type in that base; the highlighted readout is the one you are typing into, and digits that do not exist in that base are greyed out. The ⧉ icon copies the value with a 0x, 0o or 0b prefix.</p>
-    <p><b>8 · 16 · 32 · 64</b> sets the word size, and every result wraps to that many bits. <b>unsigned / signed</b> changes how the decimal row reads the same bits: signed uses two's complement, and ÷, mod and right shifts become arithmetic.</p>
+    <p>The HEX (hexadecimal), DEC (decimal), OCT (octal) and BIN (binary) rows show the same bits. Select a row to enter digits in that base. Digits outside the selected base are disabled. The ⧉ button copies the value in that row, with a 0x, 0o or 0b prefix where appropriate.</p>
+    <p>Choose <b>8</b>, <b>16</b>, <b>32</b> or <b>64</b> to set the word size, the number of bits held at once. The calculator keeps only that many low result bits. <b>signed</b> reads the same bits in DEC using two’s complement and uses that reading for division, remainder and right shifts.</p>
     <p>Tap any bit in the bit grid to flip it. The label above the top bit shows what that bit is worth, +2ⁿ⁻¹ unsigned or −2ⁿ⁻¹ signed, and lights while the bit is set. The <b>ascii</b> line shows each byte as a character, and the <b>char</b> box loads a character's code point and shows its UTF-8 and UTF-16 encodings.</p>
 
     <h3>Flags</h3>
-    <p>The flags describe the last operation, like a CPU status register. Typing a number or tapping bits is not an operation, so it leaves them clear, as a load instruction does on a CPU. They clear when you press AC or change the word size, and they stay put when you switch between signed and unsigned so both readings of a result can be compared.</p>
+    <p>The calculator’s flags describe its last operation. Entering a number, flipping a bit, pressing <b>AC</b> or changing the word size clears the flags. Switching between <b>signed</b> and <b>unsigned</b> preserves the flags so you can compare both readings of the same result.</p>
     <dl class="helplist">
-      <dt>C</dt><dd>carry or borrow: the unsigned result did not fit the word. For shifts and rotates, the last bit shifted out.</dd>
+      <dt>C</dt><dd>carry on addition, borrow on subtraction, or the last bit shifted out on shifts and rotates. For subtraction, the companion ALU model uses the Arm convention: C = 1 means no borrow.</dd>
       <dt>V</dt><dd>overflow: the signed result did not fit the word.</dd>
       <dt>Z</dt><dd>the result was zero.</dd>
       <dt>N</dt><dd>the result has its top bit set.</dd>
@@ -514,13 +518,13 @@ try {
     <p><kbd>0</kbd>–<kbd>9</kbd> <kbd>a</kbd>–<kbd>f</kbd> digits · <kbd>(</kbd> <kbd>)</kbd> · <kbd>&amp;</kbd> AND · <kbd>|</kbd> OR · <kbd>^</kbd> XOR · <kbd>~</kbd> NOT · <kbd>&lt;</kbd> <kbd>&gt;</kbd> shift by a count · <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd> · <kbd>%</kbd> mod · <kbd>Enter</kbd> or <kbd>=</kbd> · <kbd>Backspace</kbd> · <kbd>Esc</kbd> AC</p>
 
     <h3 id="helpExercises">Exercises</h3>
-    <p>Work through the groups in order; every function on the keypad is covered at least once, and the capstones chain them together the way real register, encoding and decoding problems do. Each group opens with a <b>primer</b> that explains the concept and gives an example to try, then its list of exercises. <b>load</b> sets the calculator to the starting value and word size, and <b>answer</b> reveals the worked solution. Tick an exercise when it is done: it is tucked away and the group's summary counts it, and a fully ticked group is tucked away too. <b>show N done</b> brings them back to review or untick, and <b>Hide exercises</b> collapses the whole section. Exercises start collapsed on a first visit; <b>Show exercises</b> opens them, and your choice is remembered. Ticks are saved on this device only.</p>
+    <p>Use <b>show N done</b> to review finished exercises or clear their ticks. The catalogue starts with the four display rows and ends with problems that combine several operations. Exercise ticks are stored in this browser when storage is available.</p>
 
     <h3>Learn more</h3>
     <p>Two companion pages live alongside the calculator: a printable <a href='docs/twos-complement.pdf' target='_blank' rel='noopener'>two's complement tutorial (PDF)</a> and the <a href='docs/bit-lab.html' target='_blank' rel='noopener'>Bit Lab</a>, which builds an ALU and its flags from gates you can tap. The primers of the related exercise groups link straight to the relevant page.</p>
 
     <h3>App</h3>
-    <p>Everything works offline once it has loaded. <b>theme</b> cycles auto → light → dark and is remembered. Install it from the browser menu, or with the <b>install app</b> button when it appears, to get a full-screen app with its own icon.</p>
+    <p>The calculator can run offline after its first successful load. Open a reference while connected to make it available offline in this browser. <b>theme</b> cycles auto → light → dark and is remembered. Install it from the browser menu, or with the <b>install app</b> button when it appears, to get a full-screen app with its own icon.</p>
   </div>
 </dialog>
 
@@ -752,25 +756,37 @@ try {
       row.type = "button";
       row.className = "baserow";
       row.dataset.base = b;
-      row.innerHTML = '<span class="tag">' + tag + '</span><span class="val"></span>' +
-        '<span class="copy" title="Copy ' + tag + ' value" aria-label="Copy ' + tag + ' value">⧉</span>';
-      row.addEventListener("click", (ev) => {
-        if (ev.target.classList.contains("copy")) {
-          const raw = b === 10 ? (signed ? toSigned(value) : value).toString(10)
-                               : value.toString(b);
-          const text = b === 16 ? "0x" + raw.toUpperCase()
-                     : b === 2  ? "0b" + raw
-                     : b === 8  ? "0o" + raw : raw;
-          try { navigator.clipboard && navigator.clipboard.writeText(text); } catch (_) {}
-          ev.target.textContent = "✓";
-          setTimeout(() => { ev.target.textContent = "⧉"; }, 900);
-          ev.stopPropagation();
-          return;
-        }
+      row.innerHTML = '<span class="tag">' + tag + '</span><span class="val"></span>';
+      row.addEventListener("click", () => {
         base = b;
         render();
       });
-      rowsEl.appendChild(row);
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "copy";
+      copy.title = "Copy " + tag + " value";
+      copy.setAttribute("aria-label", copy.title);
+      copy.textContent = "⧉";
+      copy.addEventListener("click", async () => {
+        const raw = b === 10 ? (signed ? toSigned(value) : value).toString(10)
+                             : value.toString(b);
+        const formatted = b === 16 ? "0x" + raw.toUpperCase()
+                        : b === 2  ? "0b" + raw
+                        : b === 8  ? "0o" + raw : raw;
+        const status = document.getElementById("copyStatus");
+        try {
+          await navigator.clipboard.writeText(formatted);
+          status.textContent = tag + " value copied.";
+          copy.textContent = "✓";
+          setTimeout(() => { copy.textContent = "⧉"; }, 900);
+        } catch (_) {
+          status.textContent = "Could not copy the " + tag + " value.";
+        }
+      });
+      const display = document.createElement("div");
+      display.className = "base-display";
+      display.append(row, copy);
+      rowsEl.appendChild(display);
     }
   }
 
@@ -927,9 +943,12 @@ try {
   }
 
   function render() {
-    for (const row of rowsEl.children) {
+    for (const button of document.querySelectorAll("#widthSeg button, #signSeg button"))
+      button.setAttribute("aria-pressed", String(button.classList.contains("on")));
+    for (const row of rowsEl.querySelectorAll(".baserow")) {
       const b = Number(row.dataset.base);
       row.classList.toggle("active", b === base);
+      row.setAttribute("aria-pressed", String(b === base));
       row.querySelector(".val").textContent = b === 2 ? binText(value) : fmt(value, b);
     }
     if (error) {
@@ -1096,9 +1115,8 @@ try {
     if (e.target && e.target.tagName === "INPUT") return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key;
-    // Let Enter activate navigation and exercise controls while they have focus.
-    if (k === "Enter" && e.target instanceof Element &&
-        e.target.closest("nav a[href], .hdrbtns button, .exercises button, .exercises summary, .exercises a[href]")) return;
+    // A focused control owns Enter. When focus is elsewhere Enter evaluates the expression.
+    if (k === "Enter" && e.target instanceof Element && e.target.closest("button, summary, a[href]")) return;
     let handled = true;
     if (/^[0-9]$/.test(k)) digit(Number(k));
     else if (/^[a-fA-F]$/.test(k)) digit(parseInt(k, 16));
@@ -1148,13 +1166,13 @@ try {
   // L(hex, width, signed) describes a "load" button
   const L = (hex, w, s) => ({ hex, w: w || 32, s: !!s });
   const G = [
-  ["Reading the four rows", "Every value is one bit pattern shown four ways. Get fluent at reading all four before touching an operator.", [
+  ["Reading the four rows", "Compare the four rows to see how each base writes the same bits. Worked answers may omit leading zeroes.", [
     ["Load FF at 8-bit. Read off DEC, OCT and BIN without pressing anything.", "255 · 377 · 1111 1111", L("FF",8)],
     ["Click the DEC row and type 1000. What are HEX, OCT and BIN?", "3E8 · 1750 · 0011 1110 1000", L("0",32)],
-    ["Why does the OCT row group digits in threes of bits and HEX in fours?", "8 = 2³ so one octal digit is exactly 3 bits; 16 = 2⁴ so one hex digit is exactly 4 bits. Decimal has no clean grouping, which is why DEC is the odd one out."],
+    ["Why does each OCT digit describe three bits, while each HEX digit describes four?", "8 = 2³ so one octal digit is exactly 3 bits; 16 = 2⁴ so one hex digit is exactly 4 bits. Decimal has no clean grouping, which is why DEC is the odd one out."],
     ["Load CAFE. Tap bit 0 in the bit grid. New HEX?", "CAFF — E is 1110, so bit 0 was clear; setting it gives 1111 = F.", L("CAFE",16)],
     ["Convert 1011 0110 to hex in your head, then enter it by tapping bits to check.", "B6", L("0",8)],
-    ["Enter 1024, 65536 and 1048576 in DEC. What do they look like in HEX?", "400 · 1 0000 · 10 0000 — a single 1 followed by zeros: each is a power of two (2¹⁰, 2¹⁶, 2²⁰).", L("0",32)],
+    ["Select DEC. Enter 1024, then press AC and repeat for 65536 and 1048576. What does HEX show each time?", "400 · 1 0000 · 10 0000 — a single 1 followed by zeros: each is a power of two (2¹⁰, 2¹⁶, 2²⁰).", L("0",32)],
     ["Click OCT, type 777. Read HEX, DEC, BIN.", "1FF · 511 · 1 1111 1111 — nine set bits.", L("0",16)],
     ["Load 2014 at 16-bit and look at the char row. What character has code point U+2014?", "The em dash —. Its UTF-8 is E2 80 94 (three bytes), UTF-16 is just 2014.", L("2014",16)],
   ], "<p>A number inside a computer is just a pattern of bits. HEX, DEC, OCT and BIN are four ways of writing the <b>same</b> pattern, which is why all four readouts change together.</p>\n<p><b>Binary:</b> each bit is worth a power of two, 1, 2, 4, 8, 16, 32, 64, 128 counting from the right; the value is the sum of the bits that are 1. <b>Hex:</b> one hex digit is exactly four bits (0–9, then A = 10 up to F = 15), so the BIN readout is grouped in fours: read each group as one hex digit. <b>Octal:</b> one digit per three bits.</p>\n<p>Try it: press AC, then tap bits 0, 1 and 3 in the bit grid. DEC shows 1 + 2 + 8 = 11 and HEX shows B, because 1011 is the digit B.</p><p class='exmore'>Read more: <a href='docs/twos-complement.pdf#page=1' target='_blank' rel='noopener'>Two's complement tutorial, place value and hex, p. 1 (PDF)</a>.</p>"],
@@ -1163,9 +1181,9 @@ try {
     ["8-bit signed: load FF. What is DEC, and why?", "−1. Add the weights: −128 + 64 + 32 + 16 + 8 + 4 + 2 + 1 = −128 + 127 = −1. All ones is −1 at every width.", L("FF",8,true)],
     ["8-bit signed: load 7F, then 80. Read DEC each time.", "127, then −128: the largest positive and the most negative values. Signed 8-bit runs from −128 to 127, unsigned from 0 to 255 — the same 256 patterns, split differently.", L("7F",8,true)],
     ["Work out −5 by hand: write 5 in binary, invert every bit, add 1. Then check by entering 5 and pressing NEG.", "0000 0101 → 1111 1010 → 1111 1011 = FB. NEG does exactly this. Check the weights: −128 + 64 + 32 + 16 + 8 + 2 + 1 = −5.", L("5",8,true)],
-    ["Build 1111 1011 (−5) a second way: press AC, then tap bits 7, 6, 5, 4, 3, 1 and 0. Same value as 5 NEG, but look at the flags. Why does nothing light now, when NEG lit N and C?", "Because the flags report the last <b>operation</b>, and tapping bits is not one: you wrote the register directly, as a load instruction or a debugger does, and a CPU's status register does not change for those either. 5 NEG was an operation: N because its result is negative, C because negating borrows from 0 − 5. Same bits, different history. AC clears the flags for the same reason: nothing has been computed yet.", L("0",8,true)],
+    ["Build 1111 1011 (−5) a second way: press AC, then tap bits 7, 6, 5, 4, 3, 1 and 0. Same value as 5 NEG, but look at the flags. Why does nothing light now, when NEG lit N and C?", "Because the flags report the last <b>operation</b>, and tapping bits is not one: you wrote the register directly, as a load instruction or a debugger does, in this calculator. 5 NEG was an operation: N because its result is negative, C because negating borrows from 0 − 5. Same bits, different history. AC clears the flags for the same reason: nothing has been computed yet.", L("0",8,true)],
     ["8-bit signed: load FB (−5) and add 5.", "0, with C and Z lit. The unsigned view wrapped (251 + 5 = 256 needs nine bits), and that wrap is exactly what makes two's complement work: a number plus its negation leaves zero in the bits that survive. The word-size group looks at that wrapping more closely.", L("FB",8,true)],
-  ], "<p>A computer has no minus sign, only bits, so negative numbers have to be a convention. <b>Two's complement</b> is the one every CPU uses: the top bit is given a <b>negative</b> weight. In 8 bits the weights are −128, 64, 32, 16, 8, 4, 2, 1 instead of 128, 64, 32, … Everything whose top bit is 1 is therefore negative, and the range is −128 to 127.</p>\n<p><b>Reading:</b> add the weights as usual, with the top one negative. 1111 1111 = −128 + 127 = −1. 1000 0000 = −128. 1111 1011 = −128 + 64 + 32 + 16 + 8 + 2 + 1 = −5.</p>\n<p><b>Writing −x:</b> write x, invert every bit, add 1. The NEG key does exactly this. It works because x plus its complement is all ones, 1111 1111 = −1, so adding one more makes x + (−x) = 0 with the carry falling off the end of the word.</p>\n<p>The <b>signed / unsigned</b> switch changes nothing in the bits. It only tells the DEC readout whether to treat the top bit as −128 or +128. Watch the label above the top bit in the bit grid flip between +128 and −128 as you switch; it lights up while that bit is set and counting. The N flag reports that bit of the last result.</p><p class='exmore'>Read more: <a href='docs/twos-complement.pdf#page=2' target='_blank' rel='noopener'>Two's complement tutorial, the top bit is negative, p. 2 (PDF)</a>.</p>"],
+  ], "<p>A computer has no minus sign, only bits, so negative numbers have to be a convention. <b>Two's complement</b> is the signed reading used in this course: the top bit is given a <b>negative</b> weight. In 8 bits the weights are −128, 64, 32, 16, 8, 4, 2, 1 instead of 128, 64, 32, … Everything whose top bit is 1 is therefore negative, and the range is −128 to 127.</p>\n<p><b>Reading:</b> add the weights as usual, with the top one negative. 1111 1111 = −128 + 127 = −1. 1000 0000 = −128. 1111 1011 = −128 + 64 + 32 + 16 + 8 + 2 + 1 = −5.</p>\n<p><b>Writing −x:</b> write x, invert every bit, add 1. The NEG key does exactly this. It works because x plus its complement is all ones, 1111 1111 = −1, so adding one more makes x + (−x) = 0 with the carry falling off the end of the word.</p>\n<p>The <b>signed / unsigned</b> switch changes nothing in the bits. For this example the DEC row counts bit 7 as −128 when signed and +128 when unsigned. Watch the label above the top bit in the bit grid flip between +128 and −128 as you switch; it lights up while that bit is set and counting. The N flag reports that bit of the last result.</p><p class='exmore'>Read more: <a href='docs/twos-complement.pdf#page=2' target='_blank' rel='noopener'>Two's complement tutorial, the top bit is negative, p. 2 (PDF)</a>.</p>"],
   ["Two's complement: negation, overflow and sign extension", "You can read signed values now. These exercises operate on them: invert, negate, overflow, widen and compare.", [
     ["8-bit signed: click DEC, enter 1, press NEG. What is HEX?", "FF — all ones is −1 in two's complement at every width.", L("1",8,true)],
     ["8-bit: load 0 and press NOT. Read HEX, then switch to signed and read DEC.", "FF. NOT flips every bit, so 0000 0000 becomes 1111 1111: 255 unsigned, −1 signed. All ones is −1 at every width, which is why NOT 0 and NEG 1 give the same pattern.", L("0",8)],
@@ -1173,7 +1191,7 @@ try {
     ["8-bit signed: load 5, press NOT, then + 1 =. Now load 5 again and press NEG.", "FA → FB = −5, and NEG 5 is FB too. The + 1 cancels the −1 that NOT leaves behind, so NEG is simply NOT followed by + 1. That is all two's complement negation is.", L("5",8,true)],
     ["8-bit signed: load FF (−1) and press NOT. Then enter 80 (−128) and press NOT.", "00 = 0 and 7F = 127. The rule NOT x = −x − 1 holds for negative x as well: −(−1) − 1 = 0 and −(−128) − 1 = 127. NOT never overflows, unlike NEG 80.", L("FF",8,true)],
     ["8-bit signed: load 3, press NOT, then + 3 =. Why is the answer not 0?", "FC + 3 = FF = −1. NOT is not a minus sign: x + NOT x is always all ones, which is −1. Negate properly with NEG instead: 3 NEG gives FD, and FD + 3 wraps to 0 with C and Z lit.", L("3",8,true)],
-    ["8-bit signed: 127 + 1 = ?", "80 = −128. Signed overflow: the sum spilled into the sign bit, so V lights (and N, since bit 7 is set) while C stays clear.", L("7F",8,true)],
+    ["Load signed 7F at 8 bits. Select DEC and press +, 1 and =. What do DEC, C and V show?", "80 = −128. Signed overflow: the sum spilled into the sign bit, so V lights (and N, since bit 7 is set) while C stays clear.", L("7F",8,true)],
     ["8-bit signed: load 80 (−128) and press NEG.", "Still 80 = −128. −128 has no positive partner in 8 bits; this is the classic INT_MIN edge case.", L("80",8,true)],
     ["Do two's complement by hand: 8-bit, load 25 (37). Press NOT, then + 1. Compare with NEG 25.", "NOT gives DA, +1 gives DB. NEG 25 is also DB = −37. NEG ≡ NOT then +1.", L("25",8,true)],
     ["16-bit signed: load 8000 then 7FFF. Read DEC each time.", "−32768 and 32767 — the two ends of int16_t.", L("8000",16,true)],
@@ -1181,9 +1199,9 @@ try {
     ["Sign extension: 8-bit signed, enter 5 and NEG (FB = −5). Switch to 16-bit. What does DEC say? Fix it with one OR.", "00FB = 251, wrong. OR FF00 → FFFB = −5. Hardware does this automatically for a sign-extending load (lb vs lbu on RISC-V); the calculator zero-extends.", L("FB",8,true)],
     ["8-bit: which is bigger, 7F or 80? Answer for unsigned and for signed.", "Unsigned: 80 (128 > 127). Signed: 7F (127 > −128). Same bits, opposite comparison — this is why CPUs have separate signed and unsigned branch instructions.", L("7F",8)],
     ["8-bit signed: NOT 5 versus NEG 5.", "NOT 5 = FA = −6; NEG 5 = FB = −5. NOT x = −x − 1 always.", L("5",8,true)],
-  ], "<p><b>NOT</b> flips every bit and does nothing else. Read as a signed number, the flipped pattern is worth −x − 1: line x up with NOT x and every column holds exactly one 1, so x + NOT x = 1111 1111 = −1. For 5, 0000 0101 becomes 1111 1010, which is −6. NOT undoes itself, so pressing it twice gets x back.</p><p><b>NEG</b> is NOT followed by + 1. The + 1 cancels that stray −1 and lands on −x: 1111 1010 + 1 = 1111 1011 = −5. That is the whole of two's complement negation.</p>\n<p><b>Overflow:</b> the signed 8-bit range is −128 to 127, so 127 + 1 has no answer that fits. The bits wrap to 1000 0000, which reads as −128, and the V flag lights to tell you the signed result is wrong. Unsigned the same bits are a perfectly good 128, so C stays clear. The two flags are independent.</p>\n<p><b>The odd one out:</b> −128 has no positive partner in 8 bits, so NEG 80 gives 80 again. In C this is the INT_MIN trap.</p>\n<p><b>Sign extension:</b> making a negative number wider means copying its sign bit into every new bit: −5 is FB in 8 bits and FFFB in 16. Pad with zeros instead and FB becomes 251. The calculator zero-extends when you widen, so you repair it with OR.</p>\n<p><b>Comparisons</b> depend on the reading: 80 is bigger than 7F unsigned (128 vs 127) but smaller signed (−128 vs 127). CPUs have separate signed and unsigned compare-and-branch instructions for this reason.</p><p class='exmore'>Read more in the two's complement tutorial (PDF): <a href='docs/twos-complement.pdf#page=3' target='_blank' rel='noopener'>NOT, p. 3</a> · <a href='docs/twos-complement.pdf#page=4' target='_blank' rel='noopener'>overflow, p. 4</a> · <a href='docs/twos-complement.pdf#page=5' target='_blank' rel='noopener'>sign extension, p. 5</a>. See the overflow flag made from gates in the <a href='docs/bit-lab.html#lab' target='_blank' rel='noopener'>Bit Lab</a>.</p>"],
+  ], "<p><b>NOT</b> flips every bit and does nothing else. Read as a signed number, the flipped pattern is worth −x − 1: line x up with NOT x and every column holds exactly one 1, so x + NOT x = 1111 1111 = −1. For 5, 0000 0101 becomes 1111 1010, which is −6. NOT undoes itself, so pressing it twice gets x back.</p><p><b>NEG</b> is NOT followed by + 1. The + 1 cancels that stray −1 and lands on −x: 1111 1010 + 1 = 1111 1011 = −5. That is the whole of two's complement negation.</p>\n<p><b>Overflow:</b> the signed 8-bit range is −128 to 127, so 127 + 1 has no answer that fits. The bits wrap to 1000 0000, which reads as −128, and the V flag lights to tell you the signed result is wrong. Unsigned the same bits are a perfectly good 128, so C stays clear. The two flags are independent.</p>\n<p><b>The odd one out:</b> −128 has no positive partner in 8 bits, so NEG 80 gives 80 again. The same range issue occurs when negating the smallest value of a signed C type after integer promotion.</p>\n<p><b>Sign extension:</b> making a negative number wider means copying its sign bit into every new bit: −5 is FB in 8 bits and FFFB in 16. Pad with zeros instead and FB becomes 251. The calculator zero-extends when you widen, so you repair it with OR.</p>\n<p><b>Comparisons</b> depend on the reading: 80 is bigger than 7F unsigned (128 vs 127) but smaller signed (−128 vs 127). Instruction sets can provide different conditions for signed and unsigned ordering.</p><p class='exmore'>Read more in the two's complement tutorial (PDF): <a href='docs/twos-complement.pdf#page=3' target='_blank' rel='noopener'>NOT, p. 3</a> · <a href='docs/twos-complement.pdf#page=4' target='_blank' rel='noopener'>overflow, p. 4</a> · <a href='docs/twos-complement.pdf#page=5' target='_blank' rel='noopener'>sign extension, p. 5</a>. See the overflow flag made from gates in the <a href='docs/bit-lab.html#lab' target='_blank' rel='noopener'>Bit Lab</a>.</p>"],
   ["Word size, wrap-around and truncation", "The width selector is the single most important control: it is the register size of the machine you are pretending to be.", [
-    ["8-bit: 255 + 1 = ?", "0 — the carry out of bit 7 falls off the end of the word and lights the C flag, exactly as the carry flag in hardware would. Z lights too: the eight bits that survive are all zero.", L("FF",8)],
+    ["Load FF at 8 bits in unsigned mode. Select DEC and press +, 1 and =. What do DEC, C and Z show?", "0 — the carry out of bit 7 falls off the end of the word and lights the C flag, in the calculator. Z lights too: the eight bits that survive are all zero.", L("FF",8)],
     ["8-bit: 0 − 1 = ?", "FF — 255 unsigned, −1 signed. Borrow wraps the same way carry does, and sets C too; N lights because bit 7 is now set.", L("0",8)],
     ["16-bit: FFFF × 2 = ?", "FFFE — 131070 mod 65536 = 65534.", L("FFFF",16)],
     ["Load 1234 5678 at 32-bit, then switch to 16, then 8. What survives each time?", "5678, then 78. Narrowing the width keeps only the low bits — exactly what a C cast to a smaller integer type does.", L("12345678",32)],
@@ -1191,8 +1209,8 @@ try {
     ["32-bit: 65535 × 65535 = ?", "FFFE 0001 = 4294836225 — fits, because (2¹⁶−1)² < 2³².", L("0",32)],
     ["32-bit: 65536 × 65536 = ?", "0 — the result is exactly 2³², which is one bit past the register.", L("0",32)],
     ["8-bit: 200 + 100 = ?", "2C = 44. 300 mod 256 = 44. In C with uint8_t this is well-defined wrap-around.", L("0",8)],
-  ], "<p>A register holds a fixed number of bits. Whatever does not fit at the top is simply lost: 255 + 1 in 8 bits is 1 0000 0000, the leading 1 falls off, 0000 0000 remains and the C flag records the lost carry.</p>\n<p>So arithmetic in n bits is arithmetic <b>modulo 2ⁿ</b>: 256 for 8 bits, 65536 for 16, and so on. The largest unsigned value is all ones, 2ⁿ − 1. Subtracting past zero wraps the other way: 0 − 1 = FF.</p>\n<p><b>Truncation:</b> narrowing the width keeps only the low bits, which is what a C cast to a smaller integer type does. <b>Multiplication</b> needs twice the bits of its inputs: (2¹⁶ − 1)² still fits in 32 bits, but 2¹⁶ × 2¹⁶ = 2³² needs a 33rd bit and wraps to 0.</p><p class='exmore'>Read more in the two's complement tutorial (PDF): <a href='docs/twos-complement.pdf#page=4' target='_blank' rel='noopener'>counting modulo 256, p. 4</a> · <a href='docs/twos-complement.pdf#page=5' target='_blank' rel='noopener'>changing the width, p. 5</a>.</p>"],
-  ["AND, OR, XOR, NOR — masks and flags", "Bitwise ops are how you talk to hardware registers. Every exercise here is something you will do in real driver code.", [
+  ], "<p>A register holds a fixed number of bits. Whatever does not fit at the top is simply lost: 255 + 1 in 8 bits is 1 0000 0000, the leading 1 falls off, 0000 0000 remains and the C flag records the lost carry.</p>\n<p>So arithmetic in n bits is arithmetic <b>modulo 2ⁿ</b>: 256 for 8 bits, 65536 for 16, and so on. The largest unsigned value is all ones, 2ⁿ − 1. Subtracting past zero wraps the other way: 0 − 1 = FF.</p>\n<p><b>Truncation:</b> narrowing the width keeps only the low bits, as conversion to a narrower unsigned type does in C. An out-of-range conversion to a signed type has implementation-defined behaviour in C11. <b>Multiplication</b> needs twice the bits of its inputs: (2¹⁶ − 1)² still fits in 32 bits, but 2¹⁶ × 2¹⁶ = 2³² needs a 33rd bit and wraps to 0.</p><p class='exmore'>Read more in the two's complement tutorial (PDF): <a href='docs/twos-complement.pdf#page=4' target='_blank' rel='noopener'>counting modulo 256, p. 4</a> · <a href='docs/twos-complement.pdf#page=5' target='_blank' rel='noopener'>changing the width, p. 5</a>.</p>"],
+  ["AND, OR, XOR, NOR — masks and flags", "Use AND, OR and XOR to select, set or flip individual bits. These exercises use fixed examples of the patterns that can appear in hardware registers.", [
     ["Keep only the low nibble of A7.", "A7 AND 0F = 07", L("A7",8)],
     ["Extract the high nibble of A7 as a number 0–15.", "A7 AND F0 = A0, then >> four times (or X>>Y 4) = 0A = 10.", L("A7",8)],
     ["Set bit 3 of 40 without disturbing the others.", "40 OR 08 = 48", L("40",8)],
@@ -1207,68 +1225,68 @@ try {
     ["A status register reads 96 (1001 0110). Bit 7 = IRQ pending, bit 4 = zero flag, bit 2 = carry, bit 1 = ready. Which are set?", "All four are set: IRQ pending (bit 7), zero (bit 4), carry (bit 2) and ready (bit 1). Select the HEX row and reload 96 before each test. AND 80, AND 10, AND 04 and AND 02 give 80, 10, 04 and 02 respectively.", L("96",8)],
     ["Is 1234 aligned to 16 bytes? Is 1230?", "1234 AND 0F = 4 → no. 1230 AND 0F = 0 → yes. Alignment is just the low bits being zero.", L("1234",16)],
     ["Round 1234 down to a multiple of 16, then up.", "Down: 1234 AND FFF0 = 1230. Up: (1234 + F) AND FFF0 = 1240.", L("1234",16)],
-    ["Power-of-two test: x AND (x − 1). Try 40, then 48.", "40 AND 3F = 0 → power of two. 48 AND 47 = 40 ≠ 0 → not.", L("40",8)],
+    ["For a nonzero unsigned x, test whether x AND (x − 1) is zero. Try HEX 40 and 48. Which has exactly one set bit?", "40 AND 3F = 0 → power of two. 48 AND 47 = 40 ≠ 0 → not.", L("40",8)],
     ["Isolate the lowest set bit of 48: x AND NEG x.", "NEG 48 = B8 at 8-bit. 48 AND B8 = 08.", L("48",8)],
     ["Clear the lowest set bit of 48: x AND (x − 1).", "48 AND 47 = 40", L("48",8)],
     ["Compute the parity of B5 with XOR folding: (x >> 4) XOR (x AND 0F), then fold the nibble twice more.", "0B XOR 05 = 0E; (0E X>>Y 2) XOR (0E AND 3) = 03 XOR 02 = 01; (01 >> 1) XOR (01 AND 1) = 1 → odd parity (five 1-bits).", L("B5",8)],
-  ], "<p>Bitwise operations work on each bit position on its own; bit 3 of the result depends only on bit 3 of the inputs. A <b>mask</b> is a value with 1s in the positions you care about.</p>\n<p><b>AND</b> keeps bits where the mask has 1 and clears the rest: x AND 0F keeps the low nibble. <b>OR</b> sets bits: x OR 80 sets bit 7. <b>XOR</b> flips bits where the mask has 1: x XOR FF inverts everything, and x XOR x is always 0. <b>NOR</b> is NOT (x OR y).</p>\n<p>The idioms: test a flag with AND and look for a non-zero result, set it with OR, clear it with AND NOT mask, toggle it with XOR. Hardware registers are read and written exactly this way.</p><p class='exmore'>See it in gates: the <a href='docs/bit-lab.html#lab' target='_blank' rel='noopener'>Bit Lab</a> draws one gate per bit column and shows how the N, Z, C and V flags are built.</p>"],
+  ], "<p>Bitwise operations work on each bit position on its own; bit 3 of the result depends only on bit 3 of the inputs. A <b>mask</b> is a value with 1s in the positions you care about.</p>\n<p><b>AND</b> keeps bits where the mask has 1 and clears the rest: x AND 0F keeps the low nibble. <b>OR</b> sets bits: x OR 80 sets bit 7. <b>XOR</b> flips bits where the mask has 1: x XOR FF inverts everything, and x XOR x is always 0. <b>NOR</b> is NOT (x OR y).</p>\n<p>The idioms: test a flag with AND and look for a non-zero result, set it with OR, clear it with AND NOT mask, toggle it with XOR. These operations also apply to stored register values. A device can define special read or write behaviour, so check its register documentation before updating it.</p><p class='exmore'>See it in gates: the <a href='docs/bit-lab.html#lab' target='_blank' rel='noopener'>Bit Lab</a> draws one gate per bit column and shows how the N, Z, C and V flags are built.</p>"],
   ["NOT and NEG", "", [
     ["NOT 0 at 8, 16 and 32 bits.", "FF · FFFF · FFFF FFFF", L("0",8)],
     ["Show that NOT x + 1 = NEG x for x = 01.", "NOT 01 = FE, + 1 = FF. NEG 01 = FF. (−1)", L("1",8)],
-    ["Press NOT twice on A5. Then NEG twice.", "Both return A5 — both are involutions (except NEG of 80 at 8-bit, which is its own negative).", L("A5",8)],
-  ], "<p><b>NOT</b> flips every bit, the ones' complement. Read signed, NOT x = −x − 1; read unsigned, NOT x = 2ⁿ − 1 − x, so NOT 0 is the largest value at the current width.</p>\n<p><b>NEG</b> is two's-complement negation, NOT x + 1, so x + NEG x wraps to 0 and lights C. The flags follow a CPU: NEG sets C for any non-zero input (there is a borrow from 0 − x) and V only for the most negative value.</p><p class='exmore'>Read more: <a href='docs/twos-complement.pdf#page=3' target='_blank' rel='noopener'>Two's complement tutorial, NOT: the flip on its own, p. 3 (PDF)</a>.</p>"],
+    ["Press NOT twice on A5. Then NEG twice.", "Both restore A5. NEG twice also restores 80 at 8 bits, because each NEG leaves the pattern 80 and sets V.", L("A5",8)],
+  ], "<p><b>NOT</b> flips every bit, the ones' complement. Read signed, NOT x = −x − 1; read unsigned, NOT x = 2ⁿ − 1 − x, so NOT 0 is the largest value at the current width.</p>\n<p><b>NEG</b> is two's-complement negation, NOT x + 1, so x + NEG x wraps to 0 and lights C. In this calculator NEG sets C for any non-zero input (there is a borrow from 0 − x) and V only for the most negative value.</p><p class='exmore'>Read more: <a href='docs/twos-complement.pdf#page=3' target='_blank' rel='noopener'>Two's complement tutorial, NOT: the flip on its own, p. 3 (PDF)</a>.</p>"],
   ["Shifts", "<b>&lt;&lt;</b> and <b>&gt;&gt;</b> shift by one. <b>X&lt;&lt;Y</b> / <b>X&gt;&gt;Y</b> take a count — note Y is typed in the <em>current base</em>, so a shift of 16 is 10 in hex.", [
-    ["8-bit: 1 << seven times, then once more.", "80, then 00. The bit fell off the top. Hardware would have put it in the carry flag.", L("1",8)],
-    ["Multiply 5 by 16 using one shift.", "5 X<<Y 4 = 50 = 80. Shift left by n is multiply by 2ⁿ.", L("5",8)],
-    ["Divide 100 by 4 and multiply 100 by 8 with shifts.", "100 X>>Y 2 = 25; 100 X<<Y 3 = 800 (hex 320).", L("64",16)],
-    ["8-bit signed, load F0 (−16). Press >> once. Is the result 78 or F8? What does that tell you about this calculator's shift?", "78 = +120 means logical (zero-fill); F8 = −8 means arithmetic (sign-fill). C's >> on a signed int is implementation-defined for exactly this reason; RISC-V has separate SRL and SRA.", L("F0",8,true)],
+    ["8-bit: 1 << seven times, then once more.", "80, then 00. The bit fell off the top. Look for the calculator’s C flag after the last shift.", L("1",8)],
+    ["Multiply 5 by 16 using one shift.", "5 X<<Y 4 gives HEX 50 and DEC 80. Shifting left by n keeps the part of the product by 2ⁿ that fits the word.", L("5",8)],
+    ["Select DEC. From 100, use X>>Y 2 =. Press AC, enter 100 again and use X<<Y 3 =. Which DEC output goes with division by 4, and which with multiplication by 8?", "100 X>>Y 2 = 25; 100 X<<Y 3 = 800 (hex 320).", L("64",16)],
+    ["8-bit signed, load F0 (−16). Press >> once. Is the result 78 or F8? What does that tell you about this calculator's shift?", "HEX F8 and DEC −8 show that the calculator copied the sign bit. Filling with zero would give HEX 78 and DEC 120. C11 leaves right shift of a negative signed value implementation-defined.", L("F0",8,true)],
     ["32-bit: 1 X<<Y 31 (type 1F in hex). Read DEC unsigned and signed.", "8000 0000 = 2147483648 unsigned, −2147483648 signed.", L("1",32)],
     ["Extract bits 23..16 of 1234 5678 as a byte.", "1234 5678 X>>Y 10 (16 decimal) = 1234, AND FF = 34.", L("12345678",32)],
     ["Pack the bytes 12, 34, 56, 78 into one 32-bit word, high byte first.", "((12 X<<Y 8 OR 34) X<<Y 8 OR 56) X<<Y 8 OR 78 = 1234 5678. Use parentheses.", L("0",32)],
-    ["FF << by 8 at 8-bit, at 16-bit, at 32-bit.", "00 · FF00 · 0000 FF00. Same operation, three different machines.", L("FF",8)],
-    ["32-bit: 1 X<<Y 20 (32 decimal). What happens?", "0 here. In C, shifting by ≥ the width is undefined behaviour; on x86 the count is masked to 5 bits so 1<<32 is 1<<0 = 1. Hardware and calculators disagree — know your target.", L("1",32)],
-  ], "<p><b>&lt;&lt;</b> moves every bit one place left and fills the bottom with 0: the value doubles, and the bit that falls off the top lands in C. <b>&gt;&gt;</b> moves right. Unsigned it is a <b>logical</b> shift that fills with 0 and halves the value; signed it is an <b>arithmetic</b> shift that copies the sign bit, so negative numbers stay negative and halve correctly.</p>\n<p><b>X&lt;&lt;Y</b> and <b>X&gt;&gt;Y</b> shift by a count: enter the value, press the key, enter the count in the current base, press =. Shifting by k multiplies or divides by 2ᵏ.</p>\n<p>Shifts are how bit fields are built and read: (field &lt;&lt; position) places it, and (register &gt;&gt; position) AND mask extracts it.</p><p class='exmore'>Read more: <a href='docs/twos-complement.pdf#page=6' target='_blank' rel='noopener'>Two's complement tutorial, shifts, p. 6 (PDF)</a>. Compare logical and arithmetic shifts gate by gate in the <a href='docs/bit-lab.html#lab' target='_blank' rel='noopener'>Bit Lab</a>.</p>"],
+    ["Select HEX. At each width (8, 16 and 32), press AC, enter FF and use X<<Y 8 =. Where do the original eight 1s appear in HEX?", "At 8 bits none fit, so HEX is 00. At 16 and 32 bits they fit in bits 15 to 8, giving FF00 and 0000 FF00.", L("FF",8)],
+    ["32-bit: 1 X<<Y 20 (32 decimal). What happens?", "0 here. In C11 a shift count at least as large as the width of the promoted left operand is undefined. An x86 32-bit shift instruction instead masks the count to its low five bits, so a count of 32 acts like zero.", L("1",32)],
+  ], "<p><b>&lt;&lt;</b> moves every bit one place left and fills the bottom with 0: the value doubles, and the bit that falls off the top lands in C. The displayed value keeps only the bits that fit. <b>&gt;&gt;</b> moves right. Unsigned it fills with zero (a <b>logical</b> shift). Signed it copies the sign bit (an <b>arithmetic</b> shift), so a negative odd value rounds down. For example, −3 shifts to −2.</p>\n<p><b>X&lt;&lt;Y</b> and <b>X&gt;&gt;Y</b> shift by a count: enter the value, press the key, enter the count in the current base, press =. A left shift keeps the low bits of the product by 2ᵏ. For an unsigned right shift, the result is the quotient after discarding any fraction.</p>\n<p>Shifts are how bit fields are built and read: (field &lt;&lt; position) places it, and (register &gt;&gt; position) AND mask extracts it.</p><p class='exmore'>Read more: <a href='docs/twos-complement.pdf#page=6' target='_blank' rel='noopener'>Two's complement tutorial, shifts, p. 6 (PDF)</a>. Compare logical and arithmetic shifts gate by gate in the <a href='docs/bit-lab.html#lab' target='_blank' rel='noopener'>Bit Lab</a>.</p>"],
   ["Rotates", "Rotate is a shift where the bit that falls off re-enters at the other end. CPUs use it for hashing, crypto and bit-field juggling.", [
     ["8-bit: 81 RoL, then 81 RoR.", "RoL → 03 (top bit wrapped to bit 0). RoR → C0.", L("81",8)],
     ["8-bit: press RoL eight times on A5.", "Back to A5. Rotating by the word width is the identity.", L("A5",8)],
     ["8-bit: compare 80 RoL with 80 <<.", "RoL → 01, shift → 00. The shift loses the bit; the rotate keeps it.", L("80",8)],
     ["16-bit: 8001 RoR.", "C000", L("8001",16)],
-    ["16-bit: rotate 1234 left eight times. Compare with flip₈.", "Both give 3412 — rotating a 16-bit word by 8 is a byte swap. (x86's bswap for 16-bit is literally ROL 8.)", L("1234",16)],
+    ["16-bit: rotate 1234 left eight times. Compare with flip₈.", "Both give HEX 3412. Rotating this two-byte word by eight places exchanges its two bytes. Reload HEX 1234 before pressing flip₈.", L("1234",16)],
   ], "<p>A <b>rotate</b> is a shift where the bit that falls off one end re-enters at the other, so nothing is lost: rotating an 8-bit value left eight times gives it back unchanged. The bit that wrapped around is copied into C.</p>\n<p>Rotates appear in hashes, ciphers and checksums, and whenever a register is really a circular bit field.</p>"],
-  ["flip₈ and flip₁₆ — endianness", "flip₈ reverses byte order, flip₁₆ reverses 16-bit halves. This is what you see when a little-endian CPU writes a register to memory and you read the bytes back.", [
-    ["32-bit: 1234 5678 flip₈.", "7856 3412 — the memory byte order of 0x12345678 on an x86 or ARM.", L("12345678",32)],
+  ["flip₈ and flip₁₆ — endianness", "flip₈ reverses the order of bytes. flip₁₆ reverses the order of 16-bit units without changing the bytes within each unit.", [
+    ["32-bit: 1234 5678 flip₈.", "7856 3412 — reading from the lowest to the highest address in little-endian byte order.", L("12345678",32)],
     ["32-bit: 1234 5678 flip₁₆.", "5678 1234", L("12345678",32)],
     ["32-bit: 0000 1234 flip₈. Read DEC before and after.", "3412 0000 — 4660 becomes 873594880. This is what a wrong-endian read looks like in a log file.", L("1234",32)],
     ["64-bit: 0102 0304 0506 0708 flip₈, then from the original, flip₁₆.", "flip₈ → 0807 0605 0403 0201. flip₁₆ → 0708 0506 0304 0102.", L("0102030405060708",64)],
-    ["Press flip₈ twice on any value.", "Identity. Converting to network order and back is free of information loss — it just has to happen an even number of times."],
+    ["At 16 bits or wider, press flip₈ twice on a value with different bytes. What happens to HEX?", "The first press reverses the bytes. The second reverses them again and restores the original HEX."],
     ["Why is flip₈ disabled at 8-bit and flip₁₆ at 8- and 16-bit?", "There is only one byte / one 16-bit unit, so there is nothing to reorder."],
     ["TCP port 8080 is 1F90. What bytes appear on the wire (big-endian), and what would a little-endian host see if it read them as a native uint16?", "On the wire: 1F 90. Read natively little-endian: 901F = 36895. 16-bit flip₈ shows the swap. This is why htons() exists.", L("1F90",16)],
-  ], "<p>Memory holds one byte per address, so a multi-byte value has to be laid out in some order. <b>Little-endian</b> CPUs (x86, most ARM) store the lowest byte first: 1234 5678 sits in memory as 78 56 34 12. <b>Big-endian</b>, also called network byte order, stores the highest byte first: 12 34 56 78.</p>\n<p><b>flip₈</b> reverses the byte order, which converts one convention to the other. <b>flip₁₆</b> swaps 16-bit halves. Reading a little-endian register byte by byte, or decoding a network packet on a little-endian machine, is where you meet these.</p>"],
+  ], "<p>Memory holds one byte per address, so a multi-byte value has to be laid out in some order. <b>Little-endian</b> CPUs (x86, most ARM) store the lowest byte first: 1234 5678 sits in memory as 78 56 34 12. <b>Big-endian</b>, also called network byte order, stores the highest byte first: 12 34 56 78.</p>\n<p><b>flip₈</b> reverses the byte order, which converts one convention to the other. <b>flip₁₆</b> reverses the order of 16-bit units. Compare the two keys on a 64-bit value to see which bytes stay together.</p>"],
   ["÷ and mod", "", [
-    ["100 ÷ 7 and 100 mod 7. Check that quotient × 7 + remainder = 100.", "14 and 2. 14 × 7 + 2 = 100. Integer division truncates.", L("64",32)],
-    ["Show that x mod 2ⁿ = x AND (2ⁿ − 1): 1234 mod 100 (hex) versus 1234 AND FF.", "Both 34. Compilers turn mod-by-power-of-two into an AND.", L("1234",16)],
-    ["32-bit: FFFF FFFF ÷ 10 (decimal) and mod 10.", "429496729 remainder 5 — the digits of 4294967295 peeled off the end.", L("FFFFFFFF",32)],
-    ["Divide anything by 0.", "Error shown in the pending line; AC clears it. On real hardware x86 raises #DE; ARM and RISC-V quietly return all-ones/zero.", L("1",8)],
-    ["8-bit signed: load F9 (−7), then mod 3. Does the calculator divide the signed value or the raw unsigned bit pattern? How can you tell?", "Watch the result: −7 mod 3 is −1 (C) or 2 (Python); 249 mod 3 is 0. Whichever you get tells you which interpretation the calculator uses — and this ambiguity is exactly why ISAs have separate DIV/DIVU and REM/REMU.", L("F9",8,true)],
-  ], "<p>Integer division throws the fraction away: 7 ÷ 2 = 3. <b>mod</b> gives what was left over, 7 mod 2 = 1, so (a ÷ b) × b + (a mod b) always gets a back.</p>\n<p>Dividing by a power of two is a right shift, and mod by a power of two is AND with 2ᵏ − 1: x mod 16 = x AND F. In signed mode the quotient is truncated toward zero and the remainder takes the sign of the dividend, exactly as C does. Dividing by zero is an error that AC clears.</p>"],
+    ["Select DEC. Run 100 ÷ 7 = and note DEC. Press AC and run 100 mod 7 =. Does the first result × 7 plus the second result give 100?", "14 and 2. 14 × 7 + 2 = 100. Integer division truncates.", L("64",32)],
+    ["In unsigned mode, compare HEX after 1234 mod 100 = and after reloading 1234 and using AND FF =. Do both operations keep the same low byte?", "Both show HEX 34. For an unsigned value, the remainder when dividing by 2ⁿ is the value of its lowest n bits.", L("1234",16)],
+    ["Load unsigned HEX FFFF FFFF at 32 bits, then select DEC. Press ÷, enter 10 and press =. Reload the original value and repeat with mod. Read both results in DEC.", "429496729 remainder 5 — the digits of 4294967295 peeled off the end.", L("FFFFFFFF",32)],
+    ["After loading 1, press ÷, 0 and =. Read the message above HEX, then follow the instruction in the message to clear the calculator.", "The display says “error: ÷ 0 — press AC”. Pressing AC clears the message and returns the value to zero.", L("1",8)],
+    ["Load F9 at 8 bits in signed mode. Press mod, 3 and =. Read DEC and HEX. Switch to unsigned, re-enter F9 in HEX and repeat. Does the remainder depend on the reading of the input?", "Signed −7 gives quotient −2 and remainder −1, displayed as DEC −1 and HEX FF. Unsigned 249 divides evenly by 3, so its remainder is zero.", L("F9",8,true)],
+  ], "<p>Integer division throws the fraction away: 7 ÷ 2 = 3. <b>mod</b> gives what was left over, 7 mod 2 = 1. For a nonzero divisor and a quotient that fits, (a ÷ b) × b + (a mod b) gives a again.</p>\n<p>For unsigned x, division by 2ᵏ shifts the bits right and the remainder is x AND (2ᵏ − 1). In signed mode the calculator drops the fraction towards zero, and a nonzero remainder has the sign of the number being divided. Dividing by zero is an error that AC clears.</p>"],
   ["Parentheses and evaluation order", "The calculator evaluates left to right unless you add parentheses. Use them to make precedence explicit, as you should in C.", [
     ["(0F OR F0) AND 3C versus 0F OR (F0 AND 3C).", "3C versus 3F. Same tokens, different trees.", L("0F",8)],
     ["((1 X<<Y 4) OR (1 X<<Y 2)) XOR 14.", "0. You built 14 from two one-hot bits, then cancelled it.", L("1",8)],
     ["Simple checksum: (12 + 34 + 56 + 78) AND FF.", "114 AND FF = 14. Now NEG 14 = EC: append EC and the sum of all five bytes AND FF is 00 — a two's-complement checksum.", L("12",8)],
   ], "<p>The calculator applies operators strictly <b>left to right</b> as you press them; there is no precedence. 2 + 3 × 4 gives (2 + 3) × 4 = 20, not 14.</p>\n<p>Use ( and ) to force the order you mean. The line above the readouts shows what is pending: the value and operator waiting for their second operand, and any open parentheses.</p>"],
   ["Characters and Unicode", "The char box loads a character's code point. Combine it with the bit grid to see why text encodings are bit manipulation.", [
-    ["Type A in the char box, then a. What is the difference?", "41 and 61 — one bit apart, bit 5 (20). Toggle bit 5 in the grid to change case; this is what tolower() does for ASCII letters.", L("41",8)],
-    ["Type 0 (the digit). How do you get its numeric value with one AND?", "30 AND 0F = 0. Likewise '7' = 37 → 7. Parsing a digit is a mask.", L("30",8)],
+    ["Type A in the char box, then a. What is the difference?", "41 and 61 — one bit apart, bit 5 (20). Toggle bit 5 in the grid to change case; For this ASCII uppercase and lowercase pair, the other bits match.", L("41",8)],
+    ["Type 0 (the digit). How do you get its numeric value with one AND?", "30 AND 0F = 0. Likewise '7' = 37 → 7. The mask works here for ASCII digits 0 through 9. Check that an input is a digit before using it.", L("30",8)],
     ["Type €. Note the code point and UTF-8.", "U+20AC, UTF-8 E2 82 AC — three bytes because the code point needs more than 11 bits.", L("20AC",16)],
     ["Type 😀. Read the UTF-8 and UTF-16.", "U+1F600; UTF-8 F0 9F 98 80 (4 bytes); UTF-16 D83D DE00 (a surrogate pair).", L("1F600",32)],
     ["Derive the UTF-16 surrogate pair for U+1F600 by hand: subtract 1 0000, then split into 10-bit halves.", "1F600 − 10000 = F600. High: (F600 X>>Y A) + D800 = 3D + D800 = D83D. Low: (F600 AND 3FF) + DC00 = 200 + DC00 = DE00 ✓", L("1F600",32)],
     ["Derive the UTF-8 of U+2014 from its bits: 1110xxxx 10xxxxxx 10xxxxxx.", "(2014 X>>Y C) OR E0 = E2; ((2014 X>>Y 6) AND 3F) OR 80 = 80; (2014 AND 3F) OR 80 = 94 → E2 80 94 ✓", L("2014",16)],
     ["Terminals send Ctrl-A as 01 and Esc as 1B. Find the mask that maps A → 01 and [ → 1B.", "AND 1F. Control characters are the letter with bits 5 and 6 cleared — a 1960s hardware shortcut still in every terminal.", L("41",8)],
-  ], "<p>Text is numbers too. <b>ASCII</b> assigns 7-bit codes: A is 41, a is 61, and the only difference is bit 5 (20), which is why case conversion is one AND or OR. <b>Unicode</b> gives every character a code point from U+0000 to U+10FFFF.</p>\n<p><b>UTF-8</b> stores a code point in one to four bytes. ASCII is unchanged. Anything larger starts with a byte whose leading bits count the length (110… two bytes, 1110… three, 11110… four) followed by 10… continuation bytes carrying six bits each. <b>UTF-16</b> uses one 16-bit unit, or a surrogate pair for code points above FFFF.</p>\n<p>The char box loads a character's code point; the ascii line shows each byte of the current value as a character.</p>"],
+  ], "<p>Text is numbers too. <b>ASCII</b> assigns 7-bit codes: A is 41, a is 61, and the only difference is bit 5 (20). That shortcut applies to ASCII letter pairs. <b>Unicode</b> gives every character a code point from U+0000 to U+10FFFF.</p>\n<p><b>UTF-8</b> stores a code point in one to four bytes. ASCII is unchanged. Anything larger starts with a byte whose leading bits count the length (110… two bytes, 1110… three, 11110… four) followed by 10… continuation bytes carrying six bits each. <b>UTF-16</b> uses one 16-bit unit, or a surrogate pair for code points above FFFF.</p>\n<p>The char box loads a character's code point; the ascii line shows each byte of the current value as a character.</p>"],
   ["Digital design capstones", "Longer problems that chain several operations — the kind of thing you do when reading a datasheet or an instruction encoding.", [
     ["A 32-bit control register: bit 31 = enable, bits 15:8 = prescaler, bits 2:0 = mode. Build the value for enable = 1, prescaler = 2C, mode = 5.", "(1 X<<Y 1F) OR (2C X<<Y 8) OR 5 = 8000 2C05", L("0",32)],
     ["From 8000 2C05, read back the mode and the prescaler.", "Mode: AND 7 = 5. Prescaler: (X>>Y 8) AND FF = 2C.", L("80002C05",32)],
-    ["Change only the mode field of 8000 2C05 to 3, leaving everything else alone.", "Mask: 7 NOT = FFFF FFF8. (8000 2C05 AND FFFF FFF8) OR 3 = 8000 2C03. This read-modify-write is the universal register idiom.", L("80002C05",32)],
+    ["Change only the mode field of 8000 2C05 to 3, leaving everything else alone.", "Mask: 7 NOT = FFFF FFF8. (8000 2C05 AND FFFF FFF8) OR 3 = 8000 2C03. In this example, clearing then setting the mode bits leaves every other bit unchanged.", L("80002C05",32)],
     ["Gray code: g = b XOR (b >> 1). Encode A (10) and B (11). How many bits differ?", "A XOR 5 = F; B XOR 5 = E. F and E differ in one bit — Gray code's whole point, used in rotary encoders and clock-domain crossings.", L("A",8)],
     ["Decode Gray F back to binary with a prefix-XOR fold: x XOR (x>>1), then x XOR (x>>2), then x XOR (x>>4).", "F XOR 7 = 8; 8 XOR 2 = A; A XOR 0 = A → 1010 = 10 ✓", L("F",8)],
     ["Count the set bits of B5 using only x AND (x − 1) until you reach 0.", "B4, B0, A0, 80, 00 → five steps → popcount 5. (Kernighan's trick; hardware has POPCNT.)", L("B5",8)],
@@ -1276,13 +1294,13 @@ try {
     ["Priority encoder: 28 is on the input lines. Which is the highest-priority (highest-numbered) active line?", "28 = 0010 1000 → bit 5. Shift right until the value is 1, counting shifts: five. (CLZ/BSR in hardware.)", L("28",8)],
     ["7-segment display, segments a–g in bits 0–6. Encode the digit 3 (segments a b c d g) and 7 (a b c).", "3 → bits 0,1,2,3,6 = 0100 1111 = 4F. 7 → 07. This is a lookup-table ROM in hardware.", L("0",8)],
     ["A device is mapped at C000–C0FF on a 16-bit bus. Write the decode test and check C05A and C15A.", "select = (addr AND FF00) == C000. C05A → C000 ✓. C15A → C100 ✗. Address decoding is one AND and one compare.", L("C05A",16)],
-    ["Split the 32-bit address 0040 2ABC into a 4 KiB page number and offset.", "Page: X>>Y C = 0040 2. Offset: AND FFF = ABC. Twelve low bits because 4096 = 2¹².", L("00402ABC",32)],
+    ["Split the 32-bit address 0040 2ABC into a 4 KiB page number and offset.", "Page: X>>Y C = 0000 0402 in HEX. Offset: AND FFF = ABC. Twelve low bits because 4096 = 2¹².", L("00402ABC",32)],
     ["Q8.8 fixed point: represent 3.25 and multiply it by 2.0.", "3.25 × 256 = 832 = 0340; 2.0 = 0200. 0340 × 0200 = 6 8000, then X>>Y 8 = 0680 = 6.5 ✓ (product has 16 fraction bits, so shift back by 8).", L("0",32)],
-    ["Internet-style ones' complement checksum at 16-bit: 1234 + F123, fold the carry, then NOT.", "1234 + F123 wraps to 0357 with C set (the lost carry). Add the carry back: 0358. NOT → FCA7. That is the checksum field of an IP header.", L("1234",16)],
-    ["Multiply 13 × 10 by shift-and-add only.", "(13 X<<Y 3) + (13 X<<Y 1) = 104 + 26 = 130 = 82. How a multiplier without a multiplier works.", L("D",8)],
+    ["Internet-style ones' complement checksum at 16-bit: 1234 + F123, fold the carry, then NOT.", "1234 + F123 wraps to 0357 with C set (the lost carry). Add the carry back: 0358. NOT → FCA7. FCA7 is the checksum for this pair of words. An IPv4 header checksum uses the same method across all its header words.", L("1234",16)],
+    ["Select DEC. Use shifts and addition to multiply 13 × 10. Which two powers of two add to 10?", "(13 X<<Y 3) + (13 X<<Y 1) = 104 + 26 = 130 = 82. How a multiplier without a multiplier works.", L("D",8)],
     ["Write −5 in 8-bit sign-magnitude, ones' complement and two's complement.", "85 · FA · FB. Only two's complement makes add/sub work with the same adder as unsigned.", L("5",8,true)],
-    ["Carry vs overflow at 8-bit: compute 100 + 50 and 200 + 100 in unsigned and signed.", "100 + 50 = 96 → signed reads −106: overflow: V set, C clear. 200 + 100 = 2C: C set (unsigned wrapped) but signed −56 + 100 = 44 is correct, so V stays clear. The two flags are independent.", L("64",8)],
-    ["Decode the RISC-V instruction 0050 0093 (addi x1, x0, 5): opcode = bits 6:0, rd = 11:7, funct3 = 14:12, rs1 = 19:15, imm = 31:20.", "AND 7F = 13 (OP-IMM). (X>>Y 7) AND 1F = 1 → x1. (X>>Y C) AND 7 = 0 → ADDI. (X>>Y F) AND 1F = 0 → x0. X>>Y 14 = 005 → immediate 5. You just did what the decode stage does.", L("00500093",32)],
+    ["At 8 bits, select DEC in unsigned mode. Calculate 100 + 50, then note C and V before switching to signed to read the same result. Switch back to unsigned, press AC and repeat with 200 + 100. Can C and V differ?", "100 + 50 = 96 → signed reads −106: overflow: V set, C clear. 200 + 100 = 2C: C set (unsigned wrapped) but signed −56 + 100 = 44 is correct, so V stays clear. The two flags are independent.", L("64",8)],
+    ["Decode the RISC-V instruction 0050 0093 (addi x1, x0, 5): opcode = bits 6:0, rd = 11:7, funct3 = 14:12, rs1 = 19:15, imm = 31:20.", "AND 7F = 13 (OP-IMM). (X>>Y 7) AND 1F = 1 → x1. (X>>Y C) AND 7 = 0 → ADDI. (X>>Y F) AND 1F = 0 → x0. X>>Y 14 = 005 → immediate 5. These are the fields an instruction decoder reads.", L("00500093",32)],
   ], "<p>These chain the earlier ideas the way real problems do: masks and shifts to decode instruction or register fields, wrap-around and the C flag for checksums, two's complement for signed fields, and shifts as multiplication.</p>\n<p>Work each step on the calculator and watch the flags change. If a step is unfamiliar, the primer of the matching group above explains it.</p><p class='exmore'>Go further: the <a href='docs/bit-lab.html' target='_blank' rel='noopener'>Bit Lab</a> shows an ALU built from gates, with a breadboard version to build.</p>"],
   ];
 

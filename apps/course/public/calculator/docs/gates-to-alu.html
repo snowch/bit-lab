@@ -358,26 +358,26 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   </div>
   <section class="tut first" id="full-adder">
     <h2>One full adder, five gates</h2>
-    <p>Inside a CPU, the circuit that adds is called the <em>arithmetic logic unit</em>, or ALU, and its heart is one small cell repeated once per bit: the <em>full adder</em>. It adds two bits and a carry coming in from the right, and produces a sum bit and a carry going out to the left. Written as gates: sum = A ⊕ B ⊕ cin and carry-out = A·B + cin·(A ⊕ B). That is two XOR gates, two AND gates and one OR gate. Tap the inputs below to watch them work.</p>
+    <p>The arithmetic logic unit (ALU) performs operations such as addition and AND. This model builds its adder from a <em>full adder</em>, which takes input bits A and B and a carry-in, and produces a sum bit and a carry-out. Toggle A, B or the carry-in below. Compare the highlighted truth-table row with the sum and carry-out on the drawing.</p>
     <p class="tip">Notation: <code>A ⊕ B</code> is XOR (1 exactly when the inputs differ), <code>A·B</code> is AND, <code>+</code> inside a gate equation is OR, and <code>¬A</code> is NOT. Everywhere else, + is ordinary addition.</p>
     <div class="fawrap">
       <div class="fa" id="fa"></div>
       <div>
         <p class="faeq" id="faEq"></p>
         <div id="faTable"></div>
-        <p class="tip">The highlighted row is the current input; ⊕ is XOR. The first XOR and AND form a <em>half adder</em>; the rest fold in the carry.</p>
+        <p class="tip">The first XOR and AND form a <em>half adder</em> for A and B. A second XOR, another AND and one OR combine that result with the carry-in.</p>
       </div>
     </div>
   </section>
   <section class="tut" id="four-adders">
     <h2>Four of them add 4-bit numbers</h2>
-    <p> One full adder adds a single pair of bits. To add two 4-bit numbers you use four of them, one per bit, and they work the way you add on paper: write the two numbers one above the other, add each pair of digits starting from the right, and carry a 1 into the next place whenever a pair adds up to 2 or more. Each place, called a <em>column</em>, gets its own full adder. Its A and B inputs are that column's two bits, its carry-in is whatever the column on its right carried out, and its carry-out feeds the column on its left. That carry wire is the only connection between the adders. The carry-in of the rightmost column is tied to 0, and the carry-out of the leftmost column becomes the C flag. Below, the four adders are drawn as boxes marked <b>FA</b> (short for full adder), with the same sum written out as long addition beside them. Tap one of the FA boxes to open it and see its five gates working on that column; press <b>ripple</b> to watch the carries settle one column at a time, which is why the top bit is always the last to be ready.</p>
+    <p>Each <strong>FA</strong> box is one full adder. It takes its own A and B bits and the carry-out from the box to its right. Select an FA box to inspect its gates. Select <strong>ripple</strong> to trace the carries from bit 0 towards bit 3. The animation shows the order of the dependencies.</p>
     <div class="fawrap chainwrap">
       <div>
         <div class="fa" id="chain"></div>
-        <div class="row" style="margin:8px 0 0"><button class="small" id="chainRipple" type="button">ripple</button><span class="tip" style="margin:0">tap A or B bits to change the sum, tap an FA box to open it</span></div>
+        <div class="row" style="margin:8px 0 0"><button class="small" id="chainRipple" type="button">ripple</button></div>
         <div id="chainTable" style="margin-top:12px"></div>
-        <p class="tip">The same sum written as long addition. The red row is the carry into each column. The carry out of bit 3 lands in the C column on the left, as the fifth digit of the answer would on paper; in the machine it becomes the C flag.</p>
+        <p class="tip">The same sum written as long addition. The red row is the carry into each column. The carry out of bit 3 lands in the C column on the left, as the fifth digit of the answer would on paper; in this model it is the C flag.</p>
       </div>
       <div>
         <div class="fa" id="chainFA"></div>
@@ -389,7 +389,7 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   <section class="tut" id="next">
     <h2>Where this leads</h2>
     <ul>
-      <li>The <a href="bit-lab.html">Bit Lab</a> puts this adder inside a working 8-bit ALU, with subtraction built from the same adder, the N Z C V flags, and guided exercises. Its lab draws each full adder as a box marked FA; every box is the five gates above.</li>
+      <li>The <a href="bit-lab.html">Bit Lab</a> puts this adder inside a model 8-bit ALU, with subtraction built from the same adder, the N Z C V flags, and guided exercises. Its lab draws each full adder as a box marked FA; every box is the five gates above.</li>
       <li>The companion page <a href="adding-to-subtracting.html"><em>From adding to subtracting</em></a> shows how this same adder subtracts: invert B, feed a 1 into the carry-in, and read the borrow off the carry out.</li>
       <li>The companion page <a href="gates-to-register.html"><em>From gates to a register</em></a> shows the other half of a CPU: how the same kinds of gates are made to remember.</li>
       <li>The <a href="https://snowch.github.io/digital-design/">Digital Design course</a> carries on from signals to a complete working computer.</li>
@@ -468,7 +468,13 @@ function bitCell(parent, x, y, val, label, editable, onToggle){
   txt(g,14,15,String(val));
   if(editable){
     g.addEventListener('click',onToggle);
-    g.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();onToggle();} });
+    g.addEventListener('keydown',e=>{
+      if(e.key!=='Enter'&&e.key!==' ') return;
+      e.preventDefault();
+      const host=parent.closest('svg').parentElement;
+      onToggle();
+      host.querySelector(`[role="switch"][aria-label="${CSS.escape(label)}"]`)?.focus();
+    });
   }
   return g;
 }

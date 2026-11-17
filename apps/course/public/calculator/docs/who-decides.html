@@ -355,22 +355,22 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
     <div>
       <p class="crumbs"><a href="notes.html" title="From gates to a compiled if: contents">Home</a> · part 7 of 9</p>
       <h1>Signed or unsigned: who decides?</h1>
-      <p class="lede">The hardware stores no sign. One compare sets four flags, and the next instruction chooses which of them to read. Here that choice is made visible: every ARM branch on one compare, then the C and assembly of a real <code>if</code>, traced for any pair of bytes.</p>
+      <p class="lede">Compare the same two bit patterns as signed or unsigned. The Arm-style model shows how branches use flags, then traces a C comparison with each reading.</p>
     </div>
     <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
   </div>
   <nav class="toc" aria-label="Sections">
-    <a href="#who">1 Who decides</a><a href="#compare">2 One compare, every branch</a><a href="#program">3 The same thing as a program</a><a href="#loads">4 What the loads do to the bits</a>
+    <a href="#who">1 Who decides</a><a href="#compare">2 One compare, signed and unsigned branches</a><a href="#program">3 The same thing as a program</a><a href="#loads">4 What the loads do to the bits</a>
   </nav>
   <section class="tut first" id="who">
     <h2>1. Who decides</h2>
     <p>Nothing in the Bit Lab's circuit knows whether A is 128 or −128. The register holds eight bits and the adder adds them. Neither has anywhere to store which reading you meant.</p>
-    <p>It does not need to. The ALU produces one result and all four flags on every operation. C and Z answer the unsigned questions and N and V the signed ones, so both readings are available at the same time.</p>
-    <p>The decision is made afterwards, by the next instruction. A compare instruction, <code>CMP</code>, is a subtraction that keeps the flags and throws the result away. After it comes a branch instruction, which tests some of the flags and jumps if the test passes. The instruction set has two branches for every question: one tests the unsigned flags and one tests the signed flags. Whoever writes the program, or the compiler working for them, picks which one to use. That is who decides.</p>
-    <p>Try it below. Pick two bytes, or tap their bits, and they are fed through <code>CMP A, B</code>; the snippet ends with <code>BEQ</code>, the one branch both readings share. The tables underneath list the other branches: what each one means, which flags it tests, whether it would be taken right now, and whether that matches the arithmetic under its reading. Change A or B here at any time.</p>
+    <p>The model’s comparison records N (leading result bit), Z (zero), C (no unsigned borrow) and V (signed overflow). Unsigned ordering uses C and sometimes Z. Signed ordering uses N and V, and sometimes Z. Equality uses Z under either reading.</p>
+    <p>The Arm <code>CMP</code> instruction sets flags as subtraction would and discards the result. A later branch can check those flags. For example, <code>BEQ</code> branches if Z is 1, which means the operands were equal.</p>
+    <p>Load <strong>0x80 vs 0x7F</strong> below. In the branch tables, compare the entries for unsigned <code>BLO</code> and signed <code>BLT</code>. Does the branch for “A is less than B” give the same answer under both readings?</p>
   </section>
   <section class="tut" id="compare">
-    <h2>2. One compare, every branch</h2>
+    <h2>2. One compare, signed and unsigned branches</h2>
     <div class="row asmPresets" id="asmPresets"></div>
     <div class="row"><span>Width</span><button class="small" type="button" data-w="8" aria-pressed="true">8-bit</button><button class="small" type="button" data-w="4" aria-pressed="false">4-bit</button><span></span><button class="small" type="button" id="randA">random A</button><button class="small" type="button" id="randB">random B</button></div>
     <div class="hood" id="pair"></div>
@@ -385,21 +385,21 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   </section>
   <section class="tut" id="program">
     <h2>3. The same thing as a program</h2>
-    <p>Here is the same comparison as code: one <code>if</code> in C, and the ARM assembly a compiler turns it into. Pick which type <code>a</code> and <code>b</code> are declared as. The only C line that changes is the declaration, yet the compiler emits a different load and a different branch, because the type tells it which member of each pair to use. The lines that actually run for the current A and B are highlighted, and the trace underneath walks through them.</p>
+    <p>The page pairs C source with a hand-written Arm-style illustration. Choose <strong>uint8_t (unsigned)</strong> or <strong>int8_t (signed)</strong>. Look at the load and ordered branch mnemonics in the listing, then check the outcome in the trace. In C, the two byte operands in this example promote to <code>int</code> with their values preserved. A compiler may emit a different sequence.</p>
     <div class="row asmPresets"></div>
     <div class="row"><span>Declared as</span><button class="small asmType" type="button" id="asmTypeU" data-s="0" aria-pressed="true">uint8_t (unsigned)</button><button class="small asmType" type="button" id="asmTypeS" data-s="1" aria-pressed="false">int8_t (signed)</button></div>
     <div class="asmwrap">
       <div><h3>C</h3><pre class="work asmprog" id="asmC"></pre></div>
-      <div><h3>ARM assembly</h3><pre class="work asmprog" id="asmArm"></pre></div>
+      <div><h3>Illustrative Arm assembly</h3><pre class="work asmprog" id="asmArm"></pre></div>
     </div>
     <ol class="trace" id="asmTrace"></ol>
   </section>
   <section class="tut" id="loads">
     <h2>4. What the loads do to the bits</h2>
-    <p>The two loads differ only in the 24 bits that were never in memory. On ARM every register is 32 bits wide and <code>CMP</code> compares whole registers, so a byte has to be widened on its way in: <code>LDRB</code> fills the spare bits with 0 and <code>LDRSB</code> fills them with copies of the byte's top bit, which is why the same byte 0x80 becomes 128 under one and −128 under the other, and why the two loads agree whenever the top bit is 0. The companion page <a href="bytes-to-registers.html"><em>From bytes to registers</em></a> draws both loads and the widened compare cell by cell, for any pair you choose, and explains why the 32-bit flags can differ from the 8-bit ones while the branch lands the same way.</p>
-    <p>There are likewise two right shifts, two widening loads and two divides, because those are the operations where the top bit's meaning changes the answer. (A load is widening whenever the register is wider than the value in memory, which is every byte load on a 32-bit machine: the spare bits have to be filled with something, and the two loads fill them differently, as the program above shows.) A typed language records the decision once: in C, <code>unsigned</code> or <code>int</code> tells the compiler which member of each pair to emit, so you state the reading at the declaration and the compiler applies it at every operation.</p>
-    <p>That is why the Bit Lab's values table always shows both readings, and why its flag cards say "as unsigned" and "as signed": C answers whether the unsigned reading of the result fits, V whether the signed one does, and the same pattern can be right under one and wrong under the other. Load <code>0x80 vs 0x7F</code> and watch the two readings order the same bits oppositely.</p>
-    <p>To make this automatic, the <a href="flag-drills.html">flag drills</a> page gives randomised predict-then-check exercises on exactly these four things: the flags of a <code>CMP</code>, which branches fire, recovering the type from a compiled <code>if</code>, and widening a byte by hand.</p>
+    <p>In this AArch32 example, the byte is loaded into a 32-bit general-purpose register. <code>LDRB</code> fills the 24 higher bits with zeroes. <code>LDRSB</code> fills them with copies of the byte’s top bit. That gives 128 or −128 for the same byte 0x80. The <a href="bytes-to-registers.html">widening model</a> shows how a 32-bit compare can preserve ordering even when its flags differ from the 8-bit example.</p>
+
+
+    <p>The <a href="flag-drills.html">flag drills</a> let you practise predicting compare flags, choosing branches, reading an illustrative listing and widening a byte.</p>
   </section>
 
   <nav class="pager" aria-label="Series navigation"><a class="prev" href="gates-to-register.html">Previous: From gates to a register</a><a class="up" href="notes.html">Contents</a><a class="next" href="bytes-to-registers.html">Next: From bytes to registers</a></nav>
@@ -561,7 +561,7 @@ function renderCmpWork(a,b,w){
   let idx=`<div class="hrow"><span class="hl">bit</span>`+cell('','blank'); for(let i=w-1;i>=0;i--) idx+=cell((i%8===7||i%8===0||i===w-1)?i:'','c'+gap(i)); idx+='<span class="hv"></span></div>';
   let car=`<div class="hrow"><span class="hl">carries</span>`+cell(cin[w],'c'+(cin[w]?' on':'')+' v'); for(let i=w-1;i>=0;i--) car+=cell(cin[i],('c'+(cin[i]?' on':'')+(i===w-1?' v':'')+gap(i)).trim()); car+='<span class="hv">bit 0 gets the + 1</span></div>';
   const N=bit(res,w-1), Z=res===0?1:0, C=cin[w], V=cin[w]^cin[w-1];
-  host.innerHTML=`<p class="hnote" style="margin-top:4px">The ALU has no subtractor. It adds A to NOT B (every bit of B flipped) with a 1 fed into the first carry-in, which is A + (${M} − B) + 1 = A − B + ${M+1}; the +${M+1} is the carry that falls off the top, if there is one.</p>`+
+  host.innerHTML=`<p class="hnote" style="margin-top:4px">The model subtracts by adding A to NOT B (every bit of B flipped) with a 1 fed into the first carry-in, which is A + (${M} − B) + 1 = A − B + ${M+1}; the +${M+1} is the carry that falls off the top, if there is one.</p>`+
     idx+car+row('A',a,{val:`${hex(a,w)} = ${a}`})+row('NOT B',nb,{val:`${hex(nb,w)}  (B = ${hex(b,w)})`})+row('= A − B',res,{top:true,val:`${hex(res,w)} = ${res} unsigned, ${signed(res,w)} signed`})+
     `<div class="hflags"><span><b>N</b> = top bit = <b>${N}</b></span><span><b>Z</b> = all zero? <b>${Z}</b></span><span><b>C</b> = carry out = <b>${C}</b>${C?', no borrow':', a borrow'}</span><span><b>V</b> = carry in ≠ carry out at bit ${w-1} = <b>${V}</b></span></div>`;
 }

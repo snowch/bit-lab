@@ -17,7 +17,7 @@ export const runtimeStrings = {
     failing: "That answer is incorrect.",
     blocked: "Answer could not be checked.",
     graderError:
-      "The answer checker stopped with an error. Your work is saved. Try Check answer again. Error: {message}",
+      "The answer checker stopped. Try Check answer again. Details: {message}",
     inputs: "Given values",
     actual: "Your answer",
     expected: "Expected answer",

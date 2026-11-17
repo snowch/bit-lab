@@ -348,6 +348,7 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
 .csrc .ln.run{opacity:1;background:var(--bit-on);color:var(--bit-on-ink)}
 .csrc .cf{font-weight:700;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
 .trace .ctl{margin:6px 0}
+.table-scroll{overflow-x:auto}
 .trace .pos{color:var(--ink-2)}
 .asmprog .ln.done{opacity:.8}
 .hflags.chg{background:var(--bit-on);color:var(--bit-on-ink);border-radius:6px;padding:4px 8px}
@@ -365,18 +366,18 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
     <div>
       <p class="crumbs"><a href="notes.html" title="From gates to a compiled if: contents">Home</a> · part 4 of 9</p>
       <h1>Where C meets the wheel</h1>
-      <p class="lede">Ten small C programs that go wrong at the edge of the range, stepped through one instruction at a time with the registers drawn as bits before and after, so you can see the wrap the language calls undefined.</p>
+      <p class="lede">Compare ten C examples with hand-written traces of an 8-bit model. The examples show when a value fits, when a stored value wraps, and when C leaves the result to the implementation.</p>
     </div>
     <button class="small themebtn" id="themeBtn" type="button">theme: auto</button>
   </div>
   <nav class="toc" aria-label="Scenarios">
-    <a href="#s1">1 The loop that never ends</a><a href="#s2">2 127 + 1</a><a href="#s3">3 200 into an int8_t</a><a href="#s4">4 −(−128)</a><a href="#s5">5 Parsing −128</a><a href="#s6">6 Detecting a wrap in C</a><a href="#s7">7 %d and %u</a><a href="#s8">8 INT_MIN / −1</a><a href="#s9">9 The check that vanished</a><a href="#s10">10 255 + 1</a><a href="#catch">Catching these</a><a href="#how">Reading these</a>
+    <a href="#s1">1 An unsigned loop with no stopping test</a><a href="#s2">2 127 + 1</a><a href="#s3">3 200 into an int8_t</a><a href="#s4">4 −(−128)</a><a href="#s5">5 Parsing −128</a><a href="#s6">6 Detecting a wrap in C</a><a href="#s7">7 %d and %u</a><a href="#s8">8 −128 / −1</a><a href="#s9">9 The check that vanished</a><a href="#s10">10 255 + 1</a><a href="#catch">Catching these</a><a href="#how">Reading these</a>
   </nav>
-  <p class="tip">Every scenario is at 8 bits with <code>int8_t</code> and <code>uint8_t</code>, so every bit is on screen. The same things happen at 32 bits with <code>int</code> and <code>unsigned</code>; the 32-bit numbers are named where they differ. The assembly is ARM. Step through each one and watch the registers and flags; changed bits are outlined, and the C line each instruction came from is highlighted above the listing.</p>
+  <p class="tip">The page prepares each trace and highlights the related C or pseudocode line. Use <strong>Next instruction</strong> to step through the Arm-style model. Read the hexadecimal, unsigned and signed values beside each register and look for flags that change. The traces illustrate fixed-width arithmetic. To inspect compiled C instructions, use the Compiler Explorer link below.</p>
   <section class="tut first scen" id="s1">
-    <h2>1. The loop that never ends</h2>
+    <h2>1. An unsigned loop with no stopping test</h2>
     <pre class="work csrc"><span class="ln">uint8_t a[2];        // an array of n = 2 elements</span><span class="ln">uint8_t n = 2;</span><span class="ln">uint8_t i;</span><span class="ln">for (i = n - 1; i &gt;= 0; i--)   // clear a[1], then a[0], then stop</span><span class="ln">    a[i] = 0;</span></pre>
-    <p>Counting down over an array with an unsigned index, from the last element a[n − 1] to the first a[0]. The programmer means "stop after 0", but 0 − 1 under the unsigned reading is 255, and 255 ≥ 0. The listing is a real loop: the branch at the bottom sends the highlight back to the top. (Lowercase n is the array length; it has nothing to do with the N flag.)</p>
+    <p>The loop should clear indices 1 and 0, then stop. Step through until R0 changes from 0 to 255. Does the condition <code>i &gt;= 0</code> ever become false when <code>i</code> holds only values from 0 to 255?</p>
     <div class="trace">
       <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
       <pre class="work asmprog asm"></pre>
@@ -388,7 +389,7 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   <section class="tut scen" id="s2">
     <h2>2. 127 + 1</h2>
     <pre class="work csrc"><span class="ln">int8_t x = 127;</span><span class="ln">x = x + 1;</span></pre>
-    <p>The largest signed value plus one. Under the unsigned reading 128 fits; under the signed reading it does not, and the register ends up reading as −128.</p>
+    <p>Predict the model’s R0, C (carry out) and V (signed overflow) for 127 + 1. In the C code, <code>x</code> becomes an <code>int</code> before the addition. The sum is 128. Converting that sum back to <code>int8_t</code> is the step whose result is implementation-defined in C11.</p>
     <div class="trace">
       <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
       <pre class="work asmprog asm"></pre>
@@ -400,7 +401,7 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   <section class="tut scen" id="s3">
     <h2>3. 200 into an int8_t</h2>
     <pre class="work csrc"><span class="ln">int v = 200;</span><span class="ln">int8_t x = v;</span></pre>
-    <p>No arithmetic at all. A wider value is stored into a narrower variable, and the bits that remain are read with the top one worth −128.</p>
+    <p>200 is outside the range −128 to 127 of <code>int8_t</code>. C11 allows an implementation-defined result or an implementation-defined signal. Step through to see what happens when this model keeps the low byte and reads it as a signed value.</p>
     <div class="trace">
       <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
       <pre class="work asmprog asm"></pre>
@@ -411,8 +412,8 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   </section>
   <section class="tut scen" id="s4">
     <h2>4. −(−128)</h2>
-    <pre class="work csrc"><span class="ln">int8_t x = -128;</span><span class="ln">int8_t y = -x;   // or abs(x)</span></pre>
-    <p>The one pattern that cannot be negated, from section 2 of the subtraction page, as it happens in a program that expects a positive result.</p>
+    <pre class="work csrc"><span class="ln">int8_t x = -128;</span><span class="ln">int8_t y = -x;</span></pre>
+    <p>The C expression <code>-x</code> produces the <code>int</code> value 128, which does not fit in <code>y</code>. Step through the 8-bit negation and check R1 and V. How does the model show the range limit?</p>
     <div class="trace">
       <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
       <pre class="work asmprog asm"></pre>
@@ -424,7 +425,7 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   <section class="tut scen" id="s5">
     <h2>5. Parsing −128</h2>
     <pre class="work csrc"><span class="ln">// read digits as positive, negate at the end</span><span class="ln">int8_t acc = 0;</span><span class="ln">for each digit d: acc = acc * 10 + d;</span><span class="ln">return negative ? -acc : acc;</span></pre>
-    <p>The natural way to write a number parser, and the value that breaks it: the positive form of the most negative number never fits.</p>
+    <p>This pseudocode stores each partial result in an <code>int8_t</code>. Step until R2 first shows a negative signed value. Which digit caused the positive value to exceed 127?</p>
     <div class="trace">
       <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
       <pre class="work asmprog asm"></pre>
@@ -436,7 +437,7 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   <section class="tut scen" id="s6">
     <h2>6. Detecting a wrap in C</h2>
     <pre class="work csrc"><span class="ln">uint8_t a = 3, b = 5;</span><span class="ln">uint8_t d = a - b;</span><span class="ln">if (d &gt; a) /* wrapped */</span></pre>
-    <p>C cannot read the carry flag, so the idiom asks a question whose answer can only be yes if the wheel was crossed.</p>
+    <p>The C subtraction produces the <code>int</code> result −2, which becomes 254 on conversion to <code>uint8_t</code>. Compare R2 with R0 after the subtraction. Does the stored result exceed the original value?</p>
     <div class="trace">
       <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
       <pre class="work asmprog asm"></pre>
@@ -447,8 +448,8 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   </section>
   <section class="tut scen" id="s7">
     <h2>7. %d and %u</h2>
-    <pre class="work csrc"><span class="ln">int8_t x = -2;</span><span class="ln">printf(&quot;%d&quot;, x);   // -2</span><span class="ln">printf(&quot;%u&quot;, x);   // 254</span></pre>
-    <p>The same register printed under both readings. Nothing is computed; the format string chooses what the top bit is worth.</p>
+    <pre class="work csrc"><span class="ln">int8_t x = -2;</span><span class="ln">printf(&quot;%d&quot;, x);   // -2</span><span class="ln">printf(&quot;%u&quot;, (unsigned)(uint8_t)x);   // 254</span></pre>
+    <p>In C, <code>%d</code> receives the promoted <code>int</code> value −2. For <code>%u</code>, first convert to <code>uint8_t</code> to get 254, then to <code>unsigned</code> to match the format. Step through and compare the two readings on the R0 row.</p>
     <div class="trace">
       <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
       <pre class="work asmprog asm"></pre>
@@ -458,9 +459,9 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
     </div>
   </section>
   <section class="tut scen" id="s8">
-    <h2>8. INT_MIN / −1</h2>
+    <h2>8. −128 / −1</h2>
     <pre class="work csrc"><span class="ln">int8_t x = -128, d = -1;</span><span class="ln">int8_t q = x / d;   // +128 does not fit</span></pre>
-    <p>The one division that overflows. ARM and x86 do different things, and C permits both because it calls the case undefined.</p>
+    <p>In the C code, both operands become <code>int</code> before division, so +128 fits in the expression. Converting that value back to <code>int8_t</code> is implementation-defined in C11. Watch what the trace keeps when it stores the quotient in R2.</p>
     <div class="trace">
       <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
       <pre class="work asmprog asm"></pre>
@@ -471,8 +472,8 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   </section>
   <section class="tut scen" id="s9">
     <h2>9. The check that vanished</h2>
-    <pre class="work csrc"><span class="ln">int8_t x = 127;</span><span class="ln">if (x + 1 &gt; x)</span><span class="ln">    puts(&quot;no overflow&quot;);</span></pre>
-    <p>An overflow check written in C, compiled with optimisation. The listing shows what the compiler emitted; what is missing is the point.</p>
+    <pre class="work csrc"><span class="ln">int x = 127;</span><span class="ln">if (x + 1 &gt; x)</span><span class="ln">    puts(&quot;no overflow&quot;);</span></pre>
+    <p>The example uses a signed <code>int</code>. Whenever <code>x + 1</code> has defined behaviour, the result is greater than <code>x</code>. The trace illustrates how an optimiser can replace the comparison with true. At <code>INT_MAX</code> the addition would already have undefined behaviour, so the comparison cannot safely check for it.</p>
     <div class="trace">
       <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
       <pre class="work asmprog asm"></pre>
@@ -484,7 +485,7 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
   <section class="tut scen" id="s10">
     <h2>10. 255 + 1, and detecting it</h2>
     <pre class="work csrc"><span class="ln">uint8_t a = 255, b = 1;</span><span class="ln">uint8_t s = a + b;</span><span class="ln">if (s &lt; a) /* carried */</span></pre>
-    <p>The addition twin of scenario 6: the carry out of the top bit, and the comparison that reveals it from C.</p>
+    <p>The C addition produces the <code>int</code> result 256, which becomes 0 on conversion to <code>uint8_t</code>. After the model adds, compare R2 and R0 and check C and Z. Can the stored sum be smaller than an input even though both inputs were positive?</p>
     <div class="trace">
       <div class="row ctl"><button class="small prev" type="button">Previous</button><button class="op next" type="button">Next instruction</button><button class="small reset" type="button">Reset</button><span class="pos"></span></div>
       <pre class="work asmprog asm"></pre>
@@ -496,50 +497,51 @@ nav.pager .up{color:var(--ink-2);border:0;font:.84rem var(--mono)}
 
   <section class="tut" id="catch">
     <h2>Catching these</h2>
-    <p>At the machine level the answer is already in the flags row: V = 1 or C = 1 is the hardware saying so, and in assembly the next instruction would be <code>BVS overflow</code> or <code>BCS carried</code>. C has no spelling for that branch, so protection comes from the choices below, cheapest first. The table at the end says which one catches each scenario.</p>
+    <p>Use the destination type’s range before storing a value. The model’s C and V flags explain what happened at eight bits. A C check needs to account for the type in which the expression was evaluated and the type it is stored in.</p>
     <h3>Choose types with headroom</h3>
-    <p>Compute in a type wide enough that the edge is far away, and narrow only at the end if you must. Sizes and counts belong in <code>size_t</code>, not <code>int</code>. An <code>int8_t</code> should hold a value, not be the type you compute in; C promotes it to <code>int</code> for arithmetic anyway, so <code>x + 1</code> on an <code>int8_t</code> is computed at 32 bits and only overflows at the store, which is scenario 3 rather than scenario 2.</p>
+    <p>Compute in a type wide enough for the operation. Before converting to a smaller signed type, compare the result with that type’s minimum and maximum. In C11, <code>int8_t</code> and <code>uint8_t</code> operands become <code>int</code> in these arithmetic expressions, because <code>int</code> can hold every value of either type.</p>
     <h3>Check before, not after</h3>
     <p>Checking after the operation is scenario 9: the compiler may assume the overflow never happened and delete the check. Write the test in terms that cannot overflow themselves:</p>
     <pre class="work">if (b &gt; 0 &amp;&amp; a &gt; INT_MAX - b)  /* a + b would overflow   */
 if (b &lt; 0 &amp;&amp; a &lt; INT_MIN - b)  /* a + b would underflow  */
 if (x == INT_MIN)               /* -x and abs(x) are unsafe */
 if (d == -1 &amp;&amp; x == INT_MIN)     /* x / d is unsafe        */</pre>
-    <h3>Ask the compiler to read the flag for you</h3>
-    <p>GCC and Clang provide <code>__builtin_add_overflow(a, b, &amp;r)</code>, <code>__builtin_sub_overflow</code> and <code>__builtin_mul_overflow</code>, which store the wrapped result in <code>r</code> and return true when it did not fit. They compile to the add plus a test of V or C, whichever the operand types call for. C23 standardises them as <code>ckd_add</code>, <code>ckd_sub</code> and <code>ckd_mul</code> in <code>&lt;stdckdint.h&gt;</code>. This is the tool for the cases where overflow is a real possibility rather than a bug, such as sizes computed from input.</p>
+    <h3>Use checked arithmetic</h3>
+    <p>GCC and Clang offer <code>__builtin_add_overflow(a, b, &amp;r)</code>, <code>__builtin_sub_overflow</code> and <code>__builtin_mul_overflow</code>. These return true when the exact result cannot fit in the destination type of <code>r</code>. C23 offers <code>ckd_add</code>, <code>ckd_sub</code> and <code>ckd_mul</code> in <code>&lt;stdckdint.h&gt;</code>. The generated instructions depend on the compiler, types and target.</p>
     <h3>Let the compiler warn</h3>
-    <p><code>-Wall -Wextra</code> plus <code>-Wconversion -Wsign-conversion -Wsign-compare -Wtype-limits</code> catch most of this page at compile time. <code>-Wtype-limits</code> flags the <code>i &gt;= 0</code> on an unsigned in scenario 1 as always true; <code>-Wconversion</code> flags the narrowing store in scenario 3; <code>-Wsign-compare</code> flags a signed value compared with an unsigned one, the usual way scenario 7's two readings collide inside a program; <code>-Wformat</code> flags the <code>%u</code> given a signed argument.</p>
-    <h3>Make the hardware's verdict fatal in test builds</h3>
-    <p><code>-fsanitize=signed-integer-overflow</code>, or all of <code>-fsanitize=undefined</code>, inserts the <code>BVS</code> that C lacks and aborts with a message naming the source line. Run the tests and any fuzzer with it on. <code>-fsanitize=unsigned-integer-overflow</code> does the same for unsigned wrap, which is not an error in C but is usually a bug in the program. <code>-ftrapv</code> is the older, blunter form.</p>
+    <p>With GCC, <code>-Wtype-limits</code> can flag an unsigned index compared with zero, and <code>-Wconversion</code> can flag a narrowing conversion. Use <code>-Wformat</code> to check format arguments. Which diagnostics fire depends on the compiler and options.</p>
+    <h3>Check runtime behaviour in tests</h3>
+    <p><code>-fsanitize=undefined</code> can report signed arithmetic overflow for cases your tests execute. With Clang, <code>-fsanitize=implicit-conversion</code> can also report conversions that change the value. That separate check matters when the arithmetic fits in <code>int</code> but the destination is narrower.</p>
     <h3>Decide what wrap means</h3>
-    <p>If you want modular arithmetic, do it in <code>unsigned</code>, where the wrap is defined and no flag is needed, and say so in a comment. If you want signed wrap to be a promise rather than undefined behaviour, <code>-fwrapv</code> makes it one, and scenario 9's check comes back; it costs some optimisations and is specific to GCC and Clang.</p>
+    <p>Conversion to an unsigned type is defined modulo one more than its maximum. For modular arithmetic, account for any promotions before the operation. GCC and Clang’s <code>-fwrapv</code> defines wrapping for signed addition, subtraction and multiplication. It does not change how C treats division by zero or how a narrowing signed conversion is defined.</p>
     <h3>Test the edges on purpose</h3>
     <p><code>INT_MAX</code>, <code>INT_MIN</code>, 0, −1, <code>UINT_MAX</code>, and one short of and one past every size limit in the program. Part 3's "does it fit" drill is this habit in miniature.</p>
     <h3>Which catches which</h3>
+    <div class="table-scroll" role="region" aria-label="Checks by scenario" tabindex="0">
     <table class="truth" style="font-family:var(--sans);text-align:left">
       <tr><th>Scenario</th><th>Compile time</th><th>Test time</th><th>In the code</th></tr>
       <tr><td>1 unsigned countdown</td><td><code>-Wtype-limits</code></td><td>address sanitizer, when the stray index is used</td><td>loop <code>for (i = n; i-- &gt; 0;)</code>, or a signed index</td></tr>
-      <tr><td>2 127 + 1</td><td>no</td><td><code>-fsanitize=signed-integer-overflow</code></td><td>wider type, or <code>ckd_add</code></td></tr>
+      <tr><td>2 127 + 1</td><td>possible conversion warning</td><td>implicit-conversion sanitizer (Clang)</td><td>check the sum against the destination range</td></tr>
       <tr><td>3 200 into int8_t</td><td><code>-Wconversion</code></td><td><code>-fsanitize=implicit-conversion</code> (Clang)</td><td>range check before narrowing</td></tr>
-      <tr><td>4 −(−128)</td><td>no</td><td><code>-fsanitize=signed-integer-overflow</code></td><td>test for <code>INT_MIN</code> first; compute <code>abs</code> in a wider type</td></tr>
-      <tr><td>5 parsing −128</td><td>no</td><td>sanitizer, with the edge value in the tests</td><td>accumulate negatively, or use <code>strtol</code> and check <code>errno</code></td></tr>
+      <tr><td>4 −(−128)</td><td>possible conversion warning</td><td>implicit-conversion sanitizer (Clang)</td><td>keep the result in <code>int</code> or check before narrowing</td></tr>
+      <tr><td>5 parsing −128</td><td>possible conversion warning</td><td>test with −128 and 128</td><td>parse into a wider type, check parser errors and check the destination range</td></tr>
       <tr><td>6 detecting a wrap</td><td>not a bug: the idiom is the protection</td><td></td><td><code>ckd_sub</code> says it directly</td></tr>
-      <tr><td>7 %d and %u</td><td><code>-Wformat</code></td><td></td><td>match the format to the type</td></tr>
-      <tr><td>8 INT_MIN / −1</td><td>no</td><td>sanitizer; a crash on x86 in any case</td><td>test both operands before dividing</td></tr>
+      <tr><td>7 %d and %u</td><td>format warnings</td><td>check both printed values</td><td>match the format to the argument type</td></tr>
+      <tr><td>8 −128 / −1</td><td>possible conversion warning</td><td>implicit-conversion sanitizer (Clang)</td><td>check the destination. For full-width <code>int</code> division, also guard zero and <code>INT_MIN / -1</code> on a two’s-complement target.</td></tr>
       <tr><td>9 the vanished check</td><td>sometimes: <code>-Wstrict-overflow</code></td><td>the sanitizer fires at the add the check was meant to guard</td><td>check before, or <code>ckd_add</code>, or <code>-fwrapv</code></td></tr>
-      <tr><td>10 255 + 1</td><td>no</td><td><code>-fsanitize=unsigned-integer-overflow</code> (Clang)</td><td>the <code>s &lt; a</code> idiom, or <code>ckd_add</code></td></tr>
+      <tr><td>10 255 + 1</td><td>possible conversion warning</td><td>implicit-conversion sanitizer (Clang)</td><td>compare the stored sum with an operand, or use checked addition</td></tr>
     </table>
-    <p>Other languages, for comparison: Rust panics on overflow in debug builds and spells the intent in the code with <code>checked_add</code>, <code>wrapping_add</code> and <code>saturating_add</code>; Swift traps always; Java wraps silently, like C with <code>-fwrapv</code>; Python has no fixed width, so none of this exists there, which is why people arriving from Python meet it as a surprise.</p>
+    </div>
   </section>
 
   <section class="tut" id="how">
     <h2>Reading these</h2>
     <ul>
       <li>Each trace runs on a machine with four 8-bit registers and the N Z C V flags, computed the way the <a href="bit-lab.html">Bit Lab</a> does it: subtraction is A + NOT B + 1, C is the carry out of the top bit, V is the carry into the top bit XOR the carry out.</li>
-      <li>The highlighted C line is the one the current instruction came from. Where one line compiles to several instructions, the part of the line being executed is underlined. Scenario 9 is the exception: its second instruction is what the compiler left of the whole <code>if</code>.</li>
-      <li>Outlined cells changed in the last step. The flags row is highlighted when the last instruction set the flags; ARM instructions only do so when asked, which is the trailing <code>S</code> on <code>SUBS</code> and <code>ADDS</code>.</li>
-      <li>Where C says "undefined behaviour", the hardware still does something definite, and these traces show it. The catch is that the compiler is allowed to assume the undefined case never happens and may have rearranged the code before it reached the machine, so what you observe can differ from the trace and from run to run. Compile with <code>-fsanitize=undefined</code> to be told when a trace like these is happening in your program.</li>
-      <li><code>-fwrapv</code> tells GCC and Clang to treat signed overflow as a defined wrap, the way the hardware does it. Scenario 9 then compiles to the add and compare the programmer expected. It costs some optimisations and is not portable to other compilers, but it turns the undefined cases on this page into the traces shown.</li>
+      <li>The trace highlights the source line it illustrates and underlines the part being discussed. The assembly-style listing describes the model’s steps.</li>
+      <li>An outline marks a changed bit. The flags row is highlighted when the step produced new flags. In these traces <code>SUBS</code> and <code>ADDS</code> update flags, while a plain move leaves them alone.</li>
+      <li>The model performs each operation at eight bits. In C, an operation and its later assignment can use different widths and have different range rules.</li>
+
       <li>To see the real instructions for your own C, paste it into <a href="https://godbolt.org/">Compiler Explorer</a> with an ARM GCC at <code>-O1</code>.</li>
     </ul>
   </section>
@@ -638,64 +640,64 @@ mount('s1',{ regs:['R0'], start:'A two-element array, so the whole loop fits on 
     {op:'mov',dst:'R0',imm:1,al:0,cl:3,cf:'i = n - 1',note:'i starts at n − 1 = 1, the index of the last element.'},
     {op:'nop',al:1,cl:4,note:'a[1] = 0. The store writes to memory, not to a register, so nothing drawn here changes.'},
     {op:'sub',dst:'R0',a:'R0',imm:1,al:2,cl:3,cf:'i--',note:'1 − 1 = 0. Z = 1 says the result is zero, C = 1 says no borrow.'},
-    {op:'sub',dst:'R3',a:'R0',imm:0,al:[3,4],cl:3,cf:'i >= 0',note:'Is 0 ≥ 0? The compiler compares as unsigned, because i is unsigned: 0 − 0 needs no borrow, C = 1, so the branch is taken and the loop goes round again. Correct so far: a[0] still needs clearing.'},
+    {op:'sub',dst:'R3',a:'R0',imm:0,al:[3,4],cl:3,cf:'i >= 0',note:'Is 0 ≥ 0? In the model 0 − 0 needs no borrow, so C = 1 and the unsigned branch repeats the loop. Correct so far: a[0] still needs clearing.'},
     {op:'nop',al:1,cl:4,note:'a[0] = 0. Every element is now cleared. This is where the programmer means the loop to stop: one more decrement and the test should fail.'},
     {op:'sub',dst:'R0',a:'R0',imm:1,al:2,cl:3,cf:'i--',note:'0 − 1 steps back past zero round the wheel: R0 is now 0xFF = 255. C = 0 says a borrow happened, but nothing in the loop reads C here.'},
     {op:'sub',dst:'R3',a:'R0',imm:0,al:[3,4],cl:3,cf:'i >= 0',note:'Is 255 ≥ 0? Under the unsigned reading, yes: 255 − 0 needs no borrow, C = 1, and the branch is taken. The programmer was thinking of −1, but an unsigned i can never hold it. In fact most compilers notice that an unsigned value is always ≥ 0 and delete the test entirely, which is the same bug faster.'},
-    {op:'nop',al:1,cl:4,note:'a[255] = 0, writing 254 bytes past the end of a two-element array. The loop will carry on down from 255 to 0, wrap again, and never end.'},
+    {op:'nop',al:1,cl:4,note:'The next illustrated store uses index 255. The original two-element array has no such element, so the C program has undefined behaviour at this access.'},
   ]});
 mount('s2',{ regs:['R0'], start:'x is 127, the largest int8_t.',
   steps:[
     {op:'mov',dst:'R0',imm:127,asm:'MOV   R0, #127',c:'int8_t x = 127',cl:0,note:'R0 holds 0x7F. Top bit 0: positive under the signed reading.'},
-    {op:'add',dst:'R0',a:'R0',imm:1,asm:'ADDS  R0, R0, #1',c:'x + 1',cl:1,note:'Follow the 1 up the columns. 0x7F is 0111 1111. Adding 1 to bit 0 makes it 0 and carries a 1 into bit 1; that makes bit 1 a 0 and carries into bit 2; and so on, every one of the seven low bits turning 0 and passing the carry on. So a carry arrives at the top bit. The top bit was 0, so it becomes 1 and produces no carry of its own: nothing leaves the top of the register. Result: 1000 0000, 0x80.<br><br>Now the flags. <strong>C</strong> is the carry that left the top: none did, so C = 0. Under the unsigned reading that is the right verdict: 127 + 1 = 128, and 128 fits in 8 bits, so nothing was lost. <strong>V</strong> compares the carry that went into the top bit (1) with the carry that left it (0). They differ, so V = 1. Under the signed reading that is the right verdict too: the only thing that changed in the top bit is that it went from 0 to 1, and under the signed reading that bit is worth −128, so the answer went from +127 to −128 instead of to +128. Same bits, two flags, each judging its own reading: C says the unsigned answer is fine, V says the signed answer is not.'},
+    {op:'add',dst:'R0',a:'R0',imm:1,asm:'ADDS  R0, R0, #1',c:'x + 1',cl:1,note:'Follow the 1 up the columns. 0x7F is 0111 1111. Adding 1 to bit 0 makes it 0 and carries a 1 into bit 1; that makes bit 1 a 0 and carries into bit 2; and so on, every one of the seven low bits turning 0 and passing the carry on. So a carry arrives at the top bit. The top bit was 0, so it becomes 1 and produces no carry of its own: nothing leaves the top of the register. Result: 1000 0000, 0x80.<br><br>Now the flags. <strong>C</strong> is the carry that left the top: none did, so C = 0. Under the unsigned reading that is the right verdict: 127 + 1 = 128, and 128 fits in 8 bits, so nothing was lost. <strong>V</strong> compares the carry that went into the top bit (1) with the carry that left it (0). They differ, so V = 1. Under the signed reading that is the range check for the eight-bit model: the only thing that changed in the top bit is that it went from 0 to 1, and under the signed reading that bit is worth −128, so the stored eight-bit result reads −128. The C addition itself has the int result 128. Same bits, two flags, each judging its own reading: C says the unsigned answer is fine, V says the signed answer is not.'},
   ]});
 mount('s3',{ regs:['R0','R1'], start:'The value 200 sits in a wider register, as an int would.',
   steps:[
     {op:'mov',dst:'R0',imm:200,asm:'MOV   R0, #200',c:'int v = 200',cl:0,note:'As a 32-bit int, 200 is 0x000000C8. Only its low byte is drawn here: 0xC8.'},
-    {op:'str',dst:'R1',imm:200,asm:'STRB  R0, [x]',c:'int8_t x = v',cl:1,note:'Storing to an int8_t keeps only the low byte. The bits are unchanged, 0xC8, but as an int8_t they are read with the top bit worth −128: x is −56. No flag is involved; nothing was computed, only a reading was changed. C calls this implementation-defined, and every mainstream compiler does exactly this.'},
+    {op:'str',dst:'R1',imm:200,asm:'STRB  R0, [x]',c:'int8_t x = v',cl:1,note:'The model keeps the low byte 0xC8, which reads as −56 when signed. No arithmetic flags change. C11 permits an implementation-defined result or signal for this out-of-range signed conversion.'},
   ]});
 mount('s4',{ regs:['R0','R1'], start:'x is −128, the most negative int8_t. The code wants its absolute value.',
   steps:[
     {op:'mov',dst:'R0',imm:0x80,asm:'MOV   R0, #0x80',c:'int8_t x = -128',cl:0,note:'R0 holds 0x80: top bit set, every other bit 0. It is −8 of the subtraction page at 8 bits.'},
-    {op:'neg',dst:'R1',a:'R0',asm:'RSBS  R1, R0, #0',c:'y = -x   (or abs(x))',cl:1,note:'Negation is 0 − R0, which the ALU does as 0 + NOT R0 + 1. NOT 0x80 is 0x7F, 0111 1111. Adding the 1 carries up through all seven low bits, exactly as in scenario 2, and arrives at the top bit; the top bit was 0, becomes 1, and nothing leaves the register. So the same pattern, 0x80, comes back, and V = 1 for the same reason as in scenario 2: a carry went into the top bit and none came out, so the top bit changed sign without the answer being representable. y is still −128, and any code that now assumes y ≥ 0 is wrong. C calls this undefined; the hardware calls it V.'},
+    {op:'neg',dst:'R1',a:'R0',asm:'RSBS  R1, R0, #0',c:'y = -x',cl:1,note:'The model computes 0 + NOT 0x80 + 1. The carry into bit 7 is 1 and the carry out is 0, so V = 1 and R1 is 0x80 again. In C, both -x and abs(x) can produce the int value 128 here. The conversion to int8_t is the range issue.'},
   ]});
 mount('s5',{ regs:['R0','R1','R2'], start:'A parser has read the digits of "−128" as a positive number and will negate at the end.',
   steps:[
     {op:'mov',dst:'R0',imm:12,asm:'MOV   R0, #12',c:'acc = 12   (after "1","2")',cl:2,note:'So far so good: 12 fits.'},
     {op:'mov',dst:'R1',imm:120,asm:'MOV   R1, #120',c:'acc * 10',cl:2,cf:'acc * 10',note:'120 still fits in an int8_t.'},
-    {op:'add',dst:'R2',a:'R1',imm:8,asm:'ADDS  R2, R1, #8',c:'acc = acc*10 + 8',cl:2,cf:'+ d',note:'120 + 8 = 128 does not fit: R2 is 0x80, which reads as −128, and V = 1. The positive 128 never existed in the register.'},
-    {op:'neg',dst:'R2',a:'R2',asm:'RSBS  R2, R2, #0',c:'return -acc',cl:3,cf:'-acc',note:'Negating 0x80 gives 0x80 again, V = 1 again. The parser returns −128, which happens to be the right answer, by two wrongs cancelling. Try "128" without the minus sign and the same code returns −128 for +128. A parser that accumulates negatively, −1, −12, −128, never leaves the range.'},
+    {op:'add',dst:'R2',a:'R1',imm:8,asm:'ADDS  R2, R1, #8',c:'acc = acc*10 + 8',cl:2,cf:'+ d',note:'120 + 8 = 128 does not fit: R2 is 0x80, which reads as −128, and V = 1. The exact sum is 128. It exists in a C int, but it cannot be stored in a signed eight-bit destination.'},
+    {op:'neg',dst:'R2',a:'R2',asm:'RSBS  R2, R2, #0',c:'return -acc',cl:3,cf:'-acc',note:'The fixed-width model negates 0x80 to 0x80 again. For this negative input the model lands on the target pattern by coincidence. A C parser can accumulate in a wider type, apply the sign, then check the destination range.'},
   ]});
 mount('s6',{ regs:['R0','R1','R2'], start:'a is 3 and b is 5, both unsigned. The code wants to know whether a − b wrapped, and C cannot read the carry flag.',
   steps:[
     {op:'mov',dst:'R0',imm:3,asm:'MOV   R0, #3',c:'uint8_t a = 3',cl:0,cf:'a = 3',note:''},
     {op:'mov',dst:'R1',imm:5,asm:'MOV   R1, #5',c:'uint8_t b = 5',cl:0,cf:'b = 5',note:''},
     {op:'sub',dst:'R2',a:'R0',b:'R1',asm:'SUBS  R2, R0, R1',c:'d = a - b',cl:1,note:'3 − 5 wraps to 0xFE = 254. The hardware says so with C = 0, but C the language has no way to read C the flag.'},
-    {op:'sub',dst:'R3',a:'R0',b:'R2',asm:'CMP   R0, R2',c:'if (d > a)',cl:2,cf:'d > a',note:'So the idiom compares instead: is the difference bigger than what we started with? 254 > 3, and that can only happen if the subtraction went round the wheel. The compare does 3 − 254 and sets C = 0 (a borrow), which is what the unsigned "greater than" branch reads. A compiler given __builtin_sub_overflow emits the first SUBS and tests its C directly, skipping the second compare.'},
+    {op:'sub',dst:'R3',a:'R0',b:'R2',asm:'CMP   R0, R2',c:'if (d > a)',cl:2,cf:'d > a',note:'So the idiom compares instead: is the difference bigger than what we started with? 254 > 3, and that can only happen if the subtraction went round the wheel. The compare does 3 − 254 and sets C = 0 (a borrow), which is what the unsigned "greater than" branch reads. A checked subtraction can test whether the difference fits in the chosen destination type.'},
   ]});
-mount('s7',{ regs:['R0'], start:'One register, printed twice.',
+mount('s7',{ regs:['R0'], start:'Compare the two readings of R0.',
   steps:[
     {op:'mov',dst:'R0',imm:0xFE,asm:'MOV   R0, #0xFE',c:'int8_t x = -2',cl:0,note:'R0 holds 0xFE.'},
-    {op:'mov',dst:'R0',imm:0xFE,asm:'; printf("%d", x)',c:'prints -2',cl:1,note:'%d reads the register with the top bit worth −128: −128 + 64 + 32 + 16 + 8 + 4 + 2 = −2. Nothing in the register changed.'},
-    {op:'mov',dst:'R0',imm:0xFE,asm:'; printf("%u", x)',c:'prints 254 (4294967294 at 32 bits)',cl:2,note:'%u reads the same bits with the top bit worth +128: 254. At 32 bits the same mistake prints 4294967294, the classic "huge number" that means a negative was printed as unsigned. The register never changed; only the reading did.'},
+    {op:'mov',dst:'R0',imm:0xFE,asm:'; printf("%d", x)',c:'prints -2',cl:1,note:'The C argument for %d is promoted to int, preserving −2. The signed column alongside R0 shows the same value.'},
+    {op:'mov',dst:'R0',imm:0xFE,asm:'; printf("%u", (unsigned)(uint8_t)x)',c:'prints 254',cl:2,note:'Converting −2 to uint8_t gives 254. Converting that value to unsigned gives printf the type expected by %u. The model keeps R0 unchanged so you can compare its two readings.'},
   ]});
 
 mount('s8',{ regs:['R0','R1','R2'], start:'x is −128 and the divisor is −1. The true quotient is +128.',
   steps:[
     {op:'mov',dst:'R0',imm:0x80,asm:'MOV   R0, #0x80',c:'int8_t x = -128',cl:0,cf:'x = -128',note:'R0 holds 0x80, −128.'},
     {op:'mov',dst:'R1',imm:0xFF,asm:'MOV   R1, #0xFF',c:'int8_t d = -1',cl:0,cf:'d = -1',note:'R1 holds 0xFF, −1.'},
-    {op:'sdiv',dst:'R2',a:'R0',b:'R1',asm:'SDIV  R2, R0, R1',c:'x / d',cl:1,cf:'x / d',note:'−128 ÷ −1 = +128, which does not fit. ARM\'s SDIV does not trap and sets no flags: it writes the low 8 bits of the answer, 0x80, so the quotient reads as −128 and the program carries on with the wrong sign. On x86 the equivalent IDIV instruction raises a divide-error exception instead, the same one as dividing by zero, and the process dies with a floating-point exception from integer code. Neither machine gives +128; C calls the case undefined so both are allowed.'},
+    {op:'sdiv',dst:'R2',a:'R0',b:'R1',asm:'SDIV  R2, R0, R1',c:'x / d',cl:1,cf:'x / d',note:'The model stores the low eight bits of the quotient 128 in R2. They read as −128 and flags do not change in this step. C evaluates these operands as int; a separate case such as INT_MIN / −1 has undefined behaviour when the exact quotient cannot fit in int.'},
   ]});
-mount('s9',{ regs:['R0','R1'], start:'The programmer checks for overflow by asking whether adding one made the number bigger. The listing on the left is what they expect; step through to see what the compiler emitted at -O2.',
+mount('s9',{ regs:['R0','R1'], start:'The programmer checks for overflow by asking whether adding one made the number bigger. Step through the illustrative instructions and look for the addition and comparison.',
   steps:[
-    {op:'mov',dst:'R0',imm:127,asm:'MOV   R0, #127',c:'int8_t x = 127',cl:0,note:'R0 holds 127.'},
-    {op:'mov',dst:'R1',imm:1,asm:'MOV   R1, #1',c:'if (x + 1 > x)  → true',cl:1,cf:'x + 1 > x',note:'There is no ADDS and no CMP. The compiler reasoned: for a signed x, x + 1 > x is false only when x + 1 overflows; overflow is undefined behaviour; a program with undefined behaviour may do anything; so I may assume it is true. It stored the constant 1. The wrap that scenario 2 showed never gets a chance to happen, and the check the programmer wrote is gone. Compile with -fwrapv and the add and compare come back, and the test is false for 127.'},
+    {op:'mov',dst:'R0',imm:127,asm:'MOV   R0, #127',c:'int x = 127',cl:0,note:'R0 shows the low byte of the starting value 127.'},
+    {op:'mov',dst:'R1',imm:1,asm:'MOV   R1, #1',c:'if (x + 1 > x)  → true',cl:1,cf:'x + 1 > x',note:'R1 is 1 (true). For any ordinary signed int value where x + 1 is defined, adding one makes the result larger. That lets an optimiser omit this comparison. A value of 127 is below INT_MAX, even with signed wrapping enabled.'},
   ]});
 mount('s10',{ regs:['R0','R1','R2'], start:'a is 255 and b is 1, both unsigned. The code wants to know whether a + b carried out of the top bit.',
   steps:[
     {op:'mov',dst:'R0',imm:255,asm:'MOV   R0, #255',c:'uint8_t a = 255',cl:0,cf:'a = 255',note:''},
     {op:'mov',dst:'R1',imm:1,asm:'MOV   R1, #1',c:'uint8_t b = 1',cl:0,cf:'b = 1',note:''},
-    {op:'add',dst:'R2',a:'R0',b:'R1',asm:'ADDS  R2, R0, R1',c:'s = a + b',cl:1,note:'255 + 1 = 256 falls off the top: R2 is 0x00. C = 1 is the 256 that fell off, and Z = 1 because what remained is zero. V = 0: as signed this was −1 + 1 = 0, which is right.'},
+    {op:'add',dst:'R2',a:'R0',b:'R1',asm:'ADDS  R2, R0, R1',c:'s = a + b',cl:1,note:'255 + 1 = 256 falls off the top: R2 is 0x00. C = 1 records the carry worth 256, and Z = 1 because what remained is zero. V = 0: as signed this was −1 + 1 = 0, which is right.'},
     {op:'sub',dst:'R3',a:'R2',b:'R0',asm:'CMP   R2, R0',c:'if (s < a)',cl:2,cf:'s < a',note:'The twin of scenario 6: a sum smaller than one of its inputs can only come from going round the wheel. 0 < 255 is true, so the code knows the addition carried. The compare does 0 − 255, a borrow, C = 0, which is what the unsigned less-than branch reads.'},
   ]});
 

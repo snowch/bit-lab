@@ -383,7 +383,7 @@ ol.trace li{margin:0 0 4px}
 
   <section class="tut" id="background">
     <h2>Background</h2>
-    <p><strong>What an ALU is.</strong> Inside every CPU there is one circuit whose whole job is to take one or two numbers and produce a new number from them: add, subtract, AND, shift and so on. It's called the <em>arithmetic logic unit</em>, or ALU. It has no memory and no clock of its own — it is pure combinational logic, a web of gates, so its output changes the moment its inputs do. Everything else in a CPU is plumbing to get numbers into the ALU and results out of it.</p>
+    <p>An <em>arithmetic logic unit</em> (ALU) performs calculations such as addition and bitwise AND. In this model, the output follows the current inputs. A separate register can hold the result.</p>
     <svg class="blockdiag" viewBox="0 0 420 196" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Block diagram: registers A and B feed the ALU, which outputs a result and four flags; an instruction register feeds the control unit, which selects the ALU operation">
   <g text-anchor="middle" dominant-baseline="middle">
     <g class="gate">
@@ -405,8 +405,8 @@ ol.trace li{margin:0 0 4px}
     <text x="206" y="138" class="idx" text-anchor="start">operation</text>
   </g>
 </svg>
-    <p>A <em>register</em> is just a row of bits the CPU holds on to — in this lab, A and B are 4 or 8 bits wide. An instruction like <code>add</code> selects which operation the ALU performs, the ALU computes, and the result is written back to a register. Alongside the result the ALU also outputs a few single bits of information <em>about</em> the result: was it zero, was it negative, did it overflow. These are the <em>flags</em>. They are what makes <code>if</code> statements and loops possible: a conditional branch simply tests a flag left by the previous ALU operation.</p>
-    <p><strong>Where the operation comes from.</strong> The instruction is itself a number, fetched from memory into the <em>instruction register</em>. A few of its bits, the <em>opcode</em>, go to the <em>control unit</em>, which decodes them into the wires that tell the ALU what to do and which registers to use. So "add" never reaches the ALU as a word: it arrives as a pattern on the operation lines, and the ALU is wired so that pattern selects the adder. Some example instructions, in a generic assembly notation:</p>
+    <p>A <em>register</em> holds a fixed number of bits. The model uses 4 or 8 bits in each register. A <em>flag</em> is one bit that describes an operation’s result. For example, an Arm conditional branch can read a zero flag to tell whether a comparison found two values equal.</p>
+    <p>An instruction specifies an operation and its operands. The control unit decodes the operation field, called the <em>opcode</em>. In this lab you select the operation directly. This table uses illustrative assembly names and the flag behaviour of the model.</p>
     <table>
       <tr><th>Instruction</th><th>What the ALU computes</th><th>Result goes to</th><th>Flags</th></tr>
       <tr><td><code>ADD R0, R1, R2</code></td><td>R1 + R2</td><td>register R0</td><td>N Z C V</td></tr>
@@ -416,21 +416,21 @@ ol.trace li{margin:0 0 4px}
       <tr><td><code>CMP R1, R2</code></td><td>R1 − R2, result thrown away</td><td>nowhere, only the flags</td><td>N Z C V</td></tr>
       <tr><td><code>BEQ label</code></td><td>nothing: the branch unit tests Z</td><td>the program counter, if Z = 1</td><td>reads Z</td></tr>
     </table>
-    <p><code>CMP</code> followed by <code>BEQ</code> is how <code>if (a == b)</code> runs: the subtraction leaves Z set exactly when the two values were equal, and the branch reads it. In the lab below there is no control unit; you are it. The operation buttons are its output wires.</p>
-    <p>The lab below is a miniature ALU: two input registers, the gate network for one operation at a time, a result, and the four flags.</p>
+    <p>For example, <code>CMP</code> can perform A − B and keep the flags without storing the difference. <code>BEQ</code> then uses Z to branch if the original operands were equal.</p>
+
     <p><strong>Two readings of the same bits.</strong> An 8-bit pattern has no intrinsic sign. Read as <em>unsigned</em>, <code>0xFF</code> is 255. Read as <em>two's complement signed</em>, the top bit counts as −128, so <code>0xFF</code> is −1 and the range is −128…127. The hardware adds the same way regardless; the flags let software decide whether the answer is trustworthy under the reading it cares about.</p>
     <h3>The companion pages, in brief</h3>
     <p><strong>From gates to an ALU.</strong> Bitwise ops use one gate per bit position. Addition uses one <em>full adder</em> per bit position, and a full adder is only five gates: sum = A ⊕ B ⊕ cin and carry-out = A·B + cin·(A ⊕ B). Four of them, each carry-out wired to the next carry-in, add two 4-bit numbers the way you add on paper, and the carry ripples from bit 0 upward. The lab draws each full adder as a box marked <b>FA</b> (short for full adder). To see inside the box, with inputs you can tap and a ripple you can watch, read the companion page <a href="gates-to-alu.html"><em>From gates to an ALU</em></a>.</p>
     <p><strong>From adding to subtracting.</strong> A register with 8 bits holds 256 patterns and wraps round: count down past 0 and you are at 255. So 3 − 5 lands on 254, which is 0xFE, and 0xFE is also the pattern for −2. That is what the lab shows when you pick <code>A − B</code>, and it is not a mistake: the same bits are 254 to one reading and −2 to the other. The adder does it without a subtractor. Inverting every bit of B gives 255 − B, so adding NOT B and then 1 adds 256 − B, which modulo 256 is subtracting B. In the drawing, <code>A − B</code> is the adder with an inverter under every B bit and the first carry-in set to 1. The carry out of the top adder then reports whether a borrow was needed: C = 1 means no borrow. The companion page <a href="adding-to-subtracting.html"><em>From adding to subtracting</em></a> shows this on a 16-position wheel and in bits you can tap.</p>
-    <p><strong>Shifts.</strong> The last three operations move bits sideways and need no gates at all, only wiring: each bit's wire is connected one column over. Shifting left moves every bit up a column, which doubles the number, and the bit that falls off the top lands in C. Shifting right halves the number, but there are two right shifts, because the column that empties at the top has to be filled with something. One fills it with 0, which is right for an unsigned number; its traditional name is the <em>logical</em> shift. The other fills it with a copy of the old top bit, so a negative number stays negative, which is right for a signed one; that is the <em>arithmetic</em> shift. The lab's buttons say what each does rather than its name. This is one of the pairs of instructions that exist only because the same bits have two readings; the two kinds of branch, on the next page, are another. In C, <code>&gt;&gt;</code> on an unsigned variable is the logical shift and on a signed variable is, in practice, the arithmetic one, so again the declaration chooses. Java and JavaScript spell them the other way round from what you might guess: <code>&gt;&gt;</code> is arithmetic and <code>&gt;&gt;&gt;</code> is logical. One more thing to expect: the arithmetic shift rounds toward minus infinity, so −3 shifted right once is −2, not −1.</p>
-    <p><strong>From gates to a register.</strong> The ALU needs no memory: a gate's output depends only on its present inputs. The registers on either side of it do, and they are made of the same kinds of gates wired with <em>feedback</em>, an output led back round to an input, so a pair of NOR gates can hold a bit for as long as the power is on. A <em>clock</em>, a signal that swings between 0 and 1 billions of times a second, decides the one instant at which registers take in a new value. The companion page <a href="gates-to-register.html"><em>From gates to a register</em></a> builds a latch from five gates and a 4-bit register you can clock.</p>
+    <p><strong>Shifts.</strong> An unsigned right shift fills the high bit with zero. An arithmetic right shift copies the previous high bit. In this model, arithmetic right shift rounds a negative odd value down. A left shift keeps the low bits of twice the input. Each shift reports the bit that moved out in C.</p>
+    <p><strong>From gates to a register.</strong> The ALU needs no memory: a gate's output depends only on its present inputs. The registers on either side of it do, and they are made of the same kinds of gates wired with <em>feedback</em>, an output led back round to an input, so a pair of NOR gates can hold a bit for as long as the power is on. A <em>clock</em>, a signal that alternates between 0 and 1, can decide when a register takes in a new value. The companion page <a href="gates-to-register.html"><em>From gates to a register</em></a> builds a latch from five gates and a 4-bit register you can clock.</p>
     <h3>The flags</h3>
-<p><strong>The flags.</strong> After an operation the ALU records four one-bit facts, which conditional branches then test. They are four separate stored bits, not one four-way value: each flag has its own flip-flop (the memory cell built on the <a href="gates-to-register.html">From gates to a register</a> page), loaded at the same clock edge as the result, and any combination can be set at once. <code>0x80 + 0x80</code> sets C and V together, and <code>0xFF + 1</code> sets Z and C. Real CPUs keep these four bits inside a wider <em>status register</em> next to things like interrupt and mode bits; on ARM it is 32 bits wide with N, Z, C and V as its top four.</p>
+<p>N (negative reading), Z (zero result), C (carry or no borrow) and V (signed overflow) are separate bits. More than one can be set. For example, 8-bit <code>0x80 + 0x80</code> sets C, Z and V in this model.</p>
     <table>
       <tr><th>Flag</th><th>Meaning</th><th>Built from</th></tr>
       <tr><td>N</td><td>result is negative when read as signed</td><td>result's top bit, straight through</td></tr>
       <tr><td>Z</td><td>result is zero</td><td>NOR of every result bit</td></tr>
-      <tr><td>C</td><td>unsigned result didn't fit (or a bit was shifted out)</td><td>carry out of the top adder</td></tr>
+      <tr><td>C</td><td>carry on addition, no borrow on subtraction, or the bit shifted out</td><td>carry out of the top adder, or the bit leaving the word for a shift</td></tr>
       <tr><td>V</td><td>signed result didn't fit</td><td>carry <em>into</em> the top bit XOR carry <em>out</em> of it</td></tr>
     </table>
     <p>This lab follows the ARM / Harris &amp; Harris convention: after subtraction, C = 1 means <em>no borrow</em> was needed. x86 stores the opposite sense for subtraction, so if you later read Intel manuals, keep that in mind.</p>
@@ -438,8 +438,8 @@ ol.trace li{margin:0 0 4px}
 
   <section class="tut lab-anchor" id="lab">
     <h2>The lab</h2>
-    <p>Below is the miniature ALU from the diagram above, opened up so you can see the gates. The top rows are the input registers A and B; the bottom row is the result R. Between them is a drawing of the circuit for the chosen operation: one gate or adder per bit column, with wires lit amber when they carry a 1 and carries shown in red. The page works out the result in software and lights the drawing to match, so it shows what each gate would do rather than simulating the gates themselves. The four flags are wired into the drawing too: N is a tap off the top result bit, Z is one wide NOR across every result bit, C is the carry out of the top adder, and V is an XOR of the carry into the top adder and the carry out of it. The cards under the circuit repeat each flag's gates with an explanation of its current value.</p>
-    <p>Tap a bit to flip it. Pick an operation from the buttons. Switch to 4-bit when you want fewer columns to trace by hand.</p>
+    <p>Choose an operation. Toggle any bit in input A or B and the page updates the circuit, result R and flags immediately. Amber wires carry a 1, and red wires show carries between adders. The drawing follows the software calculation.</p>
+
   </section>
 
   <div class="ops" id="ops" role="group" aria-label="Operation"></div>
@@ -454,9 +454,9 @@ ol.trace li{margin:0 0 4px}
   </div>
 
   <div class="circuit"><svg id="circuit" xmlns="http://www.w3.org/2000/svg" aria-label="Gate-level circuit"></svg></div>
-  <p class="tip">Tap a bit in A or B to flip it. Amber wires carry a 1; red carries are the ripple between adders.</p>
 
-  <p class="tip">Both readings are always shown below. The hardware is just bits and does not know which one you mean. Which reading a program uses, and how, is the next page: <a href="who-decides.html">Signed or unsigned: who decides?</a></p>
+
+
   <div class="values" id="values"></div>
 
   <div class="flags" id="flags"></div>
@@ -470,46 +470,46 @@ ol.trace li{margin:0 0 4px}
 
   <section class="tut" id="exercises">
     <h2>Guided exercises</h2>
-    <p>For each one, predict the result and flags <em>before</em> you look. Each "Load" button sets the lab up for you.</p>
+    <p>Predict the result before selecting a <strong>Load</strong> button. The page sets the width, inputs and operation and takes you to the result. Return here to reveal the worked answer.</p>
 
-    <div class="ex"><h3>1. Columns that don't talk</h3>
+    <div class="ex"><h3>1. Which output bit changes?</h3>
       <button class="load" data-ex='{"op":"AND","w":8,"a":170,"b":15}'>Load AND 0xAA, 0x0F</button>
-      <p>Flip bit 7 of A. Which result bits change? Now flip bit 0 of B. Which change? Why do no other columns react?</p>
-      <details><summary>Answer</summary><p>Only the same column changes each time. Each AND gate sees just its own pair of inputs — there is no wire between columns.</p></details></div>
+      <p>After loading, toggle A bit 7, then A bit 0. Check the R row after each change. Why do the two flips affect R differently?</p>
+      <details><summary>Answer</summary><p>Toggling A bit 7 changes no output because B bit 7 is 0. Toggling A bit 0 changes R bit 0 because B bit 0 is 1. No other output bit depends on either of these A bits.</p></details></div>
 
     <div class="ex"><h3>2. Masking and setting</h3>
       <button class="load" data-ex='{"op":"AND","w":8,"a":181,"b":15}'>Load AND 0xB5, 0x0F</button>
-      <p>Read the result in hex. Then switch to OR with the same inputs. What does AND with <code>0x0F</code> do to a byte, and what does OR with <code>0x0F</code> do?</p>
-      <details><summary>Answer</summary><p>AND keeps only the low nibble (<code>0x05</code>). OR forces the low nibble to all ones (<code>0xBF</code>). This is how software clears and sets individual bits.</p></details></div>
+      <p>Read R in hex. Select <strong>A OR B</strong> and read it again. With B set to <code>0x0F</code>, which four result bits does AND clear and which four does OR set?</p>
+      <details><summary>Answer</summary><p>AND keeps only the low four bits (<code>0x05</code>). OR forces the low four bits to all ones (<code>0xBF</code>). This is how software clears and sets individual bits.</p></details></div>
 
     <div class="ex"><h3>3. Watch the ripple</h3>
       <button class="load" data-ex='{"op":"ADD","w":4,"a":7,"b":1}'>Load 4-bit 7 + 1</button>
-      <p>Trace it by hand first: bit 0 is 1 + 1, which gives sum 0 and carry 1. Continue for each column. How far does the carry travel? Now set A to 15 and repeat.</p>
-      <details><summary>Answer</summary><p>7 + 1: the carry travels through bits 0–2 and stops at bit 3, giving 8. 15 + 1: it ripples through every column and out the top, so R = 0, Z = 1, C = 1. The top adder can't produce its answer until every adder to its right has.</p></details></div>
+      <p>Trace it by hand first: bit 0 is 1 + 1, which gives sum 0 and carry 1. Continue for each column. How far does the carry travel? Toggle A bit 3 from 0 to 1, making A equal to 15. Repeat the trace. Does the carry leave the word this time?</p>
+      <details><summary>Answer</summary><p>7 + 1: the carry travels through bits 0–2 and stops at bit 3, giving 8. 15 + 1: it ripples through every column and out the top, so R = 0, Z = 1, C = 1. The top column depends on the carry from the lower columns.</p></details></div>
 
-    <div class="ex"><h3>4. Same bits, two overflows</h3>
+    <div class="ex"><h3>4. Unsigned carry and signed overflow</h3>
       <button class="load" data-ex='{"op":"ADD","w":8,"a":127,"b":1}'>Load 0x7F + 1</button>
       <p>Note C and V. Then load <code>0xFF + 1</code> from "Try these" and compare. In each case, which reading (signed or unsigned) gave a wrong answer?</p>
       <details><summary>Answer</summary><p>0x7F + 1: unsigned 127 + 1 = 128 fits, C = 0; signed 127 + 1 should be 128 but the result reads −128, V = 1. 0xFF + 1: unsigned 255 + 1 doesn't fit, C = 1; signed −1 + 1 = 0 is correct, V = 0. The flags report on the two readings independently.</p></details></div>
 
     <div class="ex"><h3>5. The V rule</h3>
       <button class="load" data-ex='{"op":"ADD","w":8,"a":128,"b":128}'>Load 0x80 + 0x80</button>
-      <p>Look at the two red carries feeding the V gate: carry into bit 7 and carry out of bit 7. Find inputs where both are 1 (V = 0), where only the out is 1, and where only the in is 1. State the rule in words.</p>
-      <details><summary>Answer</summary><p>V = 1 exactly when the carry into the sign bit differs from the carry out of it. Adding two positives that produce a negative (carry in only), or two negatives that produce a positive (carry out only), is overflow. If both carries agree the sign bit is still telling the truth.</p><p>Why that rule is the same as "the true answer is outside the signed range": the carry out of the top bit is the 256 (or 16) that fell off the end, and the carry into it is what the top column needed for its own sum. If both happen they cancel, and if neither happens nothing was lost, so in both cases the top bit shows the true sign. If exactly one happens, the top bit has been given the opposite sign from the true answer, which can only occur when the true answer did not fit. That is the number-line picture on <a href="adding-to-subtracting.html#paper">From adding to subtracting</a>, seen from inside the adder.</p></details></div>
+      <p>Load 0x80 + 0x80, then find the carry into bit 7, the carry out of bit 7 and V. Use the presets for 0x7F + 1 and 0xFF + 1 and record the same three values. Which pairs of carry bits make V equal to 1?</p>
+      <details><summary>Answer</summary><p>V = 1 exactly when the carry into the sign bit differs from the carry out of it. Adding two positives that produce a negative (carry in only), or two negatives that produce a positive (carry out only), is overflow. For the three sums in order, the carry pairs (in, out) are (0, 1), (1, 0) and (1, 1). V is 1 for the first two and 0 for the third.</p><p>Why that rule is the same as "the true answer is outside the signed range": the carry out of the top bit is the 256 (or 16) that fell off the end, and the carry into it is what the top column needed for its own sum. If both happen they cancel, and if neither happens nothing was lost, so in both cases the top bit shows the true sign. If exactly one happens, the top bit has been given the opposite sign from the true answer, which can only occur when the true answer did not fit. That is the number-line picture on <a href="adding-to-subtracting.html#paper">From adding to subtracting</a>, seen from inside the adder.</p></details></div>
 
     <div class="ex"><h3>6. Subtraction is addition in disguise</h3>
       <button class="load" data-ex='{"op":"SUB","w":8,"a":5,"b":3}'>Load 5 − 3</button>
-      <p>Find the inverters on the B inputs and the 1 on the first carry-in. Now swap to 3 − 5. What are R, N and C, and what does C mean here?</p>
+      <p>Find the inverters on the B inputs and the 1 on the first carry-in. Then select <strong>3 − 5</strong> in Try these. What are R, N and C, and what does C mean here?</p>
       <details><summary>Answer</summary><p>5 − 3 = 2 with C = 1 (no borrow). 3 − 5 = 0xFE, which is −2 signed, so N = 1; C = 0 because a borrow was needed. In ARM style C = 1 means "A ≥ B as unsigned".</p></details></div>
 
-    <div class="ex"><h3>7. The number that can't be negated</h3>
+    <div class="ex"><h3>7. When the positive result does not fit</h3>
       <button class="load" data-ex='{"op":"NEG","w":8,"a":128,"b":0}'>Load −(0x80)</button>
       <p>Negate 0x80. What comes out, and which flag tells you something went wrong? Why can this happen?</p>
       <details><summary>Answer</summary><p>The result is 0x80 again, with V = 1. −128 negated should be +128, but the signed range only reaches 127. Two's complement has one more negative value than positive.</p></details></div>
 
     <div class="ex"><h3>8. Three shifts</h3>
       <button class="load" data-ex='{"op":"SHR","w":8,"a":146,"b":0}'>Load 0x92, logical shift right</button>
-      <p>Compare the two right shifts on 0x92. Which one is "divide by 2" for a signed number, and why does the other give the wrong answer? Then shift 0x81 left and explain where the top bit went.</p>
+      <p>Read the signed R after loading 0x92. Switch to <strong>A &gt;&gt; 1, keep the sign</strong> and read signed R again. Which equals −110 divided by 2? Then load the <strong>0x81 &lt;&lt; 1</strong> preset and check C for the top bit that left A.</p>
       <details><summary>Answer</summary><p>0x92 is −110 signed. The arithmetic shift copies the sign bit down and gives 0xC9 = −55 (correct). The logical shift fills with 0 and gives 0x49 = 73, correct only for the unsigned reading (146 ÷ 2). Shifting 0x81 left pushes the 1 at bit 7 out into C.</p></details></div>
   </section>
 
@@ -834,7 +834,13 @@ function bitCell(parent, x, y, val, label, editable, onToggle){
   txt(g,14,15,String(val));
   if(editable){
     g.addEventListener('click',onToggle);
-    g.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();onToggle();} });
+    g.addEventListener('keydown',e=>{
+      if(e.key!=='Enter'&&e.key!==' ') return;
+      e.preventDefault();
+      const host=parent.closest('svg').parentElement;
+      onToggle();
+      host.querySelector(`[role="switch"][aria-label="${CSS.escape(label)}"]`)?.focus();
+    });
   }
   return g;
 }
@@ -1093,13 +1099,13 @@ const WHY={
   XOR:`One XOR gate per column. A 1 appears where the inputs <em>differ</em>. XOR with 1 flips a bit; XOR with itself gives zero (Z=1). XOR is also the sum half of an adder.`,
   NAND:`AND followed by an inverter (the bubble). NAND is functionally complete — every other gate can be built from it, which is why Nand2Tetris starts here.`,
   NOR:`OR followed by an inverter. The zero flag is a big NOR of all result bits.`,
-  ADD:`Each column is a full adder: sum = A ⊕ B ⊕ cin, carry = AB + cin(A ⊕ B). Carries ripple right to left, so bit 7 can't settle until bit 0 has. The same bits mean different numbers depending on how you read them: C tells you about the unsigned reading, V about the signed one.`,
-  SUB:`A − B is done as A + NOT B + 1: the inverters under B flip every bit, and the 1 on the first carry-in finishes the negation, so the adder computes A + (255 − B) + 1 at 8 bits, or A + (15 − B) + 1 at 4, which is A − B plus 256 or 16, and that extra 256 or 16 is the carry that falls off the top. No separate subtractor is needed. C = 1 therefore means "no borrow was needed", the convention ARM and RISC-V-style cores use; x86 stores the opposite. If the result looks wrong, say 0xFE for 3 − 5, read <a href="adding-to-subtracting.html">From adding to subtracting</a>: it is 254 and −2 at once.`,
+  ADD:`Each column is a full adder: sum = A ⊕ B ⊕ cin, carry = AB + cin(A ⊕ B). Carries ripple right to left, so each higher bit uses the carry from the next lower bit. The same bits mean different numbers depending on how you read them: C tells you about the unsigned reading, V about the signed one.`,
+  SUB:`A − B is done as A + NOT B + 1: the inverters under B flip every bit, and the 1 on the first carry-in finishes the negation, so the adder computes A + (255 − B) + 1 at 8 bits, or A + (15 − B) + 1 at 4, which is A − B plus 256 or 16, and that extra 256 or 16 is the carry that falls off the top. No separate subtractor is needed. C = 1 therefore means "no borrow was needed", the Arm subtraction convention. x86 instead sets its carry flag when there was a borrow. If the result looks wrong, say 0xFE for 3 − 5, read <a href="adding-to-subtracting.html">From adding to subtracting</a>: it is 254 and −2 at once.`,
   INC:`Add with B wired to 0 and the first carry-in set to 1. Only one 1 ever enters, and it ripples left until it hits a 0.`,
   NEG:`Two's complement negation: invert A and add 1 (B wired to 0, cin = 1), the trick from <a href="adding-to-subtracting.html">From adding to subtracting</a>. Try A = 0x80: negating the most negative number overflows, so V = 1 and the result is unchanged. On the wheel of that page, −128 sits exactly opposite 0 and has no positive partner to land on.`,
-  SHL:`Shift left by one place: LSL on ARM, <code>&lt;&lt;</code> in C. Every bit moves one column left, a 0 fills the bottom and the old top bit lands in C. It is wiring, not gates. The number doubles, under either reading, as long as nothing meaningful falls off: for unsigned that means C = 0 afterwards, for signed it means the top bit did not change.`,
-  SHR:`Shift right by one place, filling the emptied top column with 0. The traditional name is the <em>logical</em> shift right, LSR on ARM. Every bit moves one column right and the old bottom bit lands in C. It halves the unsigned reading, and gets a negative number wrong, because the 0 at the top makes it positive. In C this is what <code>&gt;&gt;</code> does to an <code>unsigned</code> variable; in Java and JavaScript it is spelt <code>&gt;&gt;&gt;</code>.`,
-  ASR:`Shift right by one place, filling the emptied top column with a copy of the old top bit (the "sign copy" wire), so a negative number stays negative. The traditional name is the <em>arithmetic</em> shift right, ASR on ARM. It halves the signed reading, rounding toward minus infinity: −3 becomes −2. In C this is what <code>&gt;&gt;</code> does, in practice, to a signed variable; in Java and JavaScript it is plain <code>&gt;&gt;</code>. Compare the two right-shift buttons on 0x92: 73 or −55 from the same bits.`,
+  SHL:`Shift left by one place: LSL on ARM, <code>&lt;&lt;</code> in C. Every bit moves one column left, a 0 fills the bottom and the old top bit lands in C. It is wiring, not gates. The number doubles, under either reading, when the product fits. That means C = 0 for the unsigned reading. For the signed reading, the top two input bits must match.`,
+  SHR:`Shift right by one place, filling the emptied top column with 0. The traditional name is the <em>logical</em> shift right, LSR on ARM. Every bit moves one column right and the old bottom bit lands in C. It gives the unsigned quotient on division by two, discarding the fraction. A signed negative input becomes a nonnegative result because the new top bit is zero. In C this is what <code>&gt;&gt;</code> does to an <code>unsigned</code> variable; in Java and JavaScript it is spelt <code>&gt;&gt;&gt;</code>.`,
+  ASR:`Shift right by one place, filling the emptied top column with a copy of the old top bit (the "sign copy" wire), so a negative number stays negative. The traditional name is the <em>arithmetic</em> shift right, ASR on ARM. It halves the signed reading, rounding toward minus infinity: −3 becomes −2. C11 leaves right shift of a negative signed value implementation-defined. Compare the two right-shift buttons on 0x92: 73 or −55 from the same bits.`,
 };
 function renderWhy(r){
   document.getElementById('why').innerHTML=`<h2>${r.op.label}</h2><p>${WHY[r.op.id]}</p>`;
